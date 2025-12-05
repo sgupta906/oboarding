@@ -123,8 +123,9 @@ function getLocalUsers(): User[] {
 
 /**
  * Saves users to localStorage and dispatches a custom event to notify subscribers
+ * @internal Exported for testing purposes (test helper)
  */
-function saveLocalUsers(users: User[]): void {
+export function saveLocalUsers(users: User[]): void {
   try {
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
     window.dispatchEvent(new CustomEvent('usersStorageChange', { detail: users }));
@@ -860,9 +861,10 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
       firestoreUnsubscribe = onSnapshot(
         usersRef,
         (snapshot) => {
-          const users = snapshot.docs.map((d) =>
+          const firestoreUsers = snapshot.docs.map((d) =>
             normalizeUserData(d.data() as Partial<User>, d.id)
           );
+
           // CRITICAL FIX: Prevent Firestore from overwriting recent localStorage changes
           // If localStorage was updated within the last 100ms, ignore this Firestore update
           // This prevents race conditions where Firestore subscriptions override user creation in localStorage
@@ -872,22 +874,47 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
             return;
           }
 
-          // Only emit Firestore data if it has users
-          if (users.length > 0) {
-            // Check if Firestore data differs from what we've already emitted
-            if (!areUsersEqual(lastEmittedUsers, users)) {
-              lastEmittedUsers = users;
-              callback(users);
-            }
-          } else {
-            // Firestore is empty, use localStorage
-            const localUsers = getLocalUsers();
-            // FIX: Use deep equality check instead of reference equality (===)
-            // This prevents infinite loops since getLocalUsers() returns a new array instance each time
-            if (!areUsersEqual(lastEmittedUsers, localUsers)) {
-              lastEmittedUsers = localUsers;
-              callback(localUsers);
-            }
+          // CRITICAL FIX 2: Properly merge users from both sources using Map-based deduplication
+          // This is the core bug fix that prevents admins from disappearing.
+          //
+          // THE PROBLEM:
+          // When a new user is created: localStorage has [admin1, admin2, newHire]
+          // But Firestore may return [admin1, admin2] (stale/incomplete snapshot)
+          // The OLD logic would see Firestore has > 0 users and use ONLY Firestore data
+          // Result: newHire disappeared and admins mysteriously vanished from UI
+          //
+          // THE SOLUTION:
+          // 1. Start with ALL localStorage users (they're the most recent)
+          // 2. Merge in Firestore users (which are source of truth for auth/persistence)
+          // 3. For conflicts: Firestore wins (it's authoritative when both exist)
+          // 4. For local-only: localStorage wins (recent local changes are more current)
+          //
+          // This ensures: admin1, admin2 from Firestore + newHire from localStorage = all 3
+          const localUsers = getLocalUsers();
+
+          // Use a Map for deduplication: key is user ID, value is most recent user object
+          const mergedUsersMap = new Map<string, User>();
+
+          // Add all local users first (they represent the current state)
+          localUsers.forEach(user => {
+            mergedUsersMap.set(user.id, user);
+          });
+
+          // Overwrite with Firestore users (they're authoritative when both exist)
+          // This way, if a user exists in both sources, Firestore's version wins
+          // But if a user only exists locally (like newly created), it's preserved
+          firestoreUsers.forEach(user => {
+            mergedUsersMap.set(user.id, user);
+          });
+
+          // Convert Map back to array
+          const mergedUsers = Array.from(mergedUsersMap.values());
+
+          // Only emit if the merged data differs from last emitted
+          // This prevents infinite loops from the Map-based deduplication
+          if (!areUsersEqual(lastEmittedUsers, mergedUsers)) {
+            lastEmittedUsers = mergedUsers;
+            callback(mergedUsers);
           }
         },
         (error) => {

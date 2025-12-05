@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { Template, Step } from '../types';
+import { clearAllUsersForTesting } from './userOperations';
 
 // Mock firebase/firestore module
 vi.mock('firebase/firestore', () => ({
@@ -513,5 +514,391 @@ describe('createOnboardingRunFromTemplate - Edge Cases', () => {
     const result = await createOnboardingRunFromTemplate(validData);
 
     expect(result.startDate).toBe(0);
+  });
+});
+
+// ============================================================================
+// REGRESSION TESTS: Race Condition Bug (Admins Disappearing on Hire Creation)
+// ============================================================================
+// Bug Summary:
+// When createOnboardingRunFromTemplate was called, a race condition between
+// Firestore and localStorage listeners in subscribeToUsers caused admin users
+// to disappear from the UI. The issue occurred because:
+// 1. User creation added to localStorage first via saveLocalUsers()
+// 2. onSnapshot subscription triggered from empty Firestore (no data yet)
+// 3. Race condition: Firestore returned stale/empty data before localStorage update
+// 4. Result: UI showed no users, losing admin visibility
+//
+// Fix Applied:
+// In subscribeToUsers (userOperations.ts):
+// - Added deep equality check (areUsersEqual) instead of reference equality
+// - Added timestamp-based check to ignore Firestore updates within 100ms of localStorage change
+// - Added data-completeness check: if localStorage has MORE users than Firestore, trust localStorage
+// This ensures newly created users don't disappear due to Firestore timing issues.
+// ============================================================================
+
+describe('Race Condition Regression: Admin Visibility on Hire Creation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Disable auto-seeding of default users for test isolation
+    clearAllUsersForTesting();
+
+    // Seed localStorage with mock templates
+    const templates = [mockTemplate];
+    localStorage.setItem('onboardinghub_templates', JSON.stringify(templates));
+
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
+  });
+
+  afterEach(() => {
+    clearAllUsersForTesting();
+    vi.resetModules();
+  });
+
+  it('should preserve multiple admin users when creating a new hire', async () => {
+    // REGRESSION TEST: Regression test for "admins disappear on hire creation" bug
+    // This test verifies that when createOnboardingRunFromTemplate is called,
+    // existing admin users in localStorage are NOT lost due to race condition
+
+    const { createUser, subscribeToUsers } = await import('./userOperations');
+    const { createOnboardingRunFromTemplate } = await import('./dataClient');
+
+    // Setup: Create 3 admin users in localStorage
+    const admin1 = await createUser(
+      {
+        email: 'admin1@company.com',
+        name: 'Admin User 1',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    const admin2 = await createUser(
+      {
+        email: 'admin2@company.com',
+        name: 'Admin User 2',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    const admin3 = await createUser(
+      {
+        email: 'admin3@company.com',
+        name: 'Admin User 3',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    // Verify admins were created
+    let usersBeforeHireCreation: any[] = [];
+    subscribeToUsers((users) => {
+      usersBeforeHireCreation = users;
+    });
+
+    expect(usersBeforeHireCreation).toHaveLength(3);
+    expect(usersBeforeHireCreation.every((u) => u.roles.includes('admin'))).toBe(true);
+
+    // ACTION: Create a new hire (which triggers the race condition)
+    const newHire = await createOnboardingRunFromTemplate({
+      employeeName: 'New Hire',
+      employeeEmail: 'newhire@company.com',
+      role: 'Engineering',
+      department: 'Platform',
+      templateId: 'template-engineering-001',
+    });
+
+    // VERIFY: All 3 admins should still exist
+    let usersAfterHireCreation: any[] = [];
+    subscribeToUsers((users) => {
+      usersAfterHireCreation = users;
+    });
+
+    // All admins should still be present
+    const adminEmails = ['admin1@company.com', 'admin2@company.com', 'admin3@company.com'];
+    const adminUsersAfter = usersAfterHireCreation.filter((u) =>
+      adminEmails.includes(u.email)
+    );
+
+    expect(adminUsersAfter).toHaveLength(3);
+    expect(adminUsersAfter.every((u) => u.roles.includes('admin'))).toBe(true);
+
+    // New hire should also be created
+    expect(newHire).toBeDefined();
+    expect(newHire.employeeEmail).toBe('newhire@company.com');
+  });
+
+  it('should preserve mixed user roles when creating a new hire', async () => {
+    // REGRESSION TEST: Verify that users with different roles survive hire creation
+    // This tests the fix for: "new hire creation deletes admins" bug
+
+    const { createUser, subscribeToUsers } = await import('./userOperations');
+    const { createOnboardingRunFromTemplate } = await import('./dataClient');
+
+    // Create users with different roles
+    await createUser(
+      {
+        email: 'admin@company.com',
+        name: 'System Admin',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    await createUser(
+      {
+        email: 'manager@company.com',
+        name: 'Team Manager',
+        roles: ['manager'],
+        profiles: ['Engineering'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    await createUser(
+      {
+        email: 'employee@company.com',
+        name: 'Employee',
+        roles: ['employee'],
+        profiles: ['Engineering'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    let usersBefore: any[] = [];
+    subscribeToUsers((users) => {
+      usersBefore = users;
+    });
+
+    expect(usersBefore).toHaveLength(3);
+
+    // Create a new hire
+    await createOnboardingRunFromTemplate({
+      employeeName: 'New Employee',
+      employeeEmail: 'newemployee@company.com',
+      role: 'Engineering',
+      department: 'Platform',
+      templateId: 'template-engineering-001',
+    });
+
+    let usersAfter: any[] = [];
+    subscribeToUsers((users) => {
+      usersAfter = users;
+    });
+
+    // All original users should still exist
+    expect(usersAfter.some((u) => u.email === 'admin@company.com')).toBe(true);
+    expect(usersAfter.some((u) => u.email === 'manager@company.com')).toBe(true);
+    expect(usersAfter.some((u) => u.email === 'employee@company.com')).toBe(true);
+
+    // New hire should be added (not replacing anyone)
+    expect(usersAfter.some((u) => u.email === 'newemployee@company.com')).toBe(true);
+
+    // Total should be 4 (3 original + 1 new)
+    expect(usersAfter.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('should maintain correct user count after rapid sequential hire creation', async () => {
+    // REGRESSION TEST: Verify that multiple rapid hire creations don't lose users
+    // This tests the fix for race conditions during rapid operations
+
+    const { createUser, subscribeToUsers } = await import('./userOperations');
+    const { createOnboardingRunFromTemplate } = await import('./dataClient');
+
+    // Create initial admin user
+    await createUser(
+      {
+        email: 'admin@company.com',
+        name: 'Admin',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    // Capture initial user count and subscribe
+    let initialCount = 1; // We just created 1 admin
+    const unsubscribe1 = subscribeToUsers((users) => {
+      initialCount = users.length;
+    });
+
+    // Small delay to ensure subscription is established
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Create multiple hires in rapid succession
+    const hirePromises = [
+      createOnboardingRunFromTemplate({
+        employeeName: 'Hire 1',
+        employeeEmail: 'hire1@company.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-engineering-001',
+      }),
+      createOnboardingRunFromTemplate({
+        employeeName: 'Hire 2',
+        employeeEmail: 'hire2@company.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-engineering-001',
+      }),
+      createOnboardingRunFromTemplate({
+        employeeName: 'Hire 3',
+        employeeEmail: 'hire3@company.com',
+        role: 'Sales',
+        department: 'Revenue',
+        templateId: 'template-engineering-001',
+      }),
+    ];
+
+    await Promise.all(hirePromises);
+
+    // Small delay to ensure all updates are processed
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    let finalUsers: any[] = [];
+    const unsubscribe2 = subscribeToUsers((users) => {
+      finalUsers = users;
+    });
+
+    // Initial user (admin) should still be present
+    expect(finalUsers.some((u) => u.email === 'admin@company.com')).toBe(true);
+
+    // All 3 new hires should be created
+    expect(finalUsers.some((u) => u.email === 'hire1@company.com')).toBe(true);
+    expect(finalUsers.some((u) => u.email === 'hire2@company.com')).toBe(true);
+    expect(finalUsers.some((u) => u.email === 'hire3@company.com')).toBe(true);
+
+    // Total should be at least initial + 3 new hires
+    expect(finalUsers.length).toBeGreaterThanOrEqual(4); // admin + 3 hires
+
+    unsubscribe1();
+    unsubscribe2();
+  });
+
+  it('should trust localStorage when it has more users than Firestore (data-completeness check)', async () => {
+    // REGRESSION TEST: Verify the data-completeness fix
+    // This directly tests the fix: when localStorage has MORE users than Firestore,
+    // we trust localStorage instead of letting Firestore overwrite it
+
+    const { createUser, subscribeToUsers, areUsersEqual } = await import('./userOperations');
+    const { createOnboardingRunFromTemplate } = await import('./dataClient');
+
+    // Create admin user
+    const admin = await createUser(
+      {
+        email: 'admin@company.com',
+        name: 'Admin',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    // Get the user count in localStorage (should be 1)
+    const localStorageUsers = JSON.parse(
+      localStorage.getItem('onboardinghub_users') || '[]'
+    );
+    expect(localStorageUsers).toHaveLength(1);
+
+    // Subscribe and verify callback receives the admin
+    let subscriptionUsers: any[] = [];
+    const unsubscribe = subscribeToUsers((users) => {
+      subscriptionUsers = users;
+    });
+
+    // Should have the admin
+    expect(subscriptionUsers.length).toBeGreaterThan(0);
+    expect(subscriptionUsers.some((u) => u.email === 'admin@company.com')).toBe(true);
+
+    // Create a new hire (adds another user to localStorage)
+    await createOnboardingRunFromTemplate({
+      employeeName: 'New Hire',
+      employeeEmail: 'newhire@company.com',
+      role: 'Engineering',
+      department: 'Platform',
+      templateId: 'template-engineering-001',
+    });
+
+    // localStorage should now have 2 users
+    const localStorageUsersAfter = JSON.parse(
+      localStorage.getItem('onboardinghub_users') || '[]'
+    );
+    expect(localStorageUsersAfter.length).toBeGreaterThanOrEqual(2);
+
+    // The subscription should reflect both users
+    expect(subscriptionUsers.length).toBeGreaterThanOrEqual(2);
+    expect(subscriptionUsers.some((u) => u.email === 'admin@company.com')).toBe(true);
+    expect(subscriptionUsers.some((u) => u.email === 'newhire@company.com')).toBe(true);
+
+    unsubscribe();
+  });
+
+  it('should not lose admin users when localStorage update race condition occurs', async () => {
+    // REGRESSION TEST: Verify the areUsersEqual deep equality check prevents infinite loops
+    // and that multiple rapid updates don't lose users
+
+    const { createUser, subscribeToUsers } = await import('./userOperations');
+    const { createOnboardingRunFromTemplate } = await import('./dataClient');
+
+    // Create initial users
+    await createUser(
+      {
+        email: 'admin@company.com',
+        name: 'Admin',
+        roles: ['admin'],
+        profiles: ['All'],
+        createdBy: 'system',
+      },
+      'system'
+    );
+
+    // Track all user state updates
+    const stateUpdates: any[][] = [];
+    const unsubscribe = subscribeToUsers((users) => {
+      stateUpdates.push([...users]);
+    });
+
+    // Create multiple hires
+    for (let i = 1; i <= 3; i++) {
+      await createOnboardingRunFromTemplate({
+        employeeName: `Hire ${i}`,
+        employeeEmail: `hire${i}@company.com`,
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-engineering-001',
+      });
+    }
+
+    // Verify we have state updates
+    expect(stateUpdates.length).toBeGreaterThan(0);
+
+    // Check the final state
+    const finalState = stateUpdates[stateUpdates.length - 1];
+
+    // Admin should still be present
+    expect(finalState.some((u) => u.email === 'admin@company.com')).toBe(true);
+
+    // All hires should be present
+    expect(finalState.some((u) => u.email === 'hire1@company.com')).toBe(true);
+    expect(finalState.some((u) => u.email === 'hire2@company.com')).toBe(true);
+    expect(finalState.some((u) => u.email === 'hire3@company.com')).toBe(true);
+
+    unsubscribe();
   });
 });

@@ -357,6 +357,7 @@ export interface KPISectionProps {
   profiles?: Profile[];
   selectedProfileId?: string;
   onProfileChange?: (profileId: string) => void;
+  onboardingInstances?: OnboardingInstance[];
 }
 
 export interface SuggestionsSectionProps {

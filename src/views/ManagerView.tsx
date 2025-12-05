@@ -18,13 +18,14 @@ import {
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
 import { useCreateOnboarding } from '../hooks';
-import type { Step, Suggestion, Activity } from '../types';
+import type { Step, Suggestion, Activity, OnboardingInstance } from '../types';
 
 interface ManagerViewProps {
   steps: Step[];
   suggestions: Suggestion[];
   activities?: Activity[];
   stuckEmployeeNames?: string[];
+  onboardingInstances?: OnboardingInstance[];
   onApproveSuggestion?: (id: number | string) => void;
   onRejectSuggestion?: (id: number | string) => void;
   onOnboardingCreated?: (employeeName: string) => void;
@@ -39,6 +40,8 @@ interface ManagerViewProps {
  * @param steps - Array of all onboarding steps
  * @param suggestions - Array of submitted suggestions
  * @param activities - Array of recent activities from employees
+ * @param stuckEmployeeNames - Names of employees currently stuck
+ * @param onboardingInstances - Array of onboarding instances for KPI calculations
  * @param onApproveSuggestion - Callback to approve a suggestion
  * @param onRejectSuggestion - Callback to reject a suggestion
  * @param onOnboardingCreated - Callback when onboarding instance is created successfully
@@ -49,6 +52,7 @@ export function ManagerView({
   suggestions,
   activities = [],
   stuckEmployeeNames = [],
+  onboardingInstances = [],
   onApproveSuggestion,
   onRejectSuggestion,
   onOnboardingCreated,
@@ -158,6 +162,7 @@ export function ManagerView({
             steps={steps}
             suggestions={suggestions}
             stuckEmployeeNames={stuckEmployeeNames}
+            onboardingInstances={onboardingInstances}
           />
 
           {/* Suggestions and Activity Grid - Asymmetric layout (2fr:1fr)

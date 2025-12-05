@@ -255,6 +255,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           suggestions={suggestions}
           activities={activities}
           stuckEmployeeNames={stuckEmployeeNames}
+          onboardingInstances={onboardingInstances}
           onApproveSuggestion={handleApproveSuggestion}
           onRejectSuggestion={handleRejectSuggestion}
         />

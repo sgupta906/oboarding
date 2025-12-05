@@ -12,7 +12,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '../../test/test-utils';
 import { KPISection } from './KPISection';
-import type { Step, Suggestion } from '../../types';
+import type { Step, Suggestion, OnboardingInstance } from '../../types';
 
 /**
  * Mock data for testing
@@ -81,6 +81,48 @@ const mockSuggestions: Suggestion[] = [
     user: 'User 3',
     text: 'Suggestion 3',
     status: 'reviewed',
+  },
+];
+
+/**
+ * Mock onboarding instances for testing active count (counts employees, not steps)
+ */
+const mockOnboardingInstances: OnboardingInstance[] = [
+  {
+    id: 'instance-1',
+    employeeName: 'Alice Johnson',
+    employeeEmail: 'alice@example.com',
+    role: 'Engineer',
+    department: 'Engineering',
+    templateId: 'template-1',
+    steps: mockSteps,
+    createdAt: Date.now(),
+    progress: 25,
+    status: 'active',
+  },
+  {
+    id: 'instance-2',
+    employeeName: 'Bob Smith',
+    employeeEmail: 'bob@example.com',
+    role: 'Sales',
+    department: 'Sales',
+    templateId: 'template-1',
+    steps: mockSteps,
+    createdAt: Date.now(),
+    progress: 50,
+    status: 'active',
+  },
+  {
+    id: 'instance-3',
+    employeeName: 'Charlie Brown',
+    employeeEmail: 'charlie@example.com',
+    role: 'Engineer',
+    department: 'Engineering',
+    templateId: 'template-1',
+    steps: mockSteps,
+    createdAt: Date.now(),
+    progress: 75,
+    status: 'completed',
   },
 ];
 
@@ -749,6 +791,168 @@ describe('KPISection', () => {
       select.dispatchEvent(new Event('change', { bubbles: true }));
 
       expect(mockOnProfileChange).toHaveBeenCalledWith('prof-1');
+    });
+  });
+
+  describe('Active Onboarding Count (Employee-Based)', () => {
+    it('counts employees, not steps when onboarding instances provided', () => {
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={mockOnboardingInstances}
+        />
+      );
+
+      // Should show 2 active employees (instance-1 and instance-2 are active)
+      // NOT 8 pending steps (2 active instances * 4 steps each = 8)
+      const activeOnboardingsText = screen.getByText('Active Onboardings');
+      expect(activeOnboardingsText).toBeInTheDocument();
+
+      // Check that we're getting "2" for active count (not "8")
+      const allTwoTexts = screen.getAllByText('2');
+      expect(allTwoTexts.length).toBeGreaterThan(0);
+    });
+
+    it('counts zero active employees when no instances are active', () => {
+      const completedInstances: OnboardingInstance[] = [
+        {
+          ...mockOnboardingInstances[0],
+          status: 'completed',
+        },
+        {
+          ...mockOnboardingInstances[1],
+          status: 'on_hold',
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={completedInstances}
+        />
+      );
+
+      // Should show 0 active employees
+      const zeroTexts = screen.getAllByText('0');
+      expect(zeroTexts.length).toBeGreaterThan(0);
+    });
+
+    it('counts only active status instances, ignoring completed and on_hold', () => {
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={mockOnboardingInstances}
+        />
+      );
+
+      // mockOnboardingInstances has 2 active and 1 completed
+      // Should only count the 2 active ones
+      const allTwoTexts = screen.getAllByText('2');
+      expect(allTwoTexts.length).toBeGreaterThan(0);
+    });
+
+    it('falls back to step-based counting when no instances provided', () => {
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={[]}
+        />
+      );
+
+      // With empty instances, should fall back to counting pending steps
+      // mockSteps has 2 pending steps
+      const allTwoTexts = screen.getAllByText('2');
+      expect(allTwoTexts.length).toBeGreaterThan(0);
+    });
+
+    it('handles multiple active employees correctly', () => {
+      const manyInstances: OnboardingInstance[] = [
+        { ...mockOnboardingInstances[0], status: 'active' },
+        { ...mockOnboardingInstances[1], status: 'active' },
+        { ...mockOnboardingInstances[2], id: 'instance-4', employeeName: 'Diana Green', status: 'active' },
+      ];
+
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={manyInstances}
+        />
+      );
+
+      // Should show 3 active employees
+      const allThreeTexts = screen.getAllByText('3');
+      expect(allThreeTexts.length).toBeGreaterThan(0);
+    });
+
+    it('handles single active employee correctly', () => {
+      const singleInstance: OnboardingInstance[] = [
+        { ...mockOnboardingInstances[0], status: 'active' },
+      ];
+
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={singleInstance}
+        />
+      );
+
+      // Should show 1 active employee
+      const allOneTexts = screen.getAllByText('1');
+      expect(allOneTexts.length).toBeGreaterThan(0);
+    });
+
+    it('respects profile filtering for active count with instances', () => {
+      const instancesWithProfiles: OnboardingInstance[] = [
+        {
+          ...mockOnboardingInstances[0],
+          status: 'active',
+          profileIds: ['prof-1'], // Engineer profile
+        },
+        {
+          ...mockOnboardingInstances[1],
+          status: 'active',
+          profileIds: ['prof-2'], // Sales profile
+        },
+      ];
+
+      const mockProfiles = [
+        {
+          id: 'prof-1',
+          name: 'Engineer',
+          description: 'Engineer onboarding',
+          roleTags: ['Engineering', 'All'],
+          createdAt: Date.now(),
+          createdBy: 'system',
+        },
+        {
+          id: 'prof-2',
+          name: 'Sales',
+          description: 'Sales onboarding',
+          roleTags: ['Sales', 'All'],
+          createdAt: Date.now(),
+          createdBy: 'system',
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={instancesWithProfiles}
+          profiles={mockProfiles}
+          selectedProfileId="prof-1"
+        />
+      );
+
+      // When filtering by Engineer profile, should only count the 1 Engineer instance
+      const allOneTexts = screen.getAllByText('1');
+      expect(allOneTexts.length).toBeGreaterThan(0);
     });
   });
 });

@@ -11,14 +11,15 @@ import type { KPISectionProps } from '../../types';
 
 /**
  * Renders the KPI cards grid showing key metrics
- * Calculates KPIs in real-time based on steps and suggestions data
+ * Calculates KPIs in real-time based on onboarding instances and suggestions data
  * Supports filtering by profile to segment data by role
- * @param steps - Array of onboarding steps (for stuck count and active count)
+ * @param steps - Array of onboarding steps (for stuck count)
  * @param suggestions - Array of suggestions (for feedback count)
  * @param stuckEmployeeNames - Names of employees who are stuck
  * @param profiles - Optional array of available profiles for filtering
  * @param selectedProfileId - Optional ID of currently selected profile
  * @param onProfileChange - Optional callback when profile selection changes
+ * @param onboardingInstances - Optional array of onboarding instances (for active count - counts employees, not steps)
  */
 export function KPISection({
   steps,
@@ -27,15 +28,43 @@ export function KPISection({
   profiles = [],
   selectedProfileId,
   onProfileChange,
+  onboardingInstances = [],
 }: KPISectionProps) {
   // Get the selected profile object for filtering
   const selectedProfile = selectedProfileId
     ? profiles.find((p) => p.id === selectedProfileId)
     : null;
 
-  // Calculate active onboardings (steps that are pending) - respects profile filter
+  // Calculate active onboardings (counts unique employees with active instances, not steps)
+  // This ensures: 1 employee with 10 steps = count of 1, not 10
   const getActiveCount = (): number => {
-    return countStepsByProfileAndStatus(steps, selectedProfile, 'pending');
+    if (!onboardingInstances || onboardingInstances.length === 0) {
+      // Fallback to step-based counting if instances not provided (legacy support)
+      return countStepsByProfileAndStatus(steps, selectedProfile, 'pending');
+    }
+
+    // Count instances with status='active' (respects profile filter if provided)
+    return onboardingInstances.filter((instance) => {
+      // Check if instance has active status
+      if (instance.status !== 'active') return false;
+
+      // If no profile selected, count all active instances
+      if (!selectedProfile) return true;
+
+      // If profile selected, only count instances that have profileIds matching the selected profile
+      if (instance.profileIds && instance.profileIds.includes(selectedProfile.id)) {
+        return true;
+      }
+
+      // For backward compatibility: check if any of the instance's steps match the profile's role tags
+      if (instance.steps && selectedProfile.roleTags) {
+        return instance.steps.some((step) =>
+          selectedProfile.roleTags.includes(step.role) || step.role === 'All'
+        );
+      }
+
+      return false;
+    }).length;
   };
 
   // Calculate stuck count - respects profile filter
