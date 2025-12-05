@@ -26,6 +26,7 @@ import {
   StepStatus,
   CustomRole,
   Profile,
+  ProfileTemplate,
 } from '../types';
 import { addUserToAuthCredentials, createUser, userEmailExists } from './userOperations';
 
@@ -39,6 +40,7 @@ const SUGGESTIONS_COLLECTION = 'suggestions';
 const ACTIVITIES_COLLECTION = 'activities';
 const ROLES_COLLECTION = 'roles';
 const PROFILES_COLLECTION = 'profiles';
+const PROFILE_TEMPLATES_COLLECTION = 'profileTemplates';
 
 // ============================================================================
 // LocalStorage Keys and Helpers for Development Fallback
@@ -46,6 +48,7 @@ const PROFILES_COLLECTION = 'profiles';
 
 const ROLES_STORAGE_KEY = 'onboardinghub_roles';
 const PROFILES_STORAGE_KEY = 'onboardinghub_profiles';
+const PROFILE_TEMPLATES_STORAGE_KEY = 'onboardinghub_profile_templates';
 const ONBOARDING_INSTANCES_STORAGE_KEY = 'onboardinghub_onboarding_instances';
 const TEMPLATES_STORAGE_KEY = 'onboardinghub_templates';
 
@@ -77,13 +80,9 @@ function getLocalRoles(): CustomRole[] {
     if (stored) {
       return JSON.parse(stored);
     }
-    // Initialize with default roles
-    const defaultRolesWithIds = DEFAULT_ROLES.map((role, index) => ({
-      ...role,
-      id: `local-role-${index + 1}`,
-    }));
-    localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(defaultRolesWithIds));
-    return defaultRolesWithIds;
+    // Don't auto-initialize - return empty array
+    // Tests can call seedDefaultRoles explicitly, and app can initialize on first use
+    return [];
   } catch {
     return [];
   }
@@ -111,13 +110,9 @@ function getLocalProfiles(): Profile[] {
     if (stored) {
       return JSON.parse(stored);
     }
-    // Initialize with default profiles
-    const defaultProfilesWithIds = DEFAULT_PROFILES.map((profile, index) => ({
-      ...profile,
-      id: `local-profile-${index + 1}`,
-    }));
-    localStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify(defaultProfilesWithIds));
-    return defaultProfilesWithIds;
+    // Don't auto-initialize - return empty array
+    // Tests can seed explicitly, and app can initialize on first use
+    return [];
   } catch {
     return [];
   }
@@ -133,6 +128,36 @@ function saveLocalProfiles(profiles: Profile[]): void {
     window.dispatchEvent(new CustomEvent('profilesStorageChange', { detail: profiles }));
   } catch (error) {
     console.error('Failed to save profiles to localStorage:', error);
+  }
+}
+
+/**
+ * Gets profile templates from localStorage
+ */
+function getLocalProfileTemplates(): ProfileTemplate[] {
+  try {
+    const stored = localStorage.getItem(PROFILE_TEMPLATES_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Saves profile templates to localStorage
+ */
+function saveLocalProfileTemplates(templates: ProfileTemplate[]): void {
+  try {
+    localStorage.setItem(PROFILE_TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
+    // Dispatch custom event to notify listeners
+    window.dispatchEvent(
+      new CustomEvent('profileTemplatesStorageChange', { detail: templates })
+    );
+  } catch (error) {
+    console.error('Failed to save profile templates to localStorage:', error);
   }
 }
 
@@ -404,26 +429,55 @@ export async function updateOnboardingInstance(
 
 /**
  * Updates the status of a step inside an onboarding instance and recalculates progress
+ *
+ * CRITICAL BUG FIX: Added validation that stepId exists before attempting update.
+ * Previously, if stepId didn't exist, the update would silently fail with no error,
+ * leaving the caller unaware that the operation didn't succeed.
+ *
+ * Error handling:
+ * - Throws if instance doesn't exist
+ * - Throws if stepId is not found in the instance's steps array
+ * - Preserves all existing step data if update succeeds
+ * - Recalculates progress percentage correctly
+ *
+ * @param instanceId - Onboarding instance ID containing the steps
+ * @param stepId - Step ID to update (numeric ID matching step.id)
+ * @param status - New status for the step ('pending', 'completed', 'stuck')
+ * @throws Error if instance not found
+ * @throws Error if stepId doesn't exist in the instance's steps
  */
 export async function updateStepStatus(
   instanceId: string,
   stepId: number,
   status: StepStatus
 ): Promise<void> {
+  // Step 1: Fetch the instance
   const instance = await getOnboardingInstance(instanceId);
   if (!instance) {
     throw new Error(`Onboarding instance not found: ${instanceId}`);
   }
 
+  // Step 2: Validate that stepId exists in the steps array
+  const stepExists = instance.steps.some((step) => step.id === stepId);
+  if (!stepExists) {
+    throw new Error(
+      `Step with ID ${stepId} not found in onboarding instance ${instanceId}. ` +
+      `Available step IDs: ${instance.steps.map((s) => s.id).join(', ')}`
+    );
+  }
+
+  // Step 3: Update the step with the new status, preserving all other data
   const updatedSteps = instance.steps.map((step) =>
     step.id === stepId ? { ...step, status } : step
   );
 
+  // Step 4: Recalculate progress based on completed steps
   const completedCount = updatedSteps.filter((step) => step.status === 'completed').length;
   const progress = updatedSteps.length === 0
     ? 0
     : Math.round((completedCount / updatedSteps.length) * 100);
 
+  // Step 5: Update the instance with new steps and progress
   await updateOnboardingInstance(instanceId, {
     steps: updatedSteps,
     progress,
@@ -1122,7 +1176,7 @@ export async function createRole(
 ): Promise<CustomRole> {
   const now = Date.now();
   const trimmedName = name.trim();
-  const trimmedDesc = description ? description.trim() : undefined;
+  const trimmedDesc = description !== undefined ? description.trim() : undefined;
 
   // Try Firestore first
   if (isFirestoreAvailable()) {
@@ -1152,7 +1206,7 @@ export async function createRole(
   // Fallback to localStorage
   const localRoles = getLocalRoles();
   const newRole: CustomRole = {
-    id: `local-role-${Date.now()}`,
+    id: `local-role-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     name: trimmedName,
     description: trimmedDesc,
     createdAt: now,
@@ -1191,9 +1245,7 @@ export async function updateRole(
       }
 
       if (updates.description !== undefined) {
-        safeUpdates.description = updates.description
-          ? updates.description.trim()
-          : undefined;
+        safeUpdates.description = updates.description.trim();
       }
 
       await updateDoc(docRef, safeUpdates);
@@ -1211,7 +1263,7 @@ export async function updateRole(
         ...role,
         ...(updates.name && { name: updates.name.trim() }),
         ...(updates.description !== undefined && {
-          description: updates.description ? updates.description.trim() : undefined,
+          description: updates.description.trim(),
         }),
         updatedAt: now,
       };
@@ -1578,5 +1630,352 @@ export function subscribeToProfiles(
   // Return unsubscribe function
   return () => {
     window.removeEventListener('profilesStorageChange', handleStorageChange);
+  };
+}
+
+// ============================================================================
+// Profile Template Operations (with localStorage fallback for development)
+// ============================================================================
+
+/**
+ * Fetches all profile templates, optionally filtered by profileId
+ * Falls back to localStorage if Firestore is unavailable
+ * @param profileId - Optional profile ID to filter templates by
+ * @returns Promise resolving to array of profile templates
+ */
+export async function listProfileTemplates(profileId?: string): Promise<ProfileTemplate[]> {
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const templatesRef = profileId
+        ? query(
+            collection(firestore, PROFILE_TEMPLATES_COLLECTION),
+            where('profileId', '==', profileId)
+          )
+        : collection(firestore, PROFILE_TEMPLATES_COLLECTION);
+
+      const snapshot = await getDocs(templatesRef);
+      const firestoreTemplates = snapshot.docs.map((doc) => {
+        const data = doc.data() as Record<string, unknown>;
+        return {
+          id: doc.id,
+          profileId: data.profileId as string,
+          name: data.name as string,
+          description: data.description as string | undefined,
+          steps: data.steps as Step[],
+          createdAt: data.createdAt as number,
+          updatedAt: data.updatedAt as number | undefined,
+          createdBy: data.createdBy as string,
+          version: data.version as number,
+          isPublished: data.isPublished as boolean,
+        } as ProfileTemplate;
+      });
+
+      // If Firestore returned templates, use them
+      if (firestoreTemplates.length > 0) {
+        return firestoreTemplates;
+      }
+    } catch (error) {
+      console.warn('Firestore unavailable, using localStorage fallback:', error);
+    }
+  }
+
+  // Fallback to localStorage
+  const localTemplates = getLocalProfileTemplates();
+  if (profileId) {
+    return localTemplates.filter((t) => t.profileId === profileId);
+  }
+  return localTemplates;
+}
+
+/**
+ * Fetches a single profile template by ID
+ * Falls back to localStorage if Firestore is unavailable
+ * @param id - Profile template document ID
+ * @returns Promise resolving to template or null if not found
+ */
+export async function getProfileTemplate(id: string): Promise<ProfileTemplate | null> {
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const docRef = doc(firestore, PROFILE_TEMPLATES_COLLECTION, id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Record<string, unknown>;
+        return {
+          id: docSnap.id,
+          profileId: data.profileId as string,
+          name: data.name as string,
+          description: data.description as string | undefined,
+          steps: data.steps as Step[],
+          createdAt: data.createdAt as number,
+          updatedAt: data.updatedAt as number | undefined,
+          createdBy: data.createdBy as string,
+          version: data.version as number,
+          isPublished: data.isPublished as boolean,
+        } as ProfileTemplate;
+      }
+    } catch (error) {
+      console.warn('Firestore unavailable, using localStorage fallback:', error);
+    }
+  }
+
+  // Fallback to localStorage
+  const localTemplates = getLocalProfileTemplates();
+  return localTemplates.find((t) => t.id === id) || null;
+}
+
+/**
+ * Creates a new profile template
+ * Falls back to localStorage if Firestore is unavailable
+ * @param profileId - Parent profile ID
+ * @param name - Template name
+ * @param description - Optional template description
+ * @param steps - Array of steps for this template
+ * @param createdBy - User ID of the creator
+ * @returns Promise resolving to new ProfileTemplate with generated ID
+ */
+export async function createProfileTemplate(
+  profileId: string,
+  name: string,
+  description: string | undefined,
+  steps: Step[],
+  createdBy: string
+): Promise<ProfileTemplate> {
+  const now = Date.now();
+  const trimmedName = name.trim();
+  const trimmedDesc = description ? description.trim() : undefined;
+
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const templatesRef = collection(firestore, PROFILE_TEMPLATES_COLLECTION);
+      const docRef = await addDoc(templatesRef, {
+        profileId,
+        name: trimmedName,
+        description: trimmedDesc,
+        steps,
+        createdAt: now,
+        updatedAt: now,
+        createdBy,
+        version: 1,
+        isPublished: false,
+      });
+
+      return {
+        id: docRef.id,
+        profileId,
+        name: trimmedName,
+        description: trimmedDesc,
+        steps,
+        createdAt: now,
+        updatedAt: now,
+        createdBy,
+        version: 1,
+        isPublished: false,
+      };
+    } catch (error) {
+      console.warn('Firestore unavailable, using localStorage fallback:', error);
+    }
+  }
+
+  // Fallback to localStorage
+  const localTemplates = getLocalProfileTemplates();
+  const newTemplate: ProfileTemplate = {
+    id: `local-template-${Date.now()}`,
+    profileId,
+    name: trimmedName,
+    description: trimmedDesc,
+    steps,
+    createdAt: now,
+    updatedAt: now,
+    createdBy,
+    version: 1,
+    isPublished: false,
+  };
+  saveLocalProfileTemplates([...localTemplates, newTemplate]);
+  return newTemplate;
+}
+
+/**
+ * Updates an existing profile template
+ * Falls back to localStorage if Firestore is unavailable
+ * @param templateId - Profile template document ID
+ * @param updates - Partial template updates (name, description, steps, isPublished, etc.)
+ * @returns Promise resolving when update is complete
+ */
+export async function updateProfileTemplate(
+  templateId: string,
+  updates: {
+    name?: string;
+    description?: string;
+    steps?: Step[];
+    isPublished?: boolean;
+  }
+): Promise<void> {
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const docRef = doc(firestore, PROFILE_TEMPLATES_COLLECTION, templateId);
+
+      const safeUpdates: Record<string, unknown> = {};
+
+      if (updates.name) {
+        safeUpdates.name = updates.name.trim();
+      }
+
+      if (updates.description !== undefined) {
+        safeUpdates.description = updates.description
+          ? updates.description.trim()
+          : undefined;
+      }
+
+      if (updates.steps) {
+        safeUpdates.steps = updates.steps;
+      }
+
+      if (updates.isPublished !== undefined) {
+        safeUpdates.isPublished = updates.isPublished;
+      }
+
+      if (Object.keys(safeUpdates).length > 0) {
+        safeUpdates.updatedAt = Date.now();
+        await updateDoc(docRef, safeUpdates);
+      }
+      return;
+    } catch (error) {
+      console.warn('Firestore unavailable, using localStorage fallback:', error);
+    }
+  }
+
+  // Fallback to localStorage
+  const localTemplates = getLocalProfileTemplates();
+  const updatedTemplates = localTemplates.map((template) => {
+    if (template.id === templateId) {
+      return {
+        ...template,
+        ...(updates.name && { name: updates.name.trim() }),
+        ...(updates.description !== undefined && {
+          description: updates.description ? updates.description.trim() : undefined,
+        }),
+        ...(updates.steps && { steps: updates.steps }),
+        ...(updates.isPublished !== undefined && { isPublished: updates.isPublished }),
+        updatedAt: Date.now(),
+      };
+    }
+    return template;
+  });
+  saveLocalProfileTemplates(updatedTemplates);
+}
+
+/**
+ * Deletes a profile template
+ * Falls back to localStorage if Firestore is unavailable
+ * @param templateId - Profile template document ID
+ * @returns Promise resolving when deletion is complete
+ */
+export async function deleteProfileTemplate(templateId: string): Promise<void> {
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const docRef = doc(firestore, PROFILE_TEMPLATES_COLLECTION, templateId);
+      await deleteDoc(docRef);
+      return;
+    } catch (error) {
+      console.warn('Firestore unavailable, using localStorage fallback:', error);
+    }
+  }
+
+  // Fallback to localStorage
+  const localTemplates = getLocalProfileTemplates();
+  const filteredTemplates = localTemplates.filter((t) => t.id !== templateId);
+  saveLocalProfileTemplates(filteredTemplates);
+}
+
+/**
+ * Subscribes to real-time updates of profile templates for a specific profile
+ * Falls back to localStorage with custom event listeners
+ * @param profileId - Profile ID to filter templates by
+ * @param callback - Function called whenever templates change
+ * @returns Unsubscribe function to stop listening
+ */
+export function subscribeToProfileTemplates(
+  profileId: string,
+  callback: (templates: ProfileTemplate[]) => void
+): Unsubscribe {
+  // Try Firestore first
+  if (isFirestoreAvailable()) {
+    try {
+      const templatesRef = query(
+        collection(firestore, PROFILE_TEMPLATES_COLLECTION),
+        where('profileId', '==', profileId)
+      );
+      return onSnapshot(
+        templatesRef,
+        (snapshot) => {
+          const templates = snapshot.docs.map((doc) => {
+            const data = doc.data() as Record<string, unknown>;
+            return {
+              id: doc.id,
+              profileId: data.profileId as string,
+              name: data.name as string,
+              description: data.description as string | undefined,
+              steps: data.steps as Step[],
+              createdAt: data.createdAt as number,
+              updatedAt: data.updatedAt as number | undefined,
+              createdBy: data.createdBy as string,
+              version: data.version as number,
+              isPublished: data.isPublished as boolean,
+            } as ProfileTemplate;
+          });
+          // If Firestore has templates, use them
+          if (templates.length > 0) {
+            callback(templates);
+          } else {
+            // Firestore is empty, fall back to local
+            const localTemplates = getLocalProfileTemplates().filter(
+              (t) => t.profileId === profileId
+            );
+            callback(localTemplates);
+          }
+        },
+        (error) => {
+          // On error, fall back to localStorage
+          console.warn('Firestore subscription error, using localStorage:', error);
+          const localTemplates = getLocalProfileTemplates().filter(
+            (t) => t.profileId === profileId
+          );
+          callback(localTemplates);
+        }
+      );
+    } catch (error) {
+      console.warn('Failed to subscribe to Firestore, using localStorage:', error);
+    }
+  }
+
+  // Fallback: use localStorage with custom event listener
+  const handleStorageChange = (event: Event) => {
+    const customEvent = event as CustomEvent<ProfileTemplate[]>;
+    if (customEvent.detail) {
+      callback(customEvent.detail.filter((t) => t.profileId === profileId));
+    } else {
+      const localTemplates = getLocalProfileTemplates().filter(
+        (t) => t.profileId === profileId
+      );
+      callback(localTemplates);
+    }
+  };
+
+  // Initial callback with current templates
+  const localTemplates = getLocalProfileTemplates().filter((t) => t.profileId === profileId);
+  callback(localTemplates);
+
+  // Listen for changes
+  window.addEventListener('profileTemplatesStorageChange', handleStorageChange);
+
+  // Return unsubscribe function
+  return () => {
+    window.removeEventListener('profileTemplatesStorageChange', handleStorageChange);
   };
 }

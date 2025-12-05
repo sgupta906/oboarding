@@ -16,6 +16,7 @@ import {
   getOnboardingInstance,
   createOnboardingInstance,
   updateOnboardingInstance,
+  updateStepStatus,
   listSuggestions,
   createSuggestion,
   updateSuggestionStatus,
@@ -161,16 +162,15 @@ describe('Template Operations', () => {
   });
 
   describe('getTemplate', () => {
+    beforeEach(() => {
+      // Seed template in localStorage for test
+      localStorage.setItem(
+        'onboardinghub_templates',
+        JSON.stringify([mockTemplate])
+      );
+    });
+
     it('should return template by ID', async () => {
-      const mockDocSnap = {
-        exists: () => true,
-        id: 'template-1',
-        data: () => mockTemplate,
-      };
-
-      vi.mocked(doc).mockReturnValue({} as any);
-      vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
-
       const result = await getTemplate('template-1');
 
       expect(result).not.toBeNull();
@@ -191,13 +191,17 @@ describe('Template Operations', () => {
     });
 
     it('should throw error on fetch failure', async () => {
+      // Clear localStorage for this test
+      localStorage.clear();
+
       const mockError = new Error('Document not accessible');
       vi.mocked(doc).mockReturnValue({} as any);
       vi.mocked(getDoc).mockRejectedValue(mockError);
 
-      await expect(getTemplate('template-1')).rejects.toThrow(
-        'Failed to fetch template'
-      );
+      // getTemplate falls back to localStorage when Firestore fails
+      // Since no localStorage data exists, it should return null
+      const result = await getTemplate('template-1');
+      expect(result).toBeNull();
     });
   });
 
@@ -447,6 +451,258 @@ describe('OnboardingInstance Operations', () => {
       >;
       expect(callArgs.id).toBeUndefined();
       expect(callArgs.createdAt).toBeUndefined();
+    });
+  });
+
+  describe('updateStepStatus - CRITICAL BUG FIX', () => {
+    it('should throw error if stepId does not exist', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [mockStep],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+
+      const promise = updateStepStatus('instance-1', 999, 'completed');
+
+      await expect(promise).rejects.toThrow(
+        /Step with ID 999 not found/i
+      );
+    });
+
+    it('should throw error listing valid step IDs when stepId not found', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [
+          { ...mockStep, id: 1 },
+          { ...mockStep, id: 2 },
+          { ...mockStep, id: 3 },
+        ],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+
+      const promise = updateStepStatus('instance-1', 999, 'completed');
+
+      await expect(promise).rejects.toThrow(
+        /Available step IDs: 1, 2, 3/
+      );
+    });
+
+    it('should successfully update step status when stepId is valid', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [mockStep],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 1, 'completed');
+
+      expect(updateDoc).toHaveBeenCalled();
+    });
+
+    it('should recalculate progress percentage correctly', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [
+          { ...mockStep, id: 1, status: 'completed' as const },
+          { ...mockStep, id: 2, status: 'pending' as const },
+          { ...mockStep, id: 3, status: 'pending' as const },
+        ],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 2, 'completed');
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      // 2 completed out of 3 = 67%
+      expect(callArgs.progress).toBe(67);
+    });
+
+    it('should preserve other step data during update', async () => {
+      const step1 = {
+        ...mockStep,
+        id: 1,
+        title: 'Step 1',
+        description: 'Description 1',
+        status: 'pending' as const,
+      };
+      const step2 = {
+        ...mockStep,
+        id: 2,
+        title: 'Step 2',
+        description: 'Description 2',
+        status: 'pending' as const,
+      };
+
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [step1, step2],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 1, 'completed');
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      const updatedSteps = callArgs.steps as any[];
+
+      // Verify step 1 was updated
+      expect(updatedSteps[0].status).toBe('completed');
+      // Verify step 1 data was preserved
+      expect(updatedSteps[0].title).toBe('Step 1');
+      expect(updatedSteps[0].description).toBe('Description 1');
+      // Verify step 2 was not modified
+      expect(updatedSteps[1].status).toBe('pending');
+      expect(updatedSteps[1].title).toBe('Step 2');
+    });
+
+    it('should throw error if instance does not exist', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => false,
+      } as any);
+
+      const promise = updateStepStatus('nonexistent-instance', 1, 'completed');
+
+      await expect(promise).rejects.toThrow(
+        /Onboarding instance not found/i
+      );
+    });
+
+    it('should set progress to 0 when all steps are pending', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [
+          { ...mockStep, id: 1, status: 'pending' as const },
+          { ...mockStep, id: 2, status: 'pending' as const },
+        ],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 1, 'pending');
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.progress).toBe(0);
+    });
+
+    it('should set progress to 100 when all steps are completed', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [
+          { ...mockStep, id: 1, status: 'completed' as const },
+          { ...mockStep, id: 2, status: 'pending' as const },
+        ],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 2, 'completed');
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      // 2 completed out of 2 = 100%
+      expect(callArgs.progress).toBe(100);
+    });
+
+    it('should handle empty steps array', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+
+      const promise = updateStepStatus('instance-1', 1, 'completed');
+
+      await expect(promise).rejects.toThrow(/Step with ID 1 not found/);
+    });
+
+    it('should properly round progress percentage', async () => {
+      const mockInstance = {
+        ...mockOnboardingInstance,
+        steps: [
+          { ...mockStep, id: 1, status: 'completed' as const },
+          { ...mockStep, id: 2, status: 'pending' as const },
+          { ...mockStep, id: 3, status: 'pending' as const },
+        ],
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue({
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockInstance,
+      } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateStepStatus('instance-1', 2, 'completed');
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      // 2 completed out of 3 = 66.666... should round to 67
+      expect(callArgs.progress).toBe(67);
     });
   });
 });

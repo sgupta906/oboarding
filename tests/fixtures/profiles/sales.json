@@ -1,0 +1,8 @@
+{
+  "id": "local-profile-3",
+  "name": "Sales",
+  "description": "Sales team onboarding",
+  "roleTags": ["Sales", "All"],
+  "createdAt": 1638360000000,
+  "createdBy": "system"
+}

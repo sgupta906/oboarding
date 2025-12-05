@@ -370,11 +370,11 @@ describe('Auth Service', () => {
 
   describe('signOut', () => {
     it('should clear localStorage mock auth', async () => {
-      // Mock localStorage
+      // Mock localStorage using vi.stubGlobal
       const mockRemoveItem = vi.fn();
-      global.localStorage = {
+      vi.stubGlobal('localStorage', {
         removeItem: mockRemoveItem,
-      } as any;
+      } as any);
 
       const mockSignOut = vi.fn().mockResolvedValue(undefined);
       vi.mocked(firebaseAuth.signOut).mockImplementation(mockSignOut as any);
@@ -385,10 +385,11 @@ describe('Auth Service', () => {
     });
 
     it('should gracefully handle Firebase signOut failure', async () => {
-      // Mock localStorage
-      global.localStorage = {
-        removeItem: vi.fn(),
-      } as any;
+      // Mock localStorage using vi.stubGlobal
+      const mockRemoveItem = vi.fn();
+      vi.stubGlobal('localStorage', {
+        removeItem: mockRemoveItem,
+      } as any);
 
       const signOutError = new Error('Sign-out failed');
 
@@ -399,10 +400,11 @@ describe('Auth Service', () => {
     });
 
     it('should call Firebase signOut when available', async () => {
-      // Mock localStorage
-      global.localStorage = {
-        removeItem: vi.fn(),
-      } as any;
+      // Mock localStorage using vi.stubGlobal
+      const mockRemoveItem = vi.fn();
+      vi.stubGlobal('localStorage', {
+        removeItem: mockRemoveItem,
+      } as any);
 
       const mockSignOut = vi.fn().mockResolvedValue(undefined);
 

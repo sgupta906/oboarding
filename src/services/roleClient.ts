@@ -6,6 +6,7 @@
 
 import {
   listRoles,
+  getRole,
   createRole as firestoreCreateRole,
   updateRole as firestoreUpdateRole,
   deleteRole as firestoreDeleteRole,
@@ -236,11 +237,18 @@ export async function updateCustomRole(
     }
 
     // Check for duplicates (excluding current role)
-    const exists = await roleNameExists(updates.name);
-    if (exists) {
-      throw new Error(
-        `A role with name "${updates.name}" already exists (case-insensitive)`
-      );
+    const currentRole = await getRole(roleId);
+    const trimmedNewName = updates.name.trim().toLowerCase();
+    const trimmedCurrentName = currentRole?.name.trim().toLowerCase();
+
+    // Only check for duplicates if the name is actually changing
+    if (trimmedNewName !== trimmedCurrentName) {
+      const exists = await roleNameExists(updates.name);
+      if (exists) {
+        throw new Error(
+          `A role with name "${updates.name}" already exists (case-insensitive)`
+        );
+      }
     }
   }
 

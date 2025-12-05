@@ -15,10 +15,26 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { firestore } from '../config/firebase';
-import { User, Activity } from '../types';
+import { User, Activity, OnboardingInstance } from '../types';
 
 const USERS_COLLECTION = 'users';
 const USERS_STORAGE_KEY = 'onboardinghub_users';
+const ONBOARDING_INSTANCES_STORAGE_KEY = 'onboardinghub_onboarding_instances';
+
+/**
+ * Gets onboarding instances from localStorage
+ */
+function getLocalOnboardingInstances(): OnboardingInstance[] {
+  try {
+    const stored = localStorage.getItem(ONBOARDING_INSTANCES_STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
 
 function normalizeUserData(raw: Partial<User> & { role?: string }, id: string): User {
   const rolesArray = Array.isArray(raw.roles)
@@ -252,7 +268,7 @@ export async function createUser(
   }
 
   const localUsers = getLocalUsers();
-  const userId = `local-user-${Date.now()}`;
+  const userId = `local-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const newUser: User = {
     id: userId,
     email: trimmedEmail,
@@ -333,6 +349,57 @@ export function getAuthCredential(email: string): { email: string; role: string;
 }
 
 /**
+ * Removes a user from auth credentials storage
+ * CRITICAL SECURITY: Called during user deletion to prevent orphaned authentication data
+ *
+ * Without this cleanup:
+ * - Deleted users could still authenticate using old credentials
+ * - Auth data becomes inconsistent with user database
+ * - Security risk: stale credentials could grant unauthorized access
+ *
+ * This function handles corrupted localStorage gracefully by:
+ * - Catching JSON parse errors and recovering with an empty array
+ * - Verifying credentials array is valid before filtering
+ * - Only saving if credentials were actually modified
+ *
+ * @param email - User's email address to remove from auth credentials
+ */
+export function removeUserFromAuthCredentials(email: string): void {
+  try {
+    const stored = localStorage.getItem(AUTH_CREDENTIALS_KEY);
+    if (!stored) return;
+
+    let credentials: any[] = [];
+    try {
+      const parsed = JSON.parse(stored);
+      // Validate it's an array before proceeding
+      if (!Array.isArray(parsed)) {
+        console.warn('Invalid auth credentials format (not an array), reinitializing');
+        localStorage.setItem(AUTH_CREDENTIALS_KEY, JSON.stringify([]));
+        return;
+      }
+      credentials = parsed;
+    } catch (parseError) {
+      console.warn('Corrupted auth credentials in localStorage, reinitializing:', parseError);
+      localStorage.setItem(AUTH_CREDENTIALS_KEY, JSON.stringify([]));
+      return;
+    }
+
+    // Filter out credentials matching this email (case-insensitive)
+    const updatedCredentials = credentials.filter(
+      (cred: any) => !cred || !cred.email || cred.email.toLowerCase() !== email.toLowerCase()
+    );
+
+    // Only save if credentials were actually removed (array changed)
+    if (updatedCredentials.length !== credentials.length) {
+      localStorage.setItem(AUTH_CREDENTIALS_KEY, JSON.stringify(updatedCredentials));
+    }
+  } catch (error) {
+    console.error('Failed to remove user from auth credentials:', error);
+  }
+}
+
+/**
  * Updates an existing user
  * @throws Error if updated email would create a duplicate
  */
@@ -393,22 +460,125 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user
+ * Deletes a user with comprehensive safety checks
+ *
+ * SECURITY: Validates that user is not in active onboarding or dependent data
+ * before allowing deletion. This prevents orphaned data and maintains referential integrity.
+ *
+ * Safety checks performed:
+ * 1. Verify user exists
+ * 2. Check for active onboarding instances assigned to this user
+ * 3. Clean up auth credentials to prevent orphaned authentication data
+ *
+ * @throws Error with descriptive message if user has dependent data
  */
 export async function deleteUser(userId: string): Promise<void> {
+  // Step 1: Fetch the user to ensure they exist
+  const user = await getUser(userId);
+  if (!user) {
+    // Gracefully handle deletion of non-existent user (idempotent operation)
+    return;
+  }
+
+  // Step 2: Check for active onboarding instances assigned to this user
+  // This prevents deletion of users who are currently in onboarding
+  const onboardingInstances = getLocalOnboardingInstances();
+  const activeInstances = onboardingInstances.filter(
+    (instance) =>
+      instance.employeeEmail.toLowerCase() === user.email.toLowerCase() &&
+      instance.status === 'active'
+  );
+
+  if (activeInstances.length > 0) {
+    throw new Error(
+      `Cannot delete user "${user.name}" (${user.email}): they have ${activeInstances.length} active onboarding instance(s) in progress. ` +
+      `Complete or cancel their onboarding before deleting.`
+    );
+  }
+
+  // Step 3: Check for pending suggestions created by this user
+  const suggestionsKey = 'onboardinghub_suggestions';
+  const suggestionsStr = localStorage.getItem(suggestionsKey);
+  const suggestions = suggestionsStr ? JSON.parse(suggestionsStr) : [];
+  const userSuggestions = suggestions.filter((s: any) => s.suggestedBy === user.email);
+  if (userSuggestions.length > 0) {
+    throw new Error(
+      `Cannot delete user "${user.name}" (${user.email}): they have ${userSuggestions.length} pending suggestion(s). ` +
+      `Please review or delete these suggestions first.`
+    );
+  }
+
+  // Step 4: Check if user is assigned as an expert on any steps
+  const expertKey = 'onboardinghub_experts';
+  const expertStr = localStorage.getItem(expertKey);
+  const expertAssignments = expertStr ? JSON.parse(expertStr) : [];
+  const userExpertAssignments = expertAssignments.filter((e: any) => e.expertEmail === user.email);
+  if (userExpertAssignments.length > 0) {
+    throw new Error(
+      `Cannot delete user "${user.name}" (${user.email}): they are assigned as subject matter expert on ${userExpertAssignments.length} step(s). ` +
+      `Please reassign these steps first.`
+    );
+  }
+
+  // Step 5: Delete from Firestore if available
   if (isFirestoreAvailable()) {
     try {
       const docRef = doc(firestore, USERS_COLLECTION, userId);
       await deleteDoc(docRef);
-      return;
+      // Continue to cleanup auth credentials even after Firestore delete
     } catch (error) {
       console.warn('Firestore unavailable, using localStorage fallback:', error);
     }
   }
 
+  // Step 6: Delete from localStorage
   const localUsers = getLocalUsers();
   const filteredUsers = localUsers.filter((u) => u.id !== userId);
   saveLocalUsers(filteredUsers);
+
+  // Step 7: Clean up auth credentials to prevent orphaned authentication data
+  // This is CRITICAL: without this cleanup, the user's old credentials remain in localStorage
+  // and could be used to authenticate even after the user account is deleted
+  removeUserFromAuthCredentials(user.email);
+}
+
+/**
+ * Deep equality check for User arrays
+ * CRITICAL: Prevents infinite update loops in subscribeToUsers
+ *
+ * Reference equality (===) fails because getLocalUsers() returns a new array
+ * instance each time it's called, even if the contents are identical.
+ * This helper performs a proper deep comparison of array contents.
+ *
+ * @param users1 - First array to compare
+ * @param users2 - Second array to compare
+ * @returns True if arrays contain identical user objects
+ */
+function areUsersEqual(users1: User[] | null, users2: User[]): boolean {
+  // Null is never equal to a non-empty array
+  if (users1 === null) {
+    return false;
+  }
+
+  // Check length first for quick rejection
+  if (users1.length !== users2.length) {
+    return false;
+  }
+
+  // Deep compare each user object
+  return users1.every((user1, index) => {
+    const user2 = users2[index];
+    return (
+      user1.id === user2.id &&
+      user1.email === user2.email &&
+      user1.name === user2.name &&
+      JSON.stringify(user1.roles) === JSON.stringify(user2.roles) &&
+      JSON.stringify(user1.profiles) === JSON.stringify(user2.profiles) &&
+      user1.createdAt === user2.createdAt &&
+      user1.updatedAt === user2.updatedAt &&
+      user1.createdBy === user2.createdBy
+    );
+  });
 }
 
 /**
@@ -418,6 +588,10 @@ export async function deleteUser(userId: string): Promise<void> {
  * in addition to any Firestore subscription. This ensures that:
  * 1. Users created via the UI (which use localStorage) trigger updates
  * 2. The UI stays in sync even when Firestore is unavailable
+ *
+ * RACE CONDITION FIX: Uses deep equality check (areUsersEqual) instead of
+ * reference equality to prevent infinite update loops. getLocalUsers() returns
+ * a new array instance each time, so === comparison would always be false.
  *
  * The localStorage listener takes precedence when available to avoid
  * race conditions between Firestore and localStorage data sources.
@@ -460,8 +634,9 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
           } else {
             // Firestore is empty, use localStorage
             const localUsers = getLocalUsers();
-            // Only emit if we haven't just emitted these same users
-            if (lastEmittedUsers !== localUsers) {
+            // FIX: Use deep equality check instead of reference equality (===)
+            // This prevents infinite loops since getLocalUsers() returns a new array instance each time
+            if (!areUsersEqual(lastEmittedUsers, localUsers)) {
               lastEmittedUsers = localUsers;
               callback(localUsers);
             }

@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { OnboardingInstance, Template, Step } from '../types';
+import type { Template, Step } from '../types';
 
 // Mock firebase/firestore module
 vi.mock('firebase/firestore', () => ({
@@ -14,6 +14,9 @@ vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   getDoc: vi.fn(),
   doc: vi.fn(),
+  getDocs: vi.fn(),
+  query: vi.fn(),
+  where: vi.fn(),
 }));
 
 // Mock firebase config
@@ -21,7 +24,7 @@ vi.mock('../config/firebase', () => ({
   firestore: {},
 }));
 
-import { addDoc, getDoc, doc, collection } from 'firebase/firestore';
+import { addDoc, getDoc, doc, collection, getDocs, query, where } from 'firebase/firestore';
 
 // ============================================================================
 // Test Data Fixtures
@@ -83,6 +86,13 @@ const validEmployeeDataWithStartDate = {
 describe('createOnboardingRunFromTemplate - Successful Creation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Seed localStorage with mock templates for fallback when Firestore is unavailable
+    const templates = [mockTemplate];
+    localStorage.setItem('onboardinghub_templates', JSON.stringify(templates));
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
   });
 
   afterEach(() => {
@@ -197,6 +207,11 @@ describe('createOnboardingRunFromTemplate - Successful Creation', () => {
 describe('createOnboardingRunFromTemplate - Validation Errors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
+    // Note: Validation errors are caught before template lookup
   });
 
   afterEach(() => {
@@ -333,6 +348,12 @@ describe('createOnboardingRunFromTemplate - Validation Errors', () => {
 describe('createOnboardingRunFromTemplate - Template Validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
+    // Clear localStorage to test template not found cases
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -380,6 +401,33 @@ describe('createOnboardingRunFromTemplate - Template Validation', () => {
 describe('createOnboardingRunFromTemplate - Firestore Errors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
+
+    // Mock localStorage for fallback tests
+    const localStorageMock = (() => {
+      let store: Record<string, string> = {};
+
+      return {
+        getItem: (key: string) => store[key] || null,
+        setItem: (key: string, value: string) => {
+          store[key] = value.toString();
+        },
+        removeItem: (key: string) => {
+          delete store[key];
+        },
+        clear: () => {
+          store = {};
+        },
+      };
+    })();
+
+    Object.defineProperty(global, 'localStorage', {
+      value: localStorageMock,
+      writable: true,
+    });
   });
 
   afterEach(() => {
@@ -399,11 +447,25 @@ describe('createOnboardingRunFromTemplate - Firestore Errors', () => {
     vi.mocked(collection).mockReturnValue({} as any);
     vi.mocked(addDoc).mockRejectedValue(mockError);
 
+    // Mock console.warn to verify fallback is logged
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     const { createOnboardingRunFromTemplate } = await import('./dataClient');
 
-    await expect(createOnboardingRunFromTemplate(validEmployeeData)).rejects.toThrow(
-      'Failed to create onboarding instance'
+    // Should succeed with localStorage fallback, not throw
+    const result = await createOnboardingRunFromTemplate(validEmployeeData);
+
+    // Verify it returned a valid instance with localStorage ID pattern
+    expect(result).toBeDefined();
+    expect(result.id).toMatch(/^local-instance-/);
+
+    // Verify the error was logged
+    expect(warnSpy).toHaveBeenCalledWith(
+      'Firestore unavailable, using localStorage fallback:',
+      mockError
     );
+
+    warnSpy.mockRestore();
   });
 
   it('should include original error message in thrown error', async () => {
@@ -420,11 +482,27 @@ describe('createOnboardingRunFromTemplate - Firestore Errors', () => {
     vi.mocked(collection).mockReturnValue({} as any);
     vi.mocked(addDoc).mockRejectedValue(mockError);
 
+    // Mock console.warn to verify the original error is logged
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     const { createOnboardingRunFromTemplate } = await import('./dataClient');
 
-    await expect(createOnboardingRunFromTemplate(validEmployeeData)).rejects.toThrow(
-      originalErrorMsg
+    // Should succeed and fall back to localStorage
+    const result = await createOnboardingRunFromTemplate(validEmployeeData);
+
+    expect(result).toBeDefined();
+
+    // Verify the original error message was passed to the warning log
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Firestore unavailable'),
+      mockError
     );
+
+    // Verify the error message is in the logged error
+    const callArgs = warnSpy.mock.calls[0];
+    expect(callArgs[1]).toEqual(mockError);
+
+    warnSpy.mockRestore();
   });
 
   it('should handle non-Error objects thrown from Firestore', async () => {
@@ -439,15 +517,35 @@ describe('createOnboardingRunFromTemplate - Firestore Errors', () => {
     vi.mocked(collection).mockReturnValue({} as any);
     vi.mocked(addDoc).mockRejectedValue('String error message');
 
+    // Mock console.warn to verify fallback handles non-Error objects
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
     const { createOnboardingRunFromTemplate } = await import('./dataClient');
 
-    await expect(createOnboardingRunFromTemplate(validEmployeeData)).rejects.toThrow();
+    // Should succeed with localStorage fallback even when error is a string
+    const result = await createOnboardingRunFromTemplate(validEmployeeData);
+
+    expect(result).toBeDefined();
+    expect(result.id).toMatch(/^local-instance-/);
+    expect(result.employeeName).toBe(validEmployeeData.employeeName);
+
+    // Verify fallback was triggered
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
   });
 });
 
 describe('createOnboardingRunFromTemplate - Type Safety', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Seed localStorage with mock templates
+    const templates = [mockTemplate];
+    localStorage.setItem('onboardinghub_templates', JSON.stringify(templates));
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
   });
 
   afterEach(() => {
@@ -518,6 +616,13 @@ describe('createOnboardingRunFromTemplate - Type Safety', () => {
 describe('createOnboardingRunFromTemplate - Edge Cases', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Seed localStorage with mock templates
+    const templates = [mockTemplate];
+    localStorage.setItem('onboardinghub_templates', JSON.stringify(templates));
+    // Setup default mocks for all Firestore functions
+    vi.mocked(query).mockReturnValue({} as any);
+    vi.mocked(where).mockReturnValue({} as any);
+    vi.mocked(getDocs).mockResolvedValue({ empty: true, docs: [] } as any);
   });
 
   afterEach(() => {

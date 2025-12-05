@@ -14,14 +14,16 @@ New hires are not just consumers of documentation; they are QA testers of it. Wh
 - **Role-Based Playlists**: Dynamic filtering so engineers only see engineering steps, sales only sees CRM setup, etc.
 - **Live Progress Tracking**: Managers see exactly where new hires are stuck in real-time
 - **Rot Report**: Automated identification of outdated documentation based on employee feedback
+- **Template & Profile Management**: Dedicated manager surfaces to author onboarding templates, seed profile metadata, and launch multi-profile onboarding runs
+- **Role-Aware Auth**: Email-link mock auth plus emulator quick logins, localStorage fallback, and manager/admin-only views (Templates, Users, New Onboarding)
 
 ## Tech Stack
 
-- **Frontend**: React 18.3.1 with Vite 5.4.21 (fast dev server, optimized builds)
-- **Language**: TypeScript 5.9.3 in strict mode with comprehensive linting
-- **Styling**: Tailwind CSS 3.4.18 with custom theme (brand colors, status indicators, animations)
+- **Frontend**: React 18.3.1 with Vite 7.2.x (blazing-fast dev server, optimized builds)
+- **Language**: TypeScript 5.5.x in strict mode with comprehensive linting
+- **Styling**: Tailwind CSS 3.4.18 with a custom design system (brand colors, badges, KPI tiles, animations)
 - **Icons**: Lucide React 0.344.0 (modern, tree-shakeable icon library)
-- **Backend** (planned): Firebase/Firestore for real-time data sync and authentication
+- **Auth & Data**: Firebase 12.x + Firestore Emulator Suite with localStorage fallback wired through `src/config/authContext.tsx` and `src/services/dataClient.ts`
 - **Hosting** (planned): Vercel or Firebase Hosting
 
 ## Installation & Setup
@@ -212,33 +214,37 @@ onboarding/
 │   │   ├── ui/              # Reusable primitives (Button, Card, Badge, Progress)
 │   │   ├── onboarding/      # Employee-facing components (StepCard, Timeline, ActionButtons)
 │   │   ├── manager/         # Admin dashboard components (KPICard, ActivityFeed, RotReport)
-│   │   └── modals/          # Modal dialogs (SuggestEditModal, ReportBlockerModal)
+│   │   ├── modals/          # Suggest Edit / Blocker dialogs
+│   │   └── templates/       # Manager template CRUD modals and helper components
 │   ├── views/
 │   │   ├── EmployeeView.tsx # New hire "Quest Log" timeline view
-│   │   └── ManagerView.tsx  # Dashboard with KPIs, live feed, pending reviews
-│   ├── data/
-│   │   └── mockData.ts      # Mock onboarding steps and suggestions (mirrors Firestore schema)
-│   ├── types/
-│   │   └── index.ts         # TypeScript interfaces (Step, Suggestion, OnboardingInstance)
-│   ├── hooks/               # Custom React hooks (future: useFirestore, useAuth)
-│   ├── config/
-│   │   └── firebase.ts      # Firebase app initialization and emulator configuration
-│   ├── services/            # Future: Data access layer (Firestore, Auth)
-│   ├── App.tsx              # Main application with view switching
+│   │   ├── ManagerView.tsx  # Dashboard with KPIs, activity feed, onboarding admin
+│   │   ├── TemplatesView.tsx# Manager-only template builder
+│   │   ├── SignInView.tsx   # Email-link mock auth + quick login buttons
+│   │   └── SignOutView.tsx  # Sign-out confirmation + redirect
+│   ├── hooks/               # Real-time Firestore hooks (useSteps, useManagerData, useTemplates, useUsers, useRoles)
+│   ├── services/            # Data access helpers (dataClient, authService, userOperations)
+│   ├── config/              # firebase.ts + authContext.tsx (AuthProvider + emulator detection)
+│   ├── context/             # DarkModeProvider
+│   ├── data/                # mockData.ts for legacy fallback/reference
+│   ├── types/               # Shared TS interfaces (Step, Suggestion, Profile, etc.)
+│   ├── utils/               # Helper utilities (filterUtils, formatting helpers)
+│   ├── App.tsx              # AuthProvider wrapper + hash routing
+│   ├── main.tsx             # Vite entry point
 │   └── index.css            # Tailwind directives + custom component classes
+├── docs/
+│   └── profiles.md          # Profile + profileTemplate schema references
 ├── firebase.json            # Firebase Emulator Suite configuration
 ├── firestore.rules          # Firestore security rules (dev: allow all)
 ├── storage.rules            # Storage security rules (dev: allow all)
 ├── firestore.indexes.json   # Firestore composite indexes
-├── docker-compose.yml       # Docker recipe for running Firebase Emulator in container
-├── .env.template            # Environment variable template for Firebase config
-├── .env.local               # Local development Firebase emulator config (pre-filled)
-├── exampleCode.js           # Original React prototype (preserved for reference)
+├── docker-compose.yml       # Docker recipe for running Firebase Emulator in a container
+├── CODEX.md                 # Codex-specific expectations & workflow guardrails
+├── CLAUDE.md                # Architecture, data model, and AI agent guidance
 ├── mvp.md                   # Product specification and feature roadmap
-├── CLAUDE.md                # AI agent guidance (architecture, data model, patterns)
-├── AGENTS.md                # Development conventions (style, testing, commits)
-└── project_status/
-    └── tickets.md           # Milestone-based backlog with completion tracking
+├── project_status/
+│   └── tickets.md           # Milestone-based backlog with completion tracking
+└── exampleCode.js           # Original React prototype (reference only)
 ```
 
 ## Custom Tailwind Utilities
@@ -308,17 +314,20 @@ All animations respect `prefers-reduced-motion` for accessibility:
 
 ### Testing Guidelines
 
-Tests live in `__tests__/` directories using Vitest + React Testing Library:
+Vitest + React Testing Library specs live alongside feature code (e.g., `src/**/__tests__`, `src/hooks/*.test.ts`, `tests/fixtures/`). Run the suite with:
 
 ```bash
-# Run unit tests (when implemented)
+# Run unit/integration tests
 npm run test
 
-# Run with coverage report
-npm run test -- --coverage
+# Watch mode for local debugging
+npm run test:watch
+
+# Coverage report (V8)
+npm run test:coverage
 ```
 
-Target: >80% coverage for onboarding flows, status transitions, and feedback submissions.
+Target: >80% coverage for onboarding flows, status transitions, auth, and feedback submissions as Milestone 4 ships.
 
 ### Commit Message Format
 
@@ -330,65 +339,67 @@ fix(timeline): prevent duplicate step completion
 docs: update Firebase setup instructions
 ```
 
-See `AGENTS.md` for full commit and PR guidelines.
+See `CODEX.md` for Codex-specific commit and PR guidelines.
 
 ## Current Development Status
 
-### Milestone 1: Project Foundations - ✅ Complete (8/8 tickets)
+### Milestone 1: Project Foundations – ✅ Complete
 
-- Vite 5.4.21 + React 18.3.1 + TypeScript 5.9.3 scaffold with optimal folder structure
-- Tailwind CSS v3.4.18 configured with custom theme (brand/status colors, component utilities)
-- ESLint + Prettier + TypeScript strict mode enabled with all formatting/linting scripts
-- Full UI migration from `exampleCode.js` prototype to production-ready `src/` structure
-- Mock data and type definitions matching Firestore schema
-- Employee and Manager views with 24 fully-typed interactive components
-- OS artifacts cleanup and enhanced `.gitignore` (140+ lines)
-- Suggest Edit flow regression fixed
+- Vite 7 + React 18 + TypeScript 5.5 scaffold with strict tsconfig and optimized folder structure
+- Tailwind CSS 3.4 theme with brand/status palettes, animations, and shared UI primitives
+- ESLint + Prettier + npm scripts (`lint`, `lint:fix`, `format`, `build`) wired into the runbook
+- Full UI migration from `exampleCode.js` into modular `src/` components and views
+- Strictly typed mock data + interfaces mirroring the planned Firestore schema
+- Repaired Suggest Edit regression and scrubbed tracked OS artifacts
 
-### Milestone 2: Core UI Implementation - ✅ Complete (12/12 tickets)
+### Milestone 2: Core UI Implementation – ✅ Complete
 
-- Composable component architecture with 24 fully-typed components
-- Employee view timeline with status transitions and modal flows
-- Manager dashboard with KPIs, Rot Report, and live activity feed
-- "Mark as Incomplete" functionality to revert completed steps
-- Manager view layout optimization (max-w-7xl, asymmetric grid, collapsable feed)
-- Automated testing suite: Vitest + React Testing Library (97 tests, >65% coverage)
-- Dark mode toggle (implemented, reverted per user feedback)
-- Onboarding Complete footer with NaN protection and edge-case handling
-- KPI tile layout normalization (equal height, responsive, no layout shifts)
-- Removed Karma gamification references and consolidated documentation
+- Broke the prototype into composable UI primitives, onboarding timeline tiles, manager widgets, and modal flows
+- Employee view delivers keyboard-accessible status transitions, stuck/report modals, and completion footer safeguards
+- Manager dashboard exposes KPIs, Rot Report, Live Activity feed, collapsible sections, and an onboarding instance selector
+- Added “Mark as Incomplete,” tooltip-safe KPI layouts, and responsive grid updates for large displays
+- Established Vitest + React Testing Library coverage across Employee/Manager views to guard interactions
+- Documented the “no auto-generated summaries” policy and deleted redundant Markdown reports
 
-### Milestone 3: Data & Authentication - 🚧 In Progress (1/6 tickets)
+### Milestone 3: Data & Authentication – ✅ Complete
 
-**Completed:**
-- Firebase project setup with Emulator Suite (Auth, Firestore, Storage)
-- `.env.template` and `.env.local` configuration with emulator variables
-- `src/config/firebase.ts` initialization with emulator auto-detection
-- Docker Compose recipe for containerized emulator with data persistence
-- Firebase npm scripts (`firebase:emulator`, `docker:emulator`, etc.)
-- Firebase config tests (3 tests passing)
-- README documentation with full setup instructions
+- Configured Firebase Emulator Suite (Auth, Firestore, Storage) with `.env.template` + Docker recipes
+- Implemented `src/services/dataClient.ts` + `userOperations.ts` with Firestore + localStorage fallback and 15+ CRUD helpers
+- Added real-time hooks (`useSteps`, `useSuggestions`, `useManagerData`, `useTemplates`, `useUsers`, `useRoles`, etc.) with unsubscribe safety
+- Delivered AuthProvider + SignIn/SignOut views, localStorage fallback, QA quick-logins, and role-gated routing/NavBar controls
+- Built Templates dashboard, onboarding-run creation modal, and Users admin surface for managers/admins
+- Seeded role profiles, filtering utilities, and impersonation helpers with extensive Vitest coverage across hooks/services/views
 
-**Remaining:**
-- Data-access layer (`src/services/dataClient.ts`) with Firestore hooks
-- Real-time hooks (`useSteps`, `useSuggestions`, `useActivities`)
-- Firebase Auth integration with role-based scaffolding
-- Templates dashboard for manual authoring
-- Onboarding instance creation flow
-- Role-profile metadata seeding
+### Milestone 4: Profile Templates & Assignment – 🚧 In Progress (1/6 tickets)
 
-### Milestone 4: Feedback Loop & QA - ⏳ Upcoming
+- ✅ Profile + profileTemplate schema defined in Firestore/dataClient with docs captured in `docs/profiles.md`
+- Next up: manager-facing Profiles panel, onboarding-run profile selection, employee multi-profile UX, seeded fixtures/tests, and offboarding template flows (see `project_status/tickets.md`)
 
-- Fix-It-Forward workflow with manager review panel
-- Blocker button notifications to step owners with SLA tracking
-- Comprehensive test suite with >80% coverage requirement
+### Milestone 5: Shyft Branding & Dashboard Polish – ⏳ Upcoming
 
-### Milestone 5: Deployment & Integrations - ⏳ Upcoming
+- Apply the Shyft palette (charcoal, navy, electric blue, soft gray) via Tailwind tokens and document AA contrast checks
+- Refresh shared components (buttons, tabs, KPI cards, modals) to use the new tokens + spacing guidance from `.claude/agents/frontend-architect.md`
+- Reposition the Live Activity module with better density/sticky behavior and add KPI drilldowns with accessible popovers
+- Expand the dashboard regression suite (e.g., theming/interactions tests) to lock down the updated UI
 
-- Vercel/Firebase Hosting CI/CD pipeline with preview deployments
-- Slack bot integration design and webhook proof-of-concept
+### Milestone 6: Feedback Loop & QA – ⏳ Upcoming
 
-See `project_status/tickets.md` for the detailed backlog and completion notes.
+- Implement the Fix-It-Forward manager review panel with suggestion approvals/rejections backed by Firestore
+- Wire the Blocker button to notify SMEs (email/webhook stub) and surface SLA timers/history in the dashboard
+- Drive Vitest + RTL coverage above 80% and enforce coverage thresholds in CI
+
+### Milestone 7: AI-Assisted Template Builder – ⏳ Upcoming
+
+- Design the Templates import UX with upload validation, progress indicators, and a mocked ingestion pipeline
+- Build the editable Template Builder UI with drag-and-drop steps, metadata side panels, and persistence hooks
+- Store generated templates (mocked for now) with versioning so managers can preview/tweak them before launching onboarding runs
+
+### Milestone 8: Deployment & Integrations – ⏳ Upcoming
+
+- Stand up a Vercel/Firebase Hosting pipeline with preview deployments per branch plus a release checklist
+- Draft the Slack bot/webhook architecture for blocker alerts, Fix-It-Forward updates, and proactive reminders
+
+See `project_status/tickets.md` for per-ticket completion notes and acceptance criteria.
 
 ## About the Prototype
 
@@ -405,7 +416,8 @@ The prototype remains in the repo as a reference for design decisions and intera
 
 - **`mvp.md`**: Product vision, feature specifications, and phased roadmap
 - **`CLAUDE.md`**: Architecture overview, data model, and development patterns for AI agents
-- **`AGENTS.md`**: Code style, testing conventions, and commit guidelines
+- **`CODEX.md`**: Codex-agent workflow guardrails, coding conventions, and runbook reminders
+- **`docs/profiles.md`**: Profile/profileTemplate schema reference plus fixtures for Milestone 4
 - **`project_status/tickets.md`**: Milestone-based backlog with agent workflow instructions
 
 ### Documentation Policy
@@ -415,7 +427,8 @@ The prototype remains in the repo as a reference for design decisions and intera
 This project maintains a strict documentation policy to avoid redundancy and confusion:
 
 - **Do NOT auto-generate** separate summary, report, or status documents (e.g., `MILESTONE_*.md`, `*_REPORT.md`, `*_SUMMARY.md`, `*_GUIDE.md`, `IMPLEMENTATION_*.md`)
-- All documentation belongs in the **canonical files** listed above
+- All documentation belongs in the **canonical files** listed above (`README.md`, `CLAUDE.md`, `CODEX.md`, `mvp.md`, `project_status/tickets.md`) or in the explicitly called-out specs under `docs/`
+- All workflow guidance now lives in this README, `CLAUDE.md`, and `CODEX.md`
 - Ticket completion notes in `project_status/tickets.md` serve as the source of truth for work completed
 - Keep completion notes concise (1-2 sentences) and factual
 - If new documentation is needed, discuss with the team where it should live first
@@ -427,7 +440,7 @@ This policy was established after the project experienced an explosion of 15+ au
 Before starting work:
 
 1. Read `CLAUDE.md` for architecture and core concepts
-2. Review `AGENTS.md` for coding standards
+2. Review `CODEX.md` (and any relevant `.claude/agents/*` briefs) for workflow and coding standards
 3. Check `project_status/tickets.md` for the current backlog
 4. Run `npm run lint` and `npm run format` before committing
 5. Ensure TypeScript builds without errors: `npm run build`

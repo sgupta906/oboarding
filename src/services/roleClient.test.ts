@@ -30,6 +30,7 @@ import type { CustomRole } from '../types';
 // Mock the dataClient module
 vi.mock('./dataClient', () => ({
   listRoles: vi.fn(),
+  getRole: vi.fn(),
   createRole: vi.fn(),
   updateRole: vi.fn(),
   deleteRole: vi.fn(),

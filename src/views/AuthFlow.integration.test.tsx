@@ -34,6 +34,12 @@ vi.mock('../config/firebase', () => ({
   storage: {},
 }));
 
+// Set Firebase emulator env BEFORE any component imports
+// This is needed for SignInView to detect emulator mode on initialization
+if (typeof import.meta !== 'undefined') {
+  (import.meta.env as any).VITE_USE_FIREBASE_EMULATOR = 'true';
+}
+
 // Mock the mock data
 vi.mock('../data/mockData', () => ({
   mockSteps: [],
@@ -63,14 +69,6 @@ describe('Auth Flow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    // Reset VITE_USE_FIREBASE_EMULATOR for each test
-    vi.stubGlobal('import', {
-      meta: {
-        env: {
-          VITE_USE_FIREBASE_EMULATOR: 'true',
-        },
-      },
-    });
   });
 
   afterEach(() => {

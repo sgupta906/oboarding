@@ -9,7 +9,7 @@
 
 export const MIN_ROLE_NAME_LENGTH = 2;
 export const MAX_ROLE_NAME_LENGTH = 50;
-export const ROLE_NAME_PATTERN = /^[a-zA-Z0-9\s\-]+$/; // Alphanumeric, spaces, and hyphens only
+export const ROLE_NAME_PATTERN = /^[a-zA-Z0-9 \-]+$/; // Alphanumeric, regular spaces, and hyphens only
 
 /**
  * Represents a custom role that can be assigned to employees
@@ -44,6 +44,32 @@ export interface Profile {
   roleTags: string[]; // Array of role tags this profile includes (e.g., ['Engineering', 'All'])
   createdAt: number; // Unix timestamp
   createdBy: string; // User ID who created the profile
+}
+
+/**
+ * Represents a profile-specific onboarding template
+ * Contains shared step lists that can be assigned to multiple profiles
+ * Maps to Firestore 'profileTemplates' collection
+ */
+export interface ProfileTemplate {
+  id: string;
+  profileId: string; // Reference to parent profile ID
+  name: string; // Template name (e.g., "Engineer Standard Onboarding")
+  description?: string; // Optional template description
+  steps: Step[]; // Array of Step objects for this profile
+  createdAt: number; // Unix timestamp
+  updatedAt?: number; // Last modified timestamp
+  createdBy: string; // User ID who created the template
+  version: number; // Version counter for schema migrations
+  isPublished: boolean; // Draft vs live template gate
+}
+
+/**
+ * Result of profile template validation
+ */
+export interface ProfileTemplateValidationResult {
+  valid: boolean;
+  error?: string; // Descriptive error message if invalid
 }
 
 // ============================================================================
@@ -242,6 +268,18 @@ export interface OnboardingInstance {
   completedAt?: number; // Unix timestamp when onboarding was completed
   progress: number; // 0-100 percentage
   status: 'active' | 'completed' | 'on_hold';
+  // Profile-template support (optional for backward compatibility)
+  profileIds?: string[]; // Array of profile IDs assigned to this onboarding run
+  templateIds?: string[]; // Array of profile template IDs used (for audit trail)
+  templateSnapshots?: {
+    // Map of template snapshots captured at instantiation time
+    [templateId: string]: {
+      profileId: string;
+      steps: Step[];
+      templateName: string;
+      capturedAt: number;
+    };
+  };
 }
 
 /**

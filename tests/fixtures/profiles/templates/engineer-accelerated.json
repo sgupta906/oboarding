@@ -1,0 +1,53 @@
+{
+  "id": "local-template-2",
+  "profileId": "local-profile-1",
+  "name": "Engineer Accelerated Track",
+  "description": "Fast-track onboarding for experienced engineers",
+  "createdAt": 1638360000000,
+  "updatedAt": 1638360000000,
+  "createdBy": "system",
+  "version": 1,
+  "isPublished": true,
+  "steps": [
+    {
+      "id": 1,
+      "title": "Set Up Development Environment",
+      "description": "Clone the main repository and install required dependencies using npm install",
+      "role": "Engineering",
+      "owner": "DevOps",
+      "expert": "Alice Smith",
+      "status": "pending",
+      "link": "https://wiki.company.com/dev-setup"
+    },
+    {
+      "id": 2,
+      "title": "Access Code Repository",
+      "description": "Request GitHub/GitLab access from your team lead and verify you can clone the repo",
+      "role": "Engineering",
+      "owner": "DevOps",
+      "expert": "Charlie Brown",
+      "status": "pending",
+      "link": "https://wiki.company.com/github-access"
+    },
+    {
+      "id": 7,
+      "title": "Architecture Deep Dive",
+      "description": "Review system design and microservices architecture with tech lead",
+      "role": "Engineering",
+      "owner": "Engineering Lead",
+      "expert": "Elena Davis",
+      "status": "pending",
+      "link": "https://wiki.company.com/architecture"
+    },
+    {
+      "id": 4,
+      "title": "First Task Assignment",
+      "description": "Complete your first assigned task and submit it for review",
+      "role": "Engineering",
+      "owner": "Team Lead",
+      "expert": "David Chen",
+      "status": "pending",
+      "link": "https://jira.company.com/browse/ONBOARD-101"
+    }
+  ]
+}

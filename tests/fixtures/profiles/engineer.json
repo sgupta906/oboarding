@@ -1,0 +1,8 @@
+{
+  "id": "local-profile-1",
+  "name": "Engineer",
+  "description": "Software engineer onboarding pathway",
+  "roleTags": ["Engineering", "All"],
+  "createdAt": 1638360000000,
+  "createdBy": "system"
+}
