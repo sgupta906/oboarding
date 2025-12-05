@@ -159,7 +159,7 @@ describe('CreateOnboardingModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Create New Onboarding')).toBeInTheDocument();
+    expect(screen.getByText('Add New Employee Onboarding')).toBeInTheDocument();
   });
 
   // ============================================================================
@@ -177,9 +177,9 @@ describe('CreateOnboardingModal Component', () => {
 
     expect(screen.getByLabelText(/employee name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/^role/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Employee role')).toBeInTheDocument();
     expect(screen.getByLabelText(/department/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/onboarding template/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/role-based template/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
   });
 
@@ -192,7 +192,7 @@ describe('CreateOnboardingModal Component', () => {
       />
     );
 
-    const roleSelect = screen.getByLabelText(/^role/i) as HTMLSelectElement;
+    const roleSelect = screen.getByLabelText('Employee role') as HTMLSelectElement;
     expect(roleSelect).toHaveProperty('value', '');
 
     const options = Array.from(roleSelect.options).map((o) => o.value);
@@ -330,7 +330,7 @@ describe('CreateOnboardingModal Component', () => {
       'john@example.com'
     );
     await user.selectOptions(
-      screen.getByLabelText(/^role/i),
+      screen.getByLabelText('Employee role'),
       'Engineering'
     );
 
@@ -359,7 +359,7 @@ describe('CreateOnboardingModal Component', () => {
       'john@example.com'
     );
     await user.selectOptions(
-      screen.getByLabelText(/^role/i),
+      screen.getByLabelText('Employee role'),
       'Engineering'
     );
     await user.type(screen.getByLabelText(/department/i), 'Engineering');
@@ -395,7 +395,7 @@ describe('CreateOnboardingModal Component', () => {
       'john@example.com'
     );
     await user.selectOptions(
-      screen.getByLabelText(/^role/i),
+      screen.getByLabelText('Employee role'),
       'Engineering'
     );
     await user.type(screen.getByLabelText(/department/i), 'Engineering');
@@ -438,7 +438,7 @@ describe('CreateOnboardingModal Component', () => {
       'john@example.com'
     );
     await user.selectOptions(
-      screen.getByLabelText(/^role/i),
+      screen.getByLabelText('Employee role'),
       'Engineering'
     );
     await user.type(screen.getByLabelText(/department/i), 'Engineering');
@@ -687,7 +687,7 @@ describe('CreateOnboardingModal Component', () => {
       screen.getByLabelText(/email address/i)
     ).toBeDisabled();
     expect(
-      screen.getByLabelText(/^role/i)
+      screen.getByLabelText('Employee role')
     ).toBeDisabled();
     expect(
       screen.getByLabelText(/department/i)
@@ -730,7 +730,7 @@ describe('CreateOnboardingModal Component', () => {
       '  john@example.com  '
     );
     await user.selectOptions(
-      screen.getByLabelText(/^role/i),
+      screen.getByLabelText('Employee role'),
       'Engineering'
     );
     await user.type(screen.getByLabelText(/department/i), '  Engineering  ');
@@ -775,7 +775,7 @@ describe('CreateOnboardingModal Component', () => {
       screen.getByLabelText(/email address/i)
     ).toHaveAttribute('aria-required', 'true');
     expect(
-      screen.getByLabelText(/^role/i)
+      screen.getByLabelText('Employee role')
     ).toHaveAttribute('aria-required', 'true');
   });
 

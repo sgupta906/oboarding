@@ -272,6 +272,14 @@ export function UsersPanel({ userId }: UsersPanelProps) {
 
   return (
     <div className="space-y-6">
+      {/* Info Card */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <p className="text-sm text-blue-900 dark:text-blue-300">
+          <strong>Tip:</strong> Use "New User" to add managers, admins, or contractors. Use "New Hire" on the Dashboard
+          to onboard employees with guided onboarding steps.
+        </p>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -289,7 +297,8 @@ export function UsersPanel({ userId }: UsersPanelProps) {
           onClick={handleOpenCreateModal}
           disabled={isSubmitting}
           className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          aria-label="Create new user"
+          aria-label="Add a system user (manager, admin, contractor). Use New Hire on the Dashboard to onboard employees."
+          title="Add a manager, admin, or contractor. For onboarding employees, use 'New Hire' on the Dashboard."
         >
           <Plus className="w-4 h-4" />
           New User

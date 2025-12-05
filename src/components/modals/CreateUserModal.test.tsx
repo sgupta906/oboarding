@@ -36,7 +36,7 @@ describe('CreateUserModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Create New User')).toBeInTheDocument();
+    expect(screen.getByText('Add System User')).toBeInTheDocument();
     expect(screen.getByLabelText('User email')).toBeInTheDocument();
     expect(screen.getByLabelText('User name')).toBeInTheDocument();
   });

@@ -129,7 +129,7 @@ export function CreateUserModal({
   return (
     <ModalWrapper
       isOpen={isOpen}
-      title="Create New User"
+      title="Add System User"
       onClose={handleClose}
       size="lg"
       footer={
@@ -161,6 +161,16 @@ export function CreateUserModal({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Intro Section */}
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+          <p className="text-sm text-amber-900 font-medium">
+            Add a manager, admin, or contractor to the system.
+          </p>
+          <p className="text-xs text-amber-800">
+            This does NOT create an onboarding journey. If you're onboarding a new employee,
+            go back to the Dashboard and click "New Hire" instead.
+          </p>
+        </div>
         {/* Server Error Messages */}
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -232,9 +242,13 @@ export function CreateUserModal({
 
         {/* Roles */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
-            Roles <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            System Roles <span className="text-red-500">*</span>
           </label>
+          <p className="text-xs text-slate-600 mb-3">
+            Select which features and dashboards this user can access (e.g., Manager to see team dashboard).
+            This is different from employee onboarding roles.
+          </p>
           {rolesLoading ? (
             <div className="text-slate-500 text-sm">Loading roles...</div>
           ) : roles.length > 0 ? (

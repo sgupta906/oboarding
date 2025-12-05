@@ -158,7 +158,7 @@ export function CreateOnboardingModal({
   return (
     <ModalWrapper
       isOpen={isOpen}
-      title="Create New Onboarding"
+      title="Add New Employee Onboarding"
       onClose={handleClose}
       size="lg"
       footer={
@@ -190,6 +190,13 @@ export function CreateOnboardingModal({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Intro Section */}
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-900">
+            This creates a guided onboarding journey for a new employee. Select a role-based template
+            to get started. The employee will see a "Quest Log" with tasks to complete.
+          </p>
+        </div>
         {/* Server Error Messages */}
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -386,8 +393,11 @@ export function CreateOnboardingModal({
             htmlFor="template-select"
             className="block text-sm font-medium text-slate-700 mb-2"
           >
-            Onboarding Template <span className="text-red-500">*</span>
+            Role-Based Template <span className="text-red-500">*</span>
           </label>
+          <p className="text-xs text-slate-600 mb-2">
+            Select a template that matches the employee's role (e.g., Engineer, Sales)
+          </p>
           <select
             id="template-select"
             value={templateId}

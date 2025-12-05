@@ -69,7 +69,7 @@ describe('UsersPanel Component', () => {
 
     expect(screen.getByText('User Administration')).toBeInTheDocument();
     expect(screen.getByText('Manage system users, assign roles and profiles')).toBeInTheDocument();
-    expect(screen.getByLabelText('Create new user')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Add a system user/i)).toBeInTheDocument();
   });
 
   it('should display loading state', () => {
@@ -120,11 +120,11 @@ describe('UsersPanel Component', () => {
   it('should open create modal when clicking new user button', async () => {
     render(<UsersPanel userId="admin-1" />);
 
-    const newUserButton = screen.getByLabelText('Create new user');
+    const newUserButton = screen.getByLabelText(/Add a system user/i);
     fireEvent.click(newUserButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Create New User')).toBeInTheDocument();
+      expect(screen.getByText('Add System User')).toBeInTheDocument();
     });
   });
 
@@ -143,11 +143,11 @@ describe('UsersPanel Component', () => {
 
     render(<UsersPanel userId="admin-1" />);
 
-    const newUserButton = screen.getByLabelText('Create new user');
+    const newUserButton = screen.getByLabelText(/Add a system user/i);
     fireEvent.click(newUserButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Create New User')).toBeInTheDocument();
+      expect(screen.getByText('Add System User')).toBeInTheDocument();
     });
 
     // Fill and submit form would go here
@@ -265,7 +265,7 @@ describe('UsersPanel Component', () => {
     render(<UsersPanel userId="admin-1" />);
 
     // Check for proper button labels
-    expect(screen.getByLabelText('Create new user')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Add a system user/i)).toBeInTheDocument();
     expect(screen.getAllByLabelText(/Edit user/).length).toBeGreaterThan(0);
     expect(screen.getAllByLabelText(/Delete user/).length).toBeGreaterThan(0);
   });
