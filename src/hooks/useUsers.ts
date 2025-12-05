@@ -53,6 +53,9 @@ export function useUsers(): UseUsersReturn {
     setError(null);
     try {
       const newUser = await createUser({ ...data, createdBy }, createdBy);
+      // Immediately update local state to ensure UI reflects the new user
+      // The subscription will also fire, but this ensures immediate feedback
+      setUsers((prevUsers) => [...prevUsers, newUser]);
       return newUser;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create user';
@@ -78,6 +81,8 @@ export function useUsers(): UseUsersReturn {
     setError(null);
     try {
       await deleteUser(userId);
+      // Immediately update local state to remove the user from the list
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
       setError(errorMessage);
