@@ -1,0 +1,840 @@
+/**
+ * Unit tests for dataClient.ts
+ * Tests Firestore CRUD operations and real-time subscriptions
+ */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import {
+  listTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  listOnboardingInstances,
+  getOnboardingInstance,
+  createOnboardingInstance,
+  updateOnboardingInstance,
+  listSuggestions,
+  createSuggestion,
+  updateSuggestionStatus,
+  listActivities,
+  logActivity,
+  subscribeToTemplates,
+  subscribeToOnboardingInstance,
+  subscribeToSteps,
+  subscribeToActivities,
+} from './dataClient';
+import type {
+  Template,
+  OnboardingInstance,
+  Activity,
+  Step,
+} from '../types';
+
+// Mock firebase/firestore module
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  addDoc: vi.fn(),
+  getDocs: vi.fn(),
+  getDoc: vi.fn(),
+  doc: vi.fn(),
+  updateDoc: vi.fn(),
+  deleteDoc: vi.fn(),
+  onSnapshot: vi.fn(),
+}));
+
+// Mock firebase config
+vi.mock('../config/firebase', () => ({
+  firestore: {},
+}));
+
+import {
+  collection,
+  addDoc,
+  getDocs,
+  getDoc,
+  doc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+} from 'firebase/firestore';
+
+// ============================================================================
+// Test Data Fixtures
+// ============================================================================
+
+const mockStep: Step = {
+  id: 1,
+  title: 'Setup Dev Environment',
+  description: 'Configure development environment',
+  role: 'Engineering',
+  owner: 'DevOps',
+  expert: 'John Doe',
+  status: 'pending',
+  link: 'https://example.com/setup',
+};
+
+const mockTemplate: Template = {
+  id: 'template-1',
+  name: 'Engineering Onboarding',
+  description: 'Complete onboarding for engineers',
+  role: 'Engineering',
+  steps: [mockStep],
+  createdAt: Date.now(),
+  isActive: true,
+};
+
+const mockOnboardingInstance: OnboardingInstance = {
+  id: 'instance-1',
+  employeeName: 'Jane Smith',
+  employeeEmail: 'jane@example.com',
+  role: 'Engineering',
+  department: 'Platform',
+  templateId: 'template-1',
+  steps: [mockStep],
+  createdAt: Date.now(),
+  progress: 50,
+  status: 'active',
+};
+
+const mockActivity: Activity = {
+  id: 'activity-1',
+  userInitials: 'JS',
+  action: 'Started onboarding',
+  timeAgo: '2 hours ago',
+  timestamp: Date.now(),
+  userId: 'user-1',
+};
+
+// ============================================================================
+// Template Tests
+// ============================================================================
+
+describe('Template Operations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('listTemplates', () => {
+    it('should return all templates', async () => {
+      const mockDocs = [
+        { id: 'template-1', data: () => ({ name: 'Engineering' }) },
+        { id: 'template-2', data: () => ({ name: 'Sales' }) },
+      ];
+
+      const mockSnapshot = {
+        docs: mockDocs,
+      };
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockSnapshot as any);
+
+      const result = await listTemplates();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('template-1');
+      expect(result[1].id).toBe('template-2');
+    });
+
+    it('should return empty array when no templates exist', async () => {
+      const mockSnapshot = { docs: [] };
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockSnapshot as any);
+
+      const result = await listTemplates();
+
+      expect(result).toEqual([]);
+    });
+
+    it('should throw descriptive error on failure', async () => {
+      const mockError = new Error('Network error');
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockRejectedValue(mockError);
+
+      await expect(listTemplates()).rejects.toThrow(
+        'Failed to fetch templates'
+      );
+    });
+  });
+
+  describe('getTemplate', () => {
+    it('should return template by ID', async () => {
+      const mockDocSnap = {
+        exists: () => true,
+        id: 'template-1',
+        data: () => mockTemplate,
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
+
+      const result = await getTemplate('template-1');
+
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe('template-1');
+    });
+
+    it('should return null when template does not exist', async () => {
+      const mockDocSnap = {
+        exists: () => false,
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
+
+      const result = await getTemplate('nonexistent');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw error on fetch failure', async () => {
+      const mockError = new Error('Document not accessible');
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockRejectedValue(mockError);
+
+      await expect(getTemplate('template-1')).rejects.toThrow(
+        'Failed to fetch template'
+      );
+    });
+  });
+
+  describe('createTemplate', () => {
+    it('should create a new template and return ID', async () => {
+      const mockDocRef = { id: 'new-template-id' };
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockResolvedValue(mockDocRef as any);
+
+      const templateData = {
+        name: 'Sales Onboarding',
+        description: 'Onboarding for sales team',
+        role: 'Sales',
+        steps: [],
+        isActive: true,
+      };
+
+      const result = await createTemplate(templateData);
+
+      expect(result).toBe('new-template-id');
+      expect(addDoc).toHaveBeenCalled();
+      const callArgs = vi.mocked(addDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.createdAt).toBeDefined();
+      expect(callArgs.updatedAt).toBeDefined();
+    });
+
+    it('should throw error on creation failure', async () => {
+      const mockError = new Error('Write permission denied');
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockRejectedValue(mockError);
+
+      const templateData = {
+        name: 'Test',
+        description: 'Test',
+        role: 'Test',
+        steps: [],
+        isActive: true,
+      };
+
+      await expect(createTemplate(templateData)).rejects.toThrow(
+        'Failed to create template'
+      );
+    });
+  });
+
+  describe('updateTemplate', () => {
+    it('should update template with provided fields', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      const updates = { name: 'Updated Name', isActive: false };
+
+      await updateTemplate('template-1', updates);
+
+      expect(updateDoc).toHaveBeenCalled();
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.name).toBe('Updated Name');
+      expect(callArgs.isActive).toBe(false);
+      expect(callArgs.updatedAt).toBeDefined();
+    });
+
+    it('should prevent overwriting id and createdAt', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      const updates = {
+        name: 'New Name',
+        id: 'fake-id',
+        createdAt: 123456,
+      } as any;
+
+      await updateTemplate('template-1', updates);
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.id).toBeUndefined();
+      expect(callArgs.createdAt).toBeUndefined();
+    });
+
+    it('should throw error on update failure', async () => {
+      const mockError = new Error('Document not found');
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockRejectedValue(mockError);
+
+      await expect(
+        updateTemplate('template-1', { name: 'Test' })
+      ).rejects.toThrow('Failed to update template');
+    });
+  });
+
+  describe('deleteTemplate', () => {
+    it('should delete template by ID', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(deleteDoc).mockResolvedValue(undefined);
+
+      await deleteTemplate('template-1');
+
+      expect(deleteDoc).toHaveBeenCalled();
+    });
+
+    it('should throw error on deletion failure', async () => {
+      const mockError = new Error('Delete permission denied');
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(deleteDoc).mockRejectedValue(mockError);
+
+      await expect(deleteTemplate('template-1')).rejects.toThrow(
+        'Failed to delete template'
+      );
+    });
+  });
+});
+
+// ============================================================================
+// OnboardingInstance Tests
+// ============================================================================
+
+describe('OnboardingInstance Operations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('listOnboardingInstances', () => {
+    it('should return all onboarding instances', async () => {
+      const mockDocs = [
+        { id: 'instance-1', data: () => ({ employeeName: 'Jane' }) },
+        { id: 'instance-2', data: () => ({ employeeName: 'John' }) },
+      ];
+
+      const mockSnapshot = { docs: mockDocs };
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockSnapshot as any);
+
+      const result = await listOnboardingInstances();
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe('instance-1');
+    });
+
+    it('should throw error on fetch failure', async () => {
+      const mockError = new Error('Network timeout');
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockRejectedValue(mockError);
+
+      await expect(listOnboardingInstances()).rejects.toThrow(
+        'Failed to fetch onboarding instances'
+      );
+    });
+  });
+
+  describe('getOnboardingInstance', () => {
+    it('should return instance by ID', async () => {
+      const mockDocSnap = {
+        exists: () => true,
+        id: 'instance-1',
+        data: () => mockOnboardingInstance,
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
+
+      const result = await getOnboardingInstance('instance-1');
+
+      expect(result).not.toBeNull();
+      expect(result?.employeeName).toBe('Jane Smith');
+    });
+
+    it('should return null when instance does not exist', async () => {
+      const mockDocSnap = {
+        exists: () => false,
+      };
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDoc).mockResolvedValue(mockDocSnap as any);
+
+      const result = await getOnboardingInstance('nonexistent');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('createOnboardingInstance', () => {
+    it('should create instance and return ID', async () => {
+      const mockDocRef = { id: 'new-instance-id' };
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockResolvedValue(mockDocRef as any);
+
+      const instanceData = {
+        employeeName: 'New Employee',
+        employeeEmail: 'new@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [],
+        progress: 0,
+        status: 'active' as const,
+      };
+
+      const result = await createOnboardingInstance(instanceData);
+
+      expect(result).toBe('new-instance-id');
+      expect(addDoc).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateOnboardingInstance', () => {
+    it('should update instance with provided fields', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      const updates = { progress: 75, status: 'completed' as const };
+
+      await updateOnboardingInstance('instance-1', updates);
+
+      expect(updateDoc).toHaveBeenCalled();
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.progress).toBe(75);
+      expect(callArgs.status).toBe('completed');
+    });
+
+    it('should prevent overwriting id and createdAt', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      const updates = {
+        progress: 50,
+        id: 'fake-id',
+        createdAt: 123456,
+      } as any;
+
+      await updateOnboardingInstance('instance-1', updates);
+
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.id).toBeUndefined();
+      expect(callArgs.createdAt).toBeUndefined();
+    });
+  });
+});
+
+// ============================================================================
+// Suggestion Tests
+// ============================================================================
+
+describe('Suggestion Operations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('listSuggestions', () => {
+    it('should return all suggestions', async () => {
+      const mockDocs = [
+        { id: 'sugg-1', data: () => ({ text: 'Suggestion 1' }) },
+        { id: 'sugg-2', data: () => ({ text: 'Suggestion 2' }) },
+      ];
+
+      const mockSnapshot = { docs: mockDocs };
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockSnapshot as any);
+
+      const result = await listSuggestions();
+
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('createSuggestion', () => {
+    it('should create suggestion and return ID', async () => {
+      const mockDocRef = { id: 'new-sugg-id' };
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockResolvedValue(mockDocRef as any);
+
+      const suggestionData = {
+        stepId: 1,
+        user: 'Bob',
+        text: 'Improve documentation',
+        status: 'pending' as const,
+      };
+
+      const result = await createSuggestion(suggestionData);
+
+      expect(result).toBe('new-sugg-id');
+    });
+  });
+
+  describe('updateSuggestionStatus', () => {
+    it('should update suggestion status', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      await updateSuggestionStatus('suggestion-1', 'reviewed');
+
+      expect(updateDoc).toHaveBeenCalled();
+      const callArgs = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.status).toBe('reviewed');
+    });
+
+    it('should accept all valid statuses', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+
+      const statuses: Array<'pending' | 'reviewed' | 'implemented'> = [
+        'pending',
+        'reviewed',
+        'implemented',
+      ];
+
+      for (const status of statuses) {
+        await updateSuggestionStatus('suggestion-1', status);
+        const callArgs = vi.mocked(updateDoc).mock.calls[
+          vi.mocked(updateDoc).mock.calls.length - 1
+        ][1] as unknown as Record<string, unknown>;
+        expect(callArgs.status).toBe(status);
+      }
+    });
+
+    it('should throw error on update failure', async () => {
+      const mockError = new Error('Update failed');
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(updateDoc).mockRejectedValue(mockError);
+
+      await expect(
+        updateSuggestionStatus('suggestion-1', 'reviewed')
+      ).rejects.toThrow('Failed to update suggestion status');
+    });
+  });
+});
+
+// ============================================================================
+// Activity Tests
+// ============================================================================
+
+describe('Activity Operations', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('listActivities', () => {
+    it('should return all activities', async () => {
+      const mockDocs = [
+        {
+          id: 'activity-1',
+          data: () => ({ action: 'Created template' }),
+        },
+        { id: 'activity-2', data: () => ({ action: 'Updated instance' }) },
+      ];
+
+      const mockSnapshot = { docs: mockDocs };
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue(mockSnapshot as any);
+
+      const result = await listActivities();
+
+      expect(result).toHaveLength(2);
+    });
+
+    it('should throw error on fetch failure', async () => {
+      const mockError = new Error('Firestore unavailable');
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockRejectedValue(mockError);
+
+      await expect(listActivities()).rejects.toThrow('Failed to fetch activities');
+    });
+  });
+
+  describe('logActivity', () => {
+    it('should log activity and return ID', async () => {
+      const mockDocRef = { id: 'new-activity-id' };
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockResolvedValue(mockDocRef as any);
+
+      const activityData = {
+        userInitials: 'JD',
+        action: 'Completed step',
+        timeAgo: '1 hour ago',
+      };
+
+      const result = await logActivity(activityData);
+
+      expect(result).toBe('new-activity-id');
+      expect(addDoc).toHaveBeenCalled();
+      const callArgs = vi.mocked(addDoc).mock.calls[0][1] as unknown as Record<
+        string,
+        unknown
+      >;
+      expect(callArgs.timestamp).toBeDefined();
+    });
+
+    it('should throw error on logging failure', async () => {
+      const mockError = new Error('Write failed');
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(addDoc).mockRejectedValue(mockError);
+
+      const activityData = {
+        userInitials: 'JD',
+        action: 'Test',
+        timeAgo: 'now',
+      };
+
+      await expect(logActivity(activityData)).rejects.toThrow(
+        'Failed to log activity'
+      );
+    });
+  });
+});
+
+// ============================================================================
+// Real-time Subscription Tests
+// ============================================================================
+
+describe('Real-time Subscriptions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('subscribeToTemplates', () => {
+    it('should call callback with templates', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            docs: [
+              {
+                id: 'template-1',
+                data: () => mockTemplate,
+              },
+            ],
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      const unsubscribe = subscribeToTemplates(mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith(expect.any(Array));
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should return unsubscribe function', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockReturnValue(mockUnsubscribe as any);
+
+      const unsubscribe = subscribeToTemplates(mockCallback);
+
+      expect(unsubscribe).toBe(mockUnsubscribe);
+    });
+
+    it('should throw error on subscription failure', () => {
+      const mockCallback = vi.fn();
+      const mockError = new Error('Subscription failed');
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(() => {
+        throw mockError;
+      });
+
+      expect(() => subscribeToTemplates(mockCallback)).toThrow(
+        'Failed to subscribe to templates'
+      );
+    });
+  });
+
+  describe('subscribeToOnboardingInstance', () => {
+    it('should call callback with instance', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            exists: () => true,
+            id: 'instance-1',
+            data: () => mockOnboardingInstance,
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      const unsubscribe = subscribeToOnboardingInstance(
+        'instance-1',
+        mockCallback
+      );
+
+      expect(mockCallback).toHaveBeenCalledWith(expect.any(Object));
+      expect(typeof unsubscribe).toBe('function');
+    });
+
+    it('should call callback with null when instance does not exist', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            exists: () => false,
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      subscribeToOnboardingInstance('nonexistent', mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith(null);
+    });
+  });
+
+  describe('subscribeToSteps', () => {
+    it('should call callback with steps array', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            exists: () => true,
+            id: 'instance-1',
+            data: () => ({
+              ...mockOnboardingInstance,
+              steps: [mockStep],
+            }),
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      subscribeToSteps('instance-1', mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith([mockStep]);
+    });
+
+    it('should return empty array when instance does not exist', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            exists: () => false,
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      subscribeToSteps('nonexistent', mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith([]);
+    });
+
+    it('should return empty array when steps field is missing', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            exists: () => true,
+            id: 'instance-1',
+            data: () => ({
+              employeeName: 'Jane',
+            }),
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      subscribeToSteps('instance-1', mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('subscribeToActivities', () => {
+    it('should call callback with activities', () => {
+      const mockCallback = vi.fn();
+      const mockUnsubscribe = vi.fn();
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(
+        ((_ref: any, callback: any) => {
+          callback({
+            docs: [
+              {
+                id: 'activity-1',
+                data: () => mockActivity,
+              },
+            ],
+          });
+          return mockUnsubscribe;
+        }) as any
+      );
+
+      subscribeToActivities(mockCallback);
+
+      expect(mockCallback).toHaveBeenCalledWith(expect.any(Array));
+    });
+
+    it('should throw error on subscription failure', () => {
+      const mockCallback = vi.fn();
+      const mockError = new Error('Subscription failed');
+
+      vi.mocked(collection).mockReturnValue({} as any);
+      vi.mocked(onSnapshot).mockImplementation(() => {
+        throw mockError;
+      });
+
+      expect(() => subscribeToActivities(mockCallback)).toThrow(
+        'Failed to subscribe to activities'
+      );
+    });
+  });
+});

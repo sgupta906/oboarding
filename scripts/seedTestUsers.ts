@@ -136,10 +136,14 @@ async function seedTestUsers(): Promise<void> {
       await setDoc(userRef, {
         uid,
         email: testUser.email,
+        name: testUser.email.split('@')[0],
         role: testUser.role,
+        roles: [testUser.role],
+        profiles: [],
         createdAt: now.toMillis(),
         updatedAt: now.toMillis(),
-      });
+        createdBy: 'emulator-seed-script',
+      }, { merge: true });
 
       // eslint-disable-next-line no-console
       console.log(`  ✓ Firestore user document created`);
