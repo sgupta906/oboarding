@@ -907,36 +907,150 @@ describe('KPISection', () => {
       expect(allOneTexts.length).toBeGreaterThan(0);
     });
 
-    it('respects profile filtering for active count with instances', () => {
-      const instancesWithProfiles: OnboardingInstance[] = [
+  });
+
+  describe('Stuck Employee Count (Employee-Based)', () => {
+    /**
+     * Tests for the stuck employee count fix
+     * Should count unique employees with stuck steps, not the number of stuck steps
+     * Expected: 1 employee with 3 stuck steps = count of 1, not 3
+     */
+
+    it('counts stuck employees, not stuck steps when onboarding instances provided', () => {
+      const stepsWithMultipleStuck: Step[] = [
+        {
+          id: 1,
+          title: 'Step 1',
+          description: 'Test step 1',
+          role: 'All',
+          owner: 'Owner 1',
+          expert: 'Expert 1',
+          status: 'stuck',
+          link: '#',
+        },
+        {
+          id: 2,
+          title: 'Step 2',
+          description: 'Test step 2',
+          role: 'All',
+          owner: 'Owner 2',
+          expert: 'Expert 2',
+          status: 'stuck',
+          link: '#',
+        },
+        {
+          id: 3,
+          title: 'Step 3',
+          description: 'Test step 3',
+          role: 'All',
+          owner: 'Owner 3',
+          expert: 'Expert 3',
+          status: 'stuck',
+          link: '#',
+        },
+        {
+          id: 4,
+          title: 'Step 4',
+          description: 'Test step 4',
+          role: 'All',
+          owner: 'Owner 4',
+          expert: 'Expert 4',
+          status: 'pending',
+          link: '#',
+        },
+      ];
+
+      const instancesWithStuck: OnboardingInstance[] = [
+        {
+          id: 'instance-1',
+          employeeName: 'Alice Johnson',
+          employeeEmail: 'alice@example.com',
+          role: 'Engineer',
+          department: 'Engineering',
+          templateId: 'template-1',
+          steps: stepsWithMultipleStuck,
+          createdAt: Date.now(),
+          progress: 25,
+          status: 'active',
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={stepsWithMultipleStuck}
+          suggestions={mockSuggestions}
+          onboardingInstances={instancesWithStuck}
+        />
+      );
+
+      // Should show 1 stuck employee (Alice with 3 stuck steps)
+      // NOT 3 stuck steps
+      const stuckEmployeesText = screen.getByText('Stuck Employees');
+      expect(stuckEmployeesText).toBeInTheDocument();
+
+      // Verify we have exactly 1 stuck employee
+      const allOneTexts = screen.getAllByText('1');
+      expect(allOneTexts.length).toBeGreaterThan(0);
+    });
+
+    it('counts zero stuck employees when no instances have stuck steps', () => {
+      const stepsWithoutStuck = mockSteps.map((step) => ({
+        ...step,
+        status: step.status === 'stuck' ? 'pending' : step.status,
+      }));
+
+      const instancesWithoutStuck: OnboardingInstance[] = [
+        {
+          ...mockOnboardingInstances[0],
+          steps: stepsWithoutStuck,
+          status: 'active',
+        },
+        {
+          ...mockOnboardingInstances[1],
+          steps: stepsWithoutStuck,
+          status: 'active',
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={stepsWithoutStuck}
+          suggestions={mockSuggestions}
+          onboardingInstances={instancesWithoutStuck}
+        />
+      );
+
+      // Should show 0 stuck employees
+      const allZeroTexts = screen.getAllByText('0');
+      expect(allZeroTexts.length).toBeGreaterThan(0);
+
+      // Should show "All on track" message
+      expect(screen.getByText('All on track')).toBeInTheDocument();
+    });
+
+    it('counts only instances with stuck steps, ignoring those without', () => {
+      const stepsWithOneStuck: Step[] = [
+        { ...mockSteps[0], status: 'stuck' },
+        ...mockSteps.slice(1),
+      ];
+
+      const mixedInstances: OnboardingInstance[] = [
         {
           ...mockOnboardingInstances[0],
           status: 'active',
-          profileIds: ['prof-1'], // Engineer profile
+          steps: stepsWithOneStuck, // This instance has 1 stuck step
         },
         {
           ...mockOnboardingInstances[1],
           status: 'active',
-          profileIds: ['prof-2'], // Sales profile
-        },
-      ];
-
-      const mockProfiles = [
-        {
-          id: 'prof-1',
-          name: 'Engineer',
-          description: 'Engineer onboarding',
-          roleTags: ['Engineering', 'All'],
-          createdAt: Date.now(),
-          createdBy: 'system',
+          steps: mockSteps, // This instance has 1 stuck step (original mockSteps has step 3 as stuck)
         },
         {
-          id: 'prof-2',
-          name: 'Sales',
-          description: 'Sales onboarding',
-          roleTags: ['Sales', 'All'],
-          createdAt: Date.now(),
-          createdBy: 'system',
+          ...mockOnboardingInstances[2],
+          id: 'instance-3',
+          employeeName: 'Charlie Brown',
+          status: 'active',
+          steps: mockSteps.map((s) => ({ ...s, status: 'pending' as const })), // No stuck steps
         },
       ];
 
@@ -944,13 +1058,127 @@ describe('KPISection', () => {
         <KPISection
           steps={mockSteps}
           suggestions={mockSuggestions}
-          onboardingInstances={instancesWithProfiles}
-          profiles={mockProfiles}
-          selectedProfileId="prof-1"
+          onboardingInstances={mixedInstances}
         />
       );
 
-      // When filtering by Engineer profile, should only count the 1 Engineer instance
+      // Should count 2 stuck employees (Alice and Bob have at least 1 stuck step each)
+      // NOT 3 (Charlie has no stuck steps)
+      const allTwoTexts = screen.getAllByText('2');
+      expect(allTwoTexts.length).toBeGreaterThan(0);
+    });
+
+    it('handles multiple employees each with stuck steps', () => {
+      const stepsWithStuck: Step[] = [
+        { ...mockSteps[0], status: 'stuck' },
+        ...mockSteps.slice(1),
+      ];
+
+      const multipleStuckInstances: OnboardingInstance[] = [
+        {
+          ...mockOnboardingInstances[0],
+          status: 'active',
+          steps: stepsWithStuck,
+        },
+        {
+          ...mockOnboardingInstances[1],
+          status: 'active',
+          steps: stepsWithStuck,
+        },
+        {
+          ...mockOnboardingInstances[2],
+          id: 'instance-3',
+          employeeName: 'Charlie Brown',
+          status: 'active',
+          steps: stepsWithStuck,
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={stepsWithStuck}
+          suggestions={mockSuggestions}
+          onboardingInstances={multipleStuckInstances}
+        />
+      );
+
+      // Should show 3 stuck employees
+      const allThreeTexts = screen.getAllByText('3');
+      expect(allThreeTexts.length).toBeGreaterThan(0);
+    });
+
+    it('handles single employee with multiple stuck steps', () => {
+      const allStuckSteps: Step[] = mockSteps.map((step) => ({
+        ...step,
+        status: 'stuck' as const,
+      }));
+
+      const singleStuckInstance: OnboardingInstance[] = [
+        {
+          id: 'instance-1',
+          employeeName: 'Alice Johnson',
+          employeeEmail: 'alice@example.com',
+          role: 'Engineer',
+          department: 'Engineering',
+          templateId: 'template-1',
+          steps: allStuckSteps,
+          createdAt: Date.now(),
+          progress: 0,
+          status: 'active',
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={allStuckSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={singleStuckInstance}
+        />
+      );
+
+      // Should show 1 stuck employee (even though they have 4 stuck steps)
+      const allOneTexts = screen.getAllByText('1');
+      expect(allOneTexts.length).toBeGreaterThan(0);
+    });
+
+    it('falls back to step-based counting when no instances provided', () => {
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={[]}
+        />
+      );
+
+      // With empty instances, should fall back to counting stuck steps
+      // mockSteps has 1 stuck step (id 3)
+      expect(screen.getByText('1')).toBeInTheDocument();
+    });
+
+    it('handles instances with empty steps array', () => {
+      const instancesWithEmptySteps: OnboardingInstance[] = [
+        {
+          ...mockOnboardingInstances[0],
+          status: 'active',
+          steps: [],
+        },
+        {
+          ...mockOnboardingInstances[1],
+          status: 'active',
+          steps: mockSteps,
+        },
+      ];
+
+      render(
+        <KPISection
+          steps={mockSteps}
+          suggestions={mockSuggestions}
+          onboardingInstances={instancesWithEmptySteps}
+        />
+      );
+
+      // Should only count the 1 instance with stuck steps (mockSteps has 1 stuck step)
+      // NOT the empty one
       const allOneTexts = screen.getAllByText('1');
       expect(allOneTexts.length).toBeGreaterThan(0);
     });

@@ -67,9 +67,39 @@ export function KPISection({
     }).length;
   };
 
-  // Calculate stuck count - respects profile filter
+  // Calculate stuck count - counts unique employees with stuck steps, not the number of stuck steps
+  // This ensures: 1 employee with 3 stuck steps = count of 1, not 3
   const getStuckCount = (): number => {
-    return countStepsByProfileAndStatus(steps, selectedProfile, 'stuck');
+    if (!onboardingInstances || onboardingInstances.length === 0) {
+      // Fallback to step-based counting if instances not provided (legacy support)
+      return countStepsByProfileAndStatus(steps, selectedProfile, 'stuck');
+    }
+
+    // Count instances that have at least one step with status='stuck' (respects profile filter if provided)
+    return onboardingInstances.filter((instance) => {
+      // Check if instance has any stuck steps
+      if (!instance.steps || instance.steps.length === 0) return false;
+
+      const hasStuckStep = instance.steps.some((step) => step.status === 'stuck');
+      if (!hasStuckStep) return false;
+
+      // If no profile selected, count all instances with stuck steps
+      if (!selectedProfile) return true;
+
+      // If profile selected, only count instances that have profileIds matching the selected profile
+      if (instance.profileIds && instance.profileIds.includes(selectedProfile.id)) {
+        return true;
+      }
+
+      // For backward compatibility: check if any of the instance's stuck steps match the profile's role tags
+      if (instance.steps && selectedProfile.roleTags) {
+        return instance.steps.some((step) =>
+          step.status === 'stuck' && (selectedProfile.roleTags.includes(step.role) || step.role === 'All')
+        );
+      }
+
+      return false;
+    }).length;
   };
 
   // Get pending suggestions count
