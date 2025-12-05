@@ -254,25 +254,76 @@ export interface Template {
 /**
  * Represents a single instance of onboarding for an employee
  * Maps to Firestore 'onboarding_instances' collection
+ *
+ * CRITICAL ARCHITECTURE NOTES:
+ *
+ * 1. STEPS ARE COPIED AT CREATION TIME
+ *    - When an instance is created, steps are copied from the template (not live-linked)
+ *    - Employee's steps remain unchanged even if the template is later edited
+ *    - This preserves progress and creates an audit trail
+ *
+ * 2. WHAT DETERMINES WHICH STEPS AN EMPLOYEE SEES?
+ *    - The templateId and steps array, set at instance creation time
+ *    - NOT determined by role (role is system access control, not content)
+ *    - NOT determined by profile (profile is content organization, not assignment)
+ *    - Only the explicit template selection in createOnboardingRunFromTemplate() matters
+ *
+ * 3. NO TEMPLATE SWITCHING CURRENTLY
+ *    - Once created with templateId "X", the instance always uses steps from "X"
+ *    - There is no "switch to template Y" function
+ *    - New steps can be added via syncTemplateStepsToInstances() (additive only)
+ *
+ * 4. FUTURE MULTI-PROFILE SUPPORT (MILESTONE 4+)
+ *    - profileIds[], templateIds[], and templateSnapshots enable multiple templates
+ *    - When implemented, createOnboardingRunFromTemplate() will:
+ *      a) Accept profileIds[] instead of templateId
+ *      b) Fetch all profile templates
+ *      c) Merge and deduplicate steps
+ *      d) Store snapshots for audit trail
+ *    - The same copy-at-creation-time behavior applies
+ *
+ * EXAMPLE CURRENT FLOW:
+ *   Manager creates onboarding for Alice with template "Engineer Standard"
+ *   → Template "Engineer Standard" has steps [1, 2, 3]
+ *   → System copies [1, 2, 3] into instance.steps
+ *   → Alice sees [1, 2, 3] forever, even if template later changes to [1, 2, 3, 4]
+ *
+ * EXAMPLE FUTURE FLOW (Milestone 4+):
+ *   Manager creates onboarding for Bob with profiles ["Engineer", "Team Lead"]
+ *   → "Engineer" template has steps [1, 2, 3]
+ *   → "Team Lead" template has steps [3, 4, 5]
+ *   → System merges: [1, 2, 3, 4, 5] (step 3 deduplicated)
+ *   → Stores snapshots for audit trail
+ *   → Bob sees [1, 2, 3, 4, 5] forever
  */
 export interface OnboardingInstance {
+  // Basic employee information
   id: string;
   employeeName: string;
   employeeEmail: string;
-  role: string;
+
+  // System access control (not content)
+  role: string; // e.g., 'Engineering', 'Sales' - used for role-based filtering, not determining steps
+
   department: string;
-  templateId: string;
-  steps: Step[];
+
+  // CURRENT (Single template): The explicit template selected at creation
+  templateId: string; // e.g., 'template_engineer_std_xyz789' - THIS determines which steps employee sees
+  steps: Step[]; // COPIED from template at creation - changes to template don't affect this
+
+  // Progress tracking
   createdAt: number; // Unix timestamp
   startDate?: number; // Unix timestamp for employee's start date, optional
   completedAt?: number; // Unix timestamp when onboarding was completed
-  progress: number; // 0-100 percentage
+  progress: number; // 0-100 percentage (calculated from completed steps)
   status: 'active' | 'completed' | 'on_hold';
-  // Profile-template support (optional for backward compatibility)
+
+  // FUTURE (Milestone 4+): Multi-profile/template support for backward compatibility
   profileIds?: string[]; // Array of profile IDs assigned to this onboarding run
-  templateIds?: string[]; // Array of profile template IDs used (for audit trail)
+  templateIds?: string[]; // Array of all template IDs used (for audit trail)
   templateSnapshots?: {
     // Map of template snapshots captured at instantiation time
+    // Enables employees to see which profile had which steps
     [templateId: string]: {
       profileId: string;
       steps: Step[];

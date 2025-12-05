@@ -629,6 +629,29 @@ export interface CreateOnboardingRunInput {
  * @throws OnboardingValidationError if validation fails
  * @throws Error if storage operations fail
  */
+/**
+ * Creates a new onboarding instance by copying steps from a template.
+ *
+ * CRITICAL: Steps are COPIED from the template at instance creation time, not live-linked.
+ * This means:
+ * 1. Employee progress is preserved even if the template is deleted
+ * 2. Template updates don't affect in-progress onboarding
+ * 3. Each instance has an immutable audit trail of steps as they were at creation
+ * 4. New steps can be added via syncTemplateStepsToInstances(), but cannot be removed
+ *
+ * This is the ONLY way to determine which steps an employee sees.
+ * Steps are NOT determined by role or profile—only by the template selected here.
+ *
+ * For future multi-profile support (Milestone 4+), this function will:
+ * - Accept profileIds[] instead of/in addition to templateId
+ * - Fetch multiple profile templates
+ * - Merge steps (deduplicate by step.id)
+ * - Store templateSnapshots for audit trail
+ *
+ * @param employeeData - Object with templateId, employee name, email, role, department
+ * @returns OnboardingInstance with copied steps
+ * @throws OnboardingValidationError if template not found or validation fails
+ */
 export async function createOnboardingRunFromTemplate(
   employeeData: CreateOnboardingRunInput
 ): Promise<OnboardingInstance> {
@@ -652,7 +675,7 @@ export async function createOnboardingRunFromTemplate(
     role: employeeData.role,
     department: employeeData.department,
     templateId: employeeData.templateId,
-    steps: template.steps, // Copy template steps into the instance
+    steps: template.steps, // ← CRITICAL: COPY steps, not reference
     createdAt: now,
     startDate: employeeData.startDate, // Optional start date
     progress: 0, // New instances always start at 0% progress

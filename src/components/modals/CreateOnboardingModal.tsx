@@ -33,9 +33,20 @@ interface FieldErrors {
  * Renders a modal form for creating new onboarding instances
  * Fetches available templates and displays template details as preview
  * Validates all required fields with client-side error feedback
+ *
+ * CRITICAL: The templateId selected here is THE ONLY FACTOR that determines
+ * which steps the employee will see. Steps are COPIED from the template at
+ * creation time, not live-linked. This means:
+ * - Changes to the template don't affect already-created instances
+ * - Each instance has an immutable audit trail of its steps
+ * - There is no "switch template" function; the choice made here is permanent
+ *
+ * FUTURE (Milestone 4+): This will be updated to accept profileIds[] instead of
+ * templateId, and will merge multiple profile templates with deduplication.
+ *
  * @param isOpen - Whether modal is open
  * @param onClose - Callback to close modal
- * @param onSubmit - Callback with onboarding instance data
+ * @param onSubmit - Callback with onboarding instance data (passes templateId)
  * @param isSubmitting - Whether submission is in progress
  * @param error - Server-side error message to display
  */
@@ -396,7 +407,12 @@ export function CreateOnboardingModal({
             Role-Based Template <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-slate-600 mb-2">
-            Select a template that matches the employee's role (e.g., Engineer, Sales)
+            Select a template that matches the employee's role (e.g., Engineer, Sales).
+            <strong className="block mt-1">
+              This choice determines which steps the employee will see. Steps are copied at creation
+              time and cannot be changed later.
+            </strong>
+            {/* Future: This will be updated to accept multiple profiles for multi-profile onboarding */}
           </p>
           <select
             id="template-select"
