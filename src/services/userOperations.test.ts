@@ -407,10 +407,10 @@ describe('updateUser', () => {
 });
 
 // ============================================================================
-// Test: Delete User (CRITICAL BUG - NO SAFETY CHECKS)
+// Test: Delete User (CASCADING DELETION - OPTION A)
 // ============================================================================
 
-describe('deleteUser - CRITICAL BUG TEST', () => {
+describe('deleteUser - CASCADING DELETION', () => {
   beforeEach(async () => {
     clearAllUsersForTesting();
   });
@@ -451,7 +451,7 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     window.removeEventListener('usersStorageChange', listener);
   });
 
-  it('should prevent deletion of user with active onboarding instances', async () => {
+  it('should cascade delete onboarding instances when user is deleted', async () => {
     const user = await createUser(mockUser2, 'system');
     const instancesKey = 'onboardinghub_onboarding_instances';
     const activeInstance = {
@@ -468,14 +468,15 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     };
     localStorage.setItem(instancesKey, JSON.stringify([activeInstance]));
 
-    const promise = deleteUser(user.id);
+    // Should succeed (no error thrown)
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
-    await expect(promise).rejects.toThrow(
-      /Cannot delete user.*active onboarding instance/i
-    );
+    // Instance should be deleted
+    const instances = JSON.parse(localStorage.getItem(instancesKey) || '[]');
+    expect(instances).toHaveLength(0);
   });
 
-  it('should throw error listing active onboarding instances on failed deletion', async () => {
+  it('should cascade delete multiple onboarding instances case-insensitively', async () => {
     const user = await createUser(mockUser1, 'system');
     const instancesKey = 'onboardinghub_onboarding_instances';
     const instances = [
@@ -506,32 +507,14 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     ];
     localStorage.setItem(instancesKey, JSON.stringify(instances));
 
-    const promise = deleteUser(user.id);
+    // Should succeed and cascade delete both instances
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
-    await expect(promise).rejects.toThrow(/2 active onboarding instance/);
+    const remaining = JSON.parse(localStorage.getItem(instancesKey) || '[]');
+    expect(remaining).toHaveLength(0);
   });
 
-  it('should prevent deletion of user with pending suggestions', async () => {
-    const user = await createUser(mockUser1, 'system');
-    const suggestionsKey = 'onboardinghub_suggestions';
-    const suggestion = {
-      id: 'sugg-1',
-      stepId: 1,
-      suggestedBy: user.email,
-      text: 'Fix documentation',
-      status: 'pending' as const,
-      createdAt: Date.now(),
-    };
-    localStorage.setItem(suggestionsKey, JSON.stringify([suggestion]));
-
-    const promise = deleteUser(user.id);
-
-    await expect(promise).rejects.toThrow(
-      /Cannot delete user.*pending suggestion/i
-    );
-  });
-
-  it('should throw error listing pending suggestions on failed deletion', async () => {
+  it('should cascade delete all suggestions created by user', async () => {
     const user = await createUser(mockUser1, 'system');
     const suggestionsKey = 'onboardinghub_suggestions';
     const suggestions = [
@@ -548,46 +531,80 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
         stepId: 2,
         suggestedBy: user.email,
         text: 'Suggestion 2',
+        status: 'reviewed' as const,
+        createdAt: Date.now(),
+      },
+      {
+        id: 'sugg-3',
+        stepId: 3,
+        suggestedBy: 'other-user@company.com',
+        text: 'Other suggestion',
         status: 'pending' as const,
         createdAt: Date.now(),
       },
     ];
     localStorage.setItem(suggestionsKey, JSON.stringify(suggestions));
 
-    const promise = deleteUser(user.id);
+    // Should succeed and cascade delete suggestions
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
-    await expect(promise).rejects.toThrow(/2 pending suggestion/);
+    const remaining = JSON.parse(localStorage.getItem(suggestionsKey) || '[]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].suggestedBy).toBe('other-user@company.com');
   });
 
-  it('should prevent deletion of user assigned as expert on steps', async () => {
-    const user = await createUser(mockUser1, 'system');
-    const expertKey = 'onboardinghub_experts';
-    const expertAssignment = {
-      stepId: 1,
-      expertEmail: user.email,
-    };
-    localStorage.setItem(expertKey, JSON.stringify([expertAssignment]));
-
-    const promise = deleteUser(user.id);
-
-    await expect(promise).rejects.toThrow(
-      /Cannot delete user.*assigned as subject matter expert/i
-    );
-  });
-
-  it('should throw error listing expert step assignments on failed deletion', async () => {
+  it('should cascade delete all expert assignments for user', async () => {
     const user = await createUser(mockUser1, 'system');
     const expertKey = 'onboardinghub_experts';
     const expertAssignments = [
       { stepId: 1, expertEmail: user.email },
       { stepId: 2, expertEmail: user.email },
-      { stepId: 3, expertEmail: user.email },
+      { stepId: 3, expertEmail: 'other-expert@company.com' },
     ];
     localStorage.setItem(expertKey, JSON.stringify(expertAssignments));
 
-    const promise = deleteUser(user.id);
+    // Should succeed and cascade delete expert assignments
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
-    await expect(promise).rejects.toThrow(/3 step/);
+    const remaining = JSON.parse(localStorage.getItem(expertKey) || '[]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].expertEmail).toBe('other-expert@company.com');
+  });
+
+  it('should cascade delete all activities initiated by user', async () => {
+    const user = await createUser(mockUser1, 'system');
+    const activitiesKey = 'onboardinghub_activities';
+    const activities = [
+      {
+        id: 'activity-1',
+        userId: user.id,
+        userInitials: 'AJ',
+        action: 'Created template',
+        timestamp: Date.now(),
+      },
+      {
+        id: 'activity-2',
+        userId: user.id,
+        userInitials: 'AJ',
+        action: 'Updated step',
+        timestamp: Date.now(),
+      },
+      {
+        id: 'activity-3',
+        userId: 'other-user-id',
+        userInitials: 'BM',
+        action: 'Deleted suggestion',
+        timestamp: Date.now(),
+      },
+    ];
+    localStorage.setItem(activitiesKey, JSON.stringify(activities));
+
+    // Should succeed and cascade delete activities
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
+
+    const remaining = JSON.parse(localStorage.getItem(activitiesKey) || '[]');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].userId).toBe('other-user-id');
   });
 
   it('should successfully delete user with no dependent data', async () => {
@@ -633,7 +650,7 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     await expect(deleteUser('non-existent-id')).resolves.toBeUndefined();
   });
 
-  it('should allow deletion of user with completed onboarding', async () => {
+  it('should cascade delete completed onboarding instances too', async () => {
     const user = await createUser(mockUser1, 'system');
     const instancesKey = 'onboardinghub_onboarding_instances';
     const completedInstance = {
@@ -650,34 +667,60 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     };
     localStorage.setItem(instancesKey, JSON.stringify([completedInstance]));
 
-    // Should not throw - only active instances block deletion
+    // Should succeed and cascade delete completed instance too
     await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
     const deleted = await getUser(user.id);
     expect(deleted).toBeNull();
+
+    // Instance should also be deleted
+    const instances = JSON.parse(localStorage.getItem(instancesKey) || '[]');
+    expect(instances).toHaveLength(0);
   });
 
-  it('should allow deletion of user with reviewed suggestions', async () => {
+  it('should cascade delete all suggestions regardless of status', async () => {
     const user = await createUser(mockUser1, 'system');
     const suggestionsKey = 'onboardinghub_suggestions';
-    const reviewedSuggestion = {
-      id: 'sugg-1',
-      stepId: 1,
-      suggestedBy: user.email,
-      text: 'Suggestion',
-      status: 'reviewed' as const,
-      createdAt: Date.now(),
-    };
-    localStorage.setItem(suggestionsKey, JSON.stringify([reviewedSuggestion]));
+    const suggestions = [
+      {
+        id: 'sugg-1',
+        stepId: 1,
+        suggestedBy: user.email,
+        text: 'Suggestion 1',
+        status: 'pending' as const,
+        createdAt: Date.now(),
+      },
+      {
+        id: 'sugg-2',
+        stepId: 2,
+        suggestedBy: user.email,
+        text: 'Suggestion 2',
+        status: 'reviewed' as const,
+        createdAt: Date.now(),
+      },
+      {
+        id: 'sugg-3',
+        stepId: 3,
+        suggestedBy: user.email,
+        text: 'Suggestion 3',
+        status: 'implemented' as const,
+        createdAt: Date.now(),
+      },
+    ];
+    localStorage.setItem(suggestionsKey, JSON.stringify(suggestions));
 
-    // Should not throw - only pending suggestions block deletion
+    // Should succeed and cascade delete all suggestions regardless of status
     await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
     const deleted = await getUser(user.id);
     expect(deleted).toBeNull();
+
+    // All suggestions should be deleted
+    const remaining = JSON.parse(localStorage.getItem(suggestionsKey) || '[]');
+    expect(remaining).toHaveLength(0);
   });
 
-  it('should be case-insensitive when checking active onboarding by email', async () => {
+  it('should be case-insensitive when cascade deleting onboarding by email', async () => {
     const user = await createUser(mockUser1, 'system');
     const instancesKey = 'onboardinghub_onboarding_instances';
     const activeInstance = {
@@ -694,10 +737,11 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
     };
     localStorage.setItem(instancesKey, JSON.stringify([activeInstance]));
 
-    const promise = deleteUser(user.id);
+    // Should succeed and cascade delete instance despite case difference
+    await expect(deleteUser(user.id)).resolves.toBeUndefined();
 
-    // Should still detect the active instance despite case difference
-    await expect(promise).rejects.toThrow(/active onboarding instance/i);
+    const instances = JSON.parse(localStorage.getItem(instancesKey) || '[]');
+    expect(instances).toHaveLength(0);
   });
 
   it('should idempotently remove user auth credentials', async () => {

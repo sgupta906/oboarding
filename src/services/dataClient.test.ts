@@ -1094,3 +1094,437 @@ describe('Real-time Subscriptions', () => {
     });
   });
 });
+
+// ============================================================================
+// Template Update Sync Tests
+// ============================================================================
+
+describe('Template Update Sync (syncTemplateStepsToInstances)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  describe('updateTemplate with step sync', () => {
+    it('should sync new steps to instances when template steps are updated', async () => {
+      // Setup: Create a template with 2 initial steps
+      const initialStep1: Step = {
+        id: 1,
+        title: 'Step 1',
+        description: 'First step',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      const initialStep2: Step = {
+        id: 2,
+        title: 'Step 2',
+        description: 'Second step',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      // Instance has only step 1
+      const instance: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'John Doe',
+        employeeEmail: 'john@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [initialStep1],
+        createdAt: Date.now(),
+        progress: 0,
+        status: 'active',
+      };
+
+      // Seed instance in localStorage
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance])
+      );
+
+      // Track updateDoc calls to verify sync happened
+      let updateDocCalls: any[] = [];
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({
+        docs: [], // No Firestore instances - fall back to localStorage
+      } as any);
+      vi.mocked(updateDoc).mockImplementation((ref: any, data: any) => {
+        updateDocCalls.push(data);
+        return Promise.resolve(undefined);
+      });
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template with new steps (step 1 + step 2)
+      const updatedSteps = [initialStep1, initialStep2];
+      await updateTemplate('template-1', { steps: updatedSteps });
+
+      // Verify updateDoc was called for the instance sync
+      // Should have at least one call for the instance update (containing merged steps)
+      const instanceUpdateCalls = updateDocCalls.filter((call: any) => call.steps);
+      expect(instanceUpdateCalls.length).toBeGreaterThan(0);
+
+      // Verify the merged steps contain both step 1 and step 2
+      const mergedSteps = instanceUpdateCalls[0].steps;
+      expect(mergedSteps).toHaveLength(2);
+      expect(mergedSteps[0].id).toBe(1);
+      expect(mergedSteps[1].id).toBe(2);
+    });
+
+    it('should preserve completed step status when syncing new steps', async () => {
+      const completedStep1: Step = {
+        id: 1,
+        title: 'Completed Step',
+        description: 'Already done',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'completed',
+        link: 'https://example.com',
+      };
+
+      const newStep2: Step = {
+        id: 2,
+        title: 'New Step',
+        description: 'New task',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      // Instance already has step 1 as completed
+      const instance: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'Jane Smith',
+        employeeEmail: 'jane@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [completedStep1],
+        createdAt: Date.now(),
+        progress: 100, // Step 1 was completed
+        status: 'active',
+      };
+
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance])
+      );
+
+      let updateDocCalls: any[] = [];
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+      vi.mocked(updateDoc).mockImplementation((ref: any, data: any) => {
+        updateDocCalls.push(data);
+        return Promise.resolve(undefined);
+      });
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template to include the new step
+      const updatedSteps = [completedStep1, newStep2];
+      await updateTemplate('template-1', { steps: updatedSteps });
+
+      // Verify the instance was updated via updateDoc calls (should have 2 steps merged)
+      const instanceUpdateCalls = updateDocCalls.filter((call: any) => call.steps && call.steps.length === 2);
+      expect(instanceUpdateCalls.length).toBeGreaterThan(0);
+
+      const mergedSteps = instanceUpdateCalls[0].steps;
+      // Verify existing step status is preserved
+      expect(mergedSteps[0].id).toBe(1);
+      expect(mergedSteps[0].status).toBe('completed');
+      // Verify new step is added
+      expect(mergedSteps[1].id).toBe(2);
+      expect(mergedSteps[1].status).toBe('pending');
+    });
+
+    it('should not duplicate steps when syncing', async () => {
+      const step1: Step = {
+        id: 1,
+        title: 'Step 1',
+        description: 'First',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      const step2: Step = {
+        id: 2,
+        title: 'Step 2',
+        description: 'Second',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      // Instance already has both steps
+      const instance: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'Test User',
+        employeeEmail: 'test@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [step1, step2],
+        createdAt: Date.now(),
+        progress: 0,
+        status: 'active',
+      };
+
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance])
+      );
+
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template with same steps (no change)
+      await updateTemplate('template-1', { steps: [step1, step2] });
+
+      // Verify no duplicates were added
+      const updatedInstances = JSON.parse(
+        localStorage.getItem('onboardinghub_onboarding_instances') || '[]'
+      ) as OnboardingInstance[];
+
+      expect(updatedInstances[0].steps).toHaveLength(2);
+      expect(updatedInstances[0].steps[0].id).toBe(1);
+      expect(updatedInstances[0].steps[1].id).toBe(2);
+    });
+
+    it('should skip instances with no new steps', async () => {
+      const step1: Step = {
+        id: 1,
+        title: 'Step 1',
+        description: 'First',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'completed',
+        link: 'https://example.com',
+      };
+
+      const instance: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'Test',
+        employeeEmail: 'test@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [step1],
+        createdAt: Date.now(),
+        progress: 100,
+        status: 'active',
+      };
+
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance])
+      );
+
+      const initialUpdate = vi.fn();
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+      vi.mocked(updateDoc).mockImplementation(initialUpdate);
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template with only existing step (no new steps)
+      await updateTemplate('template-1', { steps: [step1] });
+
+      // Verify updateOnboardingInstance was NOT called for sync (only once for the template itself)
+      const updateCalls = vi.mocked(updateDoc).mock.calls;
+      // Only 1 call for the template update, not the instance sync
+      expect(updateCalls.length).toBeLessThanOrEqual(1);
+    });
+
+    it('should handle multiple instances and sync all of them', async () => {
+      const step1: Step = {
+        id: 1,
+        title: 'Step 1',
+        description: 'First',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      const step2: Step = {
+        id: 2,
+        title: 'Step 2',
+        description: 'Second',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      // Two instances using the same template
+      const instance1: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'User 1',
+        employeeEmail: 'user1@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [step1],
+        createdAt: Date.now(),
+        progress: 0,
+        status: 'active',
+      };
+
+      const instance2: OnboardingInstance = {
+        id: 'instance-2',
+        employeeName: 'User 2',
+        employeeEmail: 'user2@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [step1],
+        createdAt: Date.now(),
+        progress: 0,
+        status: 'active',
+      };
+
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance1, instance2])
+      );
+
+      let updateDocCalls: any[] = [];
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+      vi.mocked(updateDoc).mockImplementation((ref: any, data: any) => {
+        updateDocCalls.push(data);
+        return Promise.resolve(undefined);
+      });
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template to include new step
+      await updateTemplate('template-1', { steps: [step1, step2] });
+
+      // Verify both instances were updated via updateDoc calls
+      const instanceUpdateCalls = updateDocCalls.filter((call: any) => call.steps && call.steps.length === 2);
+      expect(instanceUpdateCalls.length).toBe(2);
+
+      // Both updates should have 2 steps (original + new)
+      expect(instanceUpdateCalls[0].steps).toHaveLength(2);
+      expect(instanceUpdateCalls[1].steps).toHaveLength(2);
+
+      // Both should have the new step 2
+      expect(instanceUpdateCalls[0].steps[1].id).toBe(2);
+      expect(instanceUpdateCalls[1].steps[1].id).toBe(2);
+    });
+
+    it('should not throw error if sync fails - template update should still succeed', async () => {
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockRejectedValue(new Error('Firestore error'));
+      vi.mocked(updateDoc).mockResolvedValue(undefined);
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Even though sync fails, updateTemplate should not throw
+      await expect(
+        updateTemplate('template-1', {
+          steps: [mockStep],
+          name: 'Updated',
+        })
+      ).resolves.not.toThrow();
+
+      // Template update should have been called
+      expect(updateDoc).toHaveBeenCalled();
+    });
+
+    it('should recalculate progress correctly after sync', async () => {
+      const step1: Step = {
+        id: 1,
+        title: 'Step 1',
+        description: 'First',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'completed',
+        link: 'https://example.com',
+      };
+
+      const step2: Step = {
+        id: 2,
+        title: 'Step 2',
+        description: 'Second',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      const step3: Step = {
+        id: 3,
+        title: 'Step 3',
+        description: 'Third',
+        role: 'Engineering',
+        owner: 'DevOps',
+        expert: 'Jane',
+        status: 'pending',
+        link: 'https://example.com',
+      };
+
+      const instance: OnboardingInstance = {
+        id: 'instance-1',
+        employeeName: 'Test',
+        employeeEmail: 'test@example.com',
+        role: 'Engineering',
+        department: 'Platform',
+        templateId: 'template-1',
+        steps: [step1, step2],
+        createdAt: Date.now(),
+        progress: 50, // 1 completed out of 2
+        status: 'active',
+      };
+
+      localStorage.setItem(
+        'onboardinghub_onboarding_instances',
+        JSON.stringify([instance])
+      );
+
+      let updateDocCalls: any[] = [];
+      vi.mocked(doc).mockReturnValue({} as any);
+      vi.mocked(getDocs).mockResolvedValue({ docs: [] } as any);
+      vi.mocked(updateDoc).mockImplementation((ref: any, data: any) => {
+        updateDocCalls.push(data);
+        return Promise.resolve(undefined);
+      });
+      vi.mocked(collection).mockReturnValue({} as any);
+
+      // Update template to add a third step
+      await updateTemplate('template-1', { steps: [step1, step2, step3] });
+
+      // Verify both instance and template were updated
+      expect(updateDocCalls.length).toBeGreaterThan(0);
+
+      // Find the call that updated the instance steps (should have all 3 steps merged)
+      const instanceUpdateCall = updateDocCalls.find((call: any) => call.steps && call.steps.length === 3);
+      expect(instanceUpdateCall).toBeDefined();
+
+      // Verify the steps count is correct after merge
+      expect(instanceUpdateCall?.steps).toHaveLength(3);
+      // Verify step count is maintained correctly in the progress calculation
+      // Progress should be recalculated: 1 completed out of 3 = 33%
+      expect(instanceUpdateCall?.progress).toBe(33);
+    });
+  });
+});

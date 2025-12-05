@@ -15,26 +15,11 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { firestore } from '../config/firebase';
-import { User, Activity, OnboardingInstance } from '../types';
+import { User, Activity } from '../types';
 
 const USERS_COLLECTION = 'users';
 const USERS_STORAGE_KEY = 'onboardinghub_users';
 const ONBOARDING_INSTANCES_STORAGE_KEY = 'onboardinghub_onboarding_instances';
-
-/**
- * Gets onboarding instances from localStorage
- */
-function getLocalOnboardingInstances(): OnboardingInstance[] {
-  try {
-    const stored = localStorage.getItem(ONBOARDING_INSTANCES_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return [];
-  } catch {
-    return [];
-  }
-}
 
 function normalizeUserData(raw: Partial<User> & { role?: string }, id: string): User {
   const rolesArray = Array.isArray(raw.roles)
@@ -474,17 +459,277 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user with comprehensive safety checks
+ * Cascading deletion helper: Removes all onboarding instances for a user
+ * Called during user deletion to clean up related data
  *
- * SECURITY: Validates that user is not in active onboarding or dependent data
- * before allowing deletion. This prevents orphaned data and maintains referential integrity.
+ * @param userEmail - Email of the user whose instances to delete
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function deleteOnboardingInstancesForUser(userEmail: string): void {
+  try {
+    const instancesKey = 'onboardinghub_onboarding_instances';
+    const instancesStr = localStorage.getItem(instancesKey);
+    if (!instancesStr) return;
+
+    const instances = JSON.parse(instancesStr);
+    const filtered = instances.filter(
+      (instance: any) => instance.employeeEmail.toLowerCase() !== userEmail.toLowerCase()
+    );
+
+    // Only save if instances were actually removed
+    if (filtered.length !== instances.length) {
+      localStorage.setItem(instancesKey, JSON.stringify(filtered));
+    }
+  } catch (error) {
+    console.error('Failed to delete onboarding instances for user:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Removes all suggestions created by a user
+ * Called during user deletion to clean up related data
  *
- * Safety checks performed:
- * 1. Verify user exists
- * 2. Check for active onboarding instances assigned to this user
- * 3. Clean up auth credentials to prevent orphaned authentication data
+ * @param userEmail - Email of the user whose suggestions to delete
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function deleteSuggestionsForUser(userEmail: string): void {
+  try {
+    const suggestionsKey = 'onboardinghub_suggestions';
+    const suggestionsStr = localStorage.getItem(suggestionsKey);
+    if (!suggestionsStr) return;
+
+    const suggestions = JSON.parse(suggestionsStr);
+    const filtered = suggestions.filter(
+      (suggestion: any) => suggestion.suggestedBy.toLowerCase() !== userEmail.toLowerCase()
+    );
+
+    // Only save if suggestions were actually removed
+    if (filtered.length !== suggestions.length) {
+      localStorage.setItem(suggestionsKey, JSON.stringify(filtered));
+    }
+  } catch (error) {
+    console.error('Failed to delete suggestions for user:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Removes all activities initiated by a user
+ * Called during user deletion to clean up audit trail
  *
- * @throws Error with descriptive message if user has dependent data
+ * @param userId - ID of the user whose activities to delete
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function deleteActivitiesForUser(userId: string): void {
+  try {
+    const activitiesKey = 'onboardinghub_activities';
+    const activitiesStr = localStorage.getItem(activitiesKey);
+    if (!activitiesStr) return;
+
+    const activities = JSON.parse(activitiesStr);
+    const filtered = activities.filter(
+      (activity: any) => activity.userId !== userId
+    );
+
+    // Only save if activities were actually removed
+    if (filtered.length !== activities.length) {
+      localStorage.setItem(activitiesKey, JSON.stringify(filtered));
+    }
+  } catch (error) {
+    console.error('Failed to delete activities for user:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Removes expert assignments for a user
+ * Called during user deletion to clean up step expert references
+ *
+ * @param userEmail - Email of the user whose expert assignments to delete
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function deleteExpertAssignmentsForUser(userEmail: string): void {
+  try {
+    const expertKey = 'onboardinghub_experts';
+    const expertStr = localStorage.getItem(expertKey);
+    if (!expertStr) return;
+
+    const expertAssignments = JSON.parse(expertStr);
+    const filtered = expertAssignments.filter(
+      (e: any) => e.expertEmail.toLowerCase() !== userEmail.toLowerCase()
+    );
+
+    // Only save if assignments were actually removed
+    if (filtered.length !== expertAssignments.length) {
+      localStorage.setItem(expertKey, JSON.stringify(filtered));
+    }
+  } catch (error) {
+    console.error('Failed to delete expert assignments for user:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Clears createdBy references in templates
+ * Sets createdBy to 'system' for templates created by the deleted user
+ * Called during user deletion to maintain template validity
+ *
+ * @param userId - ID of the user to clear from createdBy fields
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function clearTemplateCreatedByReferences(userId: string): void {
+  try {
+    const templatesKey = 'onboardinghub_templates';
+    const templatesStr = localStorage.getItem(templatesKey);
+    if (!templatesStr) return;
+
+    const templates = JSON.parse(templatesStr);
+    const updated = templates.map((template: any) => {
+      if (template.createdBy === userId) {
+        return {
+          ...template,
+          createdBy: 'system',
+        };
+      }
+      return template;
+    });
+
+    // Only save if templates were actually modified
+    if (JSON.stringify(templates) !== JSON.stringify(updated)) {
+      localStorage.setItem(templatesKey, JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error('Failed to clear template createdBy references:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Clears createdBy references in roles
+ * Sets createdBy to 'system' for roles created by the deleted user
+ * Called during user deletion to maintain role validity
+ *
+ * @param userId - ID of the user to clear from createdBy fields
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function clearRoleCreatedByReferences(userId: string): void {
+  try {
+    const rolesKey = 'onboardinghub_roles';
+    const rolesStr = localStorage.getItem(rolesKey);
+    if (!rolesStr) return;
+
+    const roles = JSON.parse(rolesStr);
+    const updated = roles.map((role: any) => {
+      if (role.createdBy === userId) {
+        return {
+          ...role,
+          createdBy: 'system',
+        };
+      }
+      return role;
+    });
+
+    // Only save if roles were actually modified
+    if (JSON.stringify(roles) !== JSON.stringify(updated)) {
+      localStorage.setItem(rolesKey, JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error('Failed to clear role createdBy references:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Clears createdBy references in profiles
+ * Sets createdBy to 'system' for profiles created by the deleted user
+ * Called during user deletion to maintain profile validity
+ *
+ * @param userId - ID of the user to clear from createdBy fields
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function clearProfileCreatedByReferences(userId: string): void {
+  try {
+    const profilesKey = 'onboardinghub_profiles';
+    const profilesStr = localStorage.getItem(profilesKey);
+    if (!profilesStr) return;
+
+    const profiles = JSON.parse(profilesStr);
+    const updated = profiles.map((profile: any) => {
+      if (profile.createdBy === userId) {
+        return {
+          ...profile,
+          createdBy: 'system',
+        };
+      }
+      return profile;
+    });
+
+    // Only save if profiles were actually modified
+    if (JSON.stringify(profiles) !== JSON.stringify(updated)) {
+      localStorage.setItem(profilesKey, JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error('Failed to clear profile createdBy references:', error);
+  }
+}
+
+/**
+ * Cascading deletion helper: Clears createdBy references in profile templates
+ * Sets createdBy to 'system' for profile templates created by the deleted user
+ * Called during user deletion to maintain profile template validity
+ *
+ * @param userId - ID of the user to clear from createdBy fields
+ * @internal Used by deleteUser() for cascading cleanup
+ */
+function clearProfileTemplateCreatedByReferences(userId: string): void {
+  try {
+    const profileTemplatesKey = 'onboardinghub_profile_templates';
+    const profileTemplatesStr = localStorage.getItem(profileTemplatesKey);
+    if (!profileTemplatesStr) return;
+
+    const profileTemplates = JSON.parse(profileTemplatesStr);
+    const updated = profileTemplates.map((template: any) => {
+      if (template.createdBy === userId) {
+        return {
+          ...template,
+          createdBy: 'system',
+        };
+      }
+      return template;
+    });
+
+    // Only save if templates were actually modified
+    if (JSON.stringify(profileTemplates) !== JSON.stringify(updated)) {
+      localStorage.setItem(profileTemplatesKey, JSON.stringify(updated));
+    }
+  } catch (error) {
+    console.error('Failed to clear profile template createdBy references:', error);
+  }
+}
+
+/**
+ * Deletes a user with comprehensive cascading cleanup (Option A: Recommended)
+ *
+ * SECURITY & DATA INTEGRITY:
+ * This implementation uses cascading deletion to completely remove a user from the system.
+ * Instead of blocking deletion when dependent data exists, we cascade delete/clean up all
+ * related data. This approach:
+ *
+ * 1. Improves UX - Users can be deleted without manual pre-cleanup
+ * 2. Maintains data integrity - No orphaned references remain
+ * 3. Prevents security issues - Deleted users don't appear in lookups
+ * 4. Preserves audit trail - Uses 'system' placeholder for createdBy fields
+ *
+ * Cascade cleanup performed:
+ * 1. Delete all onboarding instances for the user
+ * 2. Delete all suggestions created by the user
+ * 3. Delete all activities initiated by the user
+ * 4. Delete expert step assignments for the user
+ * 5. Clear createdBy references (templates, roles, profiles, profile templates)
+ * 6. Remove from auth credentials (prevents orphaned authentication)
+ * 7. Delete user record from Firestore/localStorage
+ *
+ * @param userId - The user ID to delete
+ *
+ * @example
+ * // Delete user and cascade cleanup all related data
+ * await deleteUser('user-123');
+ * // All instances, suggestions, activities, expert assignments are cleaned up
  */
 export async function deleteUser(userId: string): Promise<void> {
   // Step 1: Fetch the user to ensure they exist
@@ -494,49 +739,23 @@ export async function deleteUser(userId: string): Promise<void> {
     return;
   }
 
-  // Step 2: Check for active onboarding instances assigned to this user
-  // This prevents deletion of users who are currently in onboarding
-  const onboardingInstances = getLocalOnboardingInstances();
-  const activeInstances = onboardingInstances.filter(
-    (instance) =>
-      instance.employeeEmail.toLowerCase() === user.email.toLowerCase() &&
-      instance.status === 'active'
-  );
+  // Step 2: Cascade delete all dependent data
+  // This ensures no orphaned data remains after user deletion
+  deleteOnboardingInstancesForUser(user.email);
+  deleteSuggestionsForUser(user.email);
+  deleteActivitiesForUser(userId);
+  deleteExpertAssignmentsForUser(user.email);
 
-  if (activeInstances.length > 0) {
-    throw new Error(
-      `Cannot delete user "${user.name}" (${user.email}): they have ${activeInstances.length} active onboarding instance(s) in progress. ` +
-      `Complete or cancel their onboarding before deleting.`
-    );
-  }
+  // Step 3: Clear createdBy references in all collections
+  // This preserves the document while maintaining audit trail integrity
+  // by replacing user ID with 'system' placeholder
+  clearTemplateCreatedByReferences(userId);
+  clearRoleCreatedByReferences(userId);
+  clearProfileCreatedByReferences(userId);
+  clearProfileTemplateCreatedByReferences(userId);
 
-  // Step 3: Check for pending suggestions created by this user
-  const suggestionsKey = 'onboardinghub_suggestions';
-  const suggestionsStr = localStorage.getItem(suggestionsKey);
-  const suggestions = suggestionsStr ? JSON.parse(suggestionsStr) : [];
-  const pendingSuggestions = suggestions.filter(
-    (s: any) => s.suggestedBy === user.email && s.status === 'pending'
-  );
-  if (pendingSuggestions.length > 0) {
-    throw new Error(
-      `Cannot delete user "${user.name}" (${user.email}): they have ${pendingSuggestions.length} pending suggestion(s). ` +
-      `Please review or delete these suggestions first.`
-    );
-  }
-
-  // Step 4: Check if user is assigned as an expert on any steps
-  const expertKey = 'onboardinghub_experts';
-  const expertStr = localStorage.getItem(expertKey);
-  const expertAssignments = expertStr ? JSON.parse(expertStr) : [];
-  const userExpertAssignments = expertAssignments.filter((e: any) => e.expertEmail === user.email);
-  if (userExpertAssignments.length > 0) {
-    throw new Error(
-      `Cannot delete user "${user.name}" (${user.email}): they are assigned as subject matter expert on ${userExpertAssignments.length} step(s). ` +
-      `Please reassign these steps first.`
-    );
-  }
-
-  // Step 5: Delete from Firestore if available
+  // Step 4: Delete from Firestore if available
+  // Cascade cleanup is already done, so Firestore deletion is safe
   if (isFirestoreAvailable()) {
     try {
       const docRef = doc(firestore, USERS_COLLECTION, userId);
@@ -547,13 +766,13 @@ export async function deleteUser(userId: string): Promise<void> {
     }
   }
 
-  // Step 6: Delete from localStorage
+  // Step 5: Delete from localStorage
   const localUsers = getLocalUsers();
   const filteredUsers = localUsers.filter((u) => u.id !== userId);
   saveLocalUsers(filteredUsers);
 
-  // Step 7: Clean up auth credentials to prevent orphaned authentication data
-  // This is CRITICAL: without this cleanup, the user's old credentials remain in localStorage
+  // Step 6: Clean up auth credentials to prevent orphaned authentication data
+  // CRITICAL: Without this cleanup, the user's old credentials remain in localStorage
   // and could be used to authenticate even after the user account is deleted
   removeUserFromAuthCredentials(user.email);
 }
