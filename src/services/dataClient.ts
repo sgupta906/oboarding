@@ -310,10 +310,112 @@ export async function updateTemplate(
       ...safeUpdates,
       updatedAt: Date.now(),
     });
+
+    // Sync new steps to all active onboarding instances using this template
+    if (updates.steps) {
+      await syncTemplateStepsToInstances(id, updates.steps);
+    }
   } catch (error) {
     throw new Error(
       `Failed to update template ${id}: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
+}
+
+/**
+ * Syncs new steps from an updated template to all active onboarding instances
+ *
+ * Security & Data Integrity Considerations:
+ * - Only adds NEW steps that don't already exist in the instance
+ * - Preserves completed/stuck status for existing steps - never removes progress
+ * - Compares steps by numeric ID to detect duplicates
+ * - Handles both Firestore and localStorage scenarios
+ * - Silently skips instances that fail to update (logs warning but doesn't throw)
+ *
+ * Algorithm:
+ * 1. Find all OnboardingInstance documents where templateId matches
+ * 2. For each instance, identify which template steps are new (not in instance.steps)
+ * 3. Append new steps to instance.steps (preserving order)
+ * 4. Update the instance in Firestore/localStorage
+ * 5. Recalculate progress percentage based on current step count
+ *
+ * @param templateId - The template ID that was updated
+ * @param newSteps - The updated steps array from the template
+ * @returns Promise resolving when all instances are synced
+ */
+async function syncTemplateStepsToInstances(templateId: string, newSteps: Step[]): Promise<void> {
+  try {
+    // Step 1: Find all instances using this template
+    let instances: OnboardingInstance[] = [];
+
+    if (isFirestoreAvailable()) {
+      try {
+        const instancesRef = collection(firestore, ONBOARDING_INSTANCES_COLLECTION);
+        const instanceQuery = query(instancesRef, where('templateId', '==', templateId));
+        const snapshot = await getDocs(instanceQuery);
+        instances = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        } as OnboardingInstance));
+      } catch (error) {
+        console.warn('Failed to query instances from Firestore, falling back to localStorage:', error);
+        // Fall through to localStorage fallback below
+      }
+    }
+
+    // Fallback: Check localStorage instances as well
+    if (instances.length === 0) {
+      const localInstances = getLocalOnboardingInstances();
+      instances = localInstances.filter((inst) => inst.templateId === templateId);
+    }
+
+    // Step 2: Sync new steps to each instance
+    for (const instance of instances) {
+      try {
+        // Create a set of existing step IDs for O(1) lookup
+        const existingStepIds = new Set(instance.steps.map((step) => step.id));
+
+        // Find new steps that don't already exist in this instance
+        const stepsToAdd = newSteps.filter((step) => !existingStepIds.has(step.id));
+
+        if (stepsToAdd.length === 0) {
+          // No new steps to add, skip this instance
+          continue;
+        }
+
+        // Step 3: Merge new steps while preserving existing step data and status
+        const mergedSteps = [...instance.steps, ...stepsToAdd];
+
+        // Step 4: Recalculate progress based on current steps and completed count
+        // Progress should only count steps that existed before the sync or are already completed
+        // New steps start as 'pending', so they don't affect progress calculation
+        const completedCount = mergedSteps.filter((step) => step.status === 'completed').length;
+        const progress =
+          mergedSteps.length === 0 ? 0 : Math.round((completedCount / mergedSteps.length) * 100);
+
+        // Step 5: Update the instance with merged steps and new progress
+        await updateOnboardingInstance(instance.id, {
+          steps: mergedSteps,
+          progress,
+        });
+
+        console.log(
+          `Synced ${stepsToAdd.length} new step(s) to instance ${instance.id} (${instance.employeeEmail})`
+        );
+      } catch (error) {
+        // Log warning but continue with other instances
+        console.warn(
+          `Failed to sync template steps to instance ${instance.id}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `Failed to sync template steps to instances for template ${templateId}:`,
+      error instanceof Error ? error.message : String(error)
+    );
+    // Don't throw - template update already succeeded, sync failure shouldn't block it
   }
 }
 

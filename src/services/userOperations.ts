@@ -105,8 +105,11 @@ function isFirestoreAvailable(): boolean {
   }
 }
 
+const TEST_MODE_FLAG = '__TEST_DISABLE_DEFAULT_SEEDING__';
+
 /**
  * Gets users from localStorage, initializing with defaults if empty
+ * Respects test mode flag for test isolation
  */
 function getLocalUsers(): User[] {
   try {
@@ -114,6 +117,13 @@ function getLocalUsers(): User[] {
     if (stored) {
       return JSON.parse(stored);
     }
+
+    // Skip seeding if in test mode (flag set via setDisableDefaultUserSeeding)
+    const testModeEnabled = localStorage.getItem(TEST_MODE_FLAG) === 'true';
+    if (testModeEnabled) {
+      return [];
+    }
+
     // Initialize with default users
     const defaultUsersWithIds = DEFAULT_USERS.map((user, index) => ({
       ...user,
@@ -263,10 +273,14 @@ export async function createUser(
         createdBy,
       };
     } catch (error) {
-      console.warn('Firestore unavailable, using localStorage fallback:', error);
+      console.warn('Firestore creation failed, using localStorage fallback:', error);
+      // CRITICAL: Continue to localStorage fallback only if Firestore creation failed
+      // Do not fall through from a successful Firestore creation
     }
   }
 
+  // CRITICAL FIX: Only use localStorage if Firestore was not available or failed
+  // This prevents duplicate user creation when Firestore is available
   const localUsers = getLocalUsers();
   const userId = `local-user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const newUser: User = {
@@ -500,10 +514,12 @@ export async function deleteUser(userId: string): Promise<void> {
   const suggestionsKey = 'onboardinghub_suggestions';
   const suggestionsStr = localStorage.getItem(suggestionsKey);
   const suggestions = suggestionsStr ? JSON.parse(suggestionsStr) : [];
-  const userSuggestions = suggestions.filter((s: any) => s.suggestedBy === user.email);
-  if (userSuggestions.length > 0) {
+  const pendingSuggestions = suggestions.filter(
+    (s: any) => s.suggestedBy === user.email && s.status === 'pending'
+  );
+  if (pendingSuggestions.length > 0) {
     throw new Error(
-      `Cannot delete user "${user.name}" (${user.email}): they have ${userSuggestions.length} pending suggestion(s). ` +
+      `Cannot delete user "${user.name}" (${user.email}): they have ${pendingSuggestions.length} pending suggestion(s). ` +
       `Please review or delete these suggestions first.`
     );
   }
@@ -554,7 +570,7 @@ export async function deleteUser(userId: string): Promise<void> {
  * @param users2 - Second array to compare
  * @returns True if arrays contain identical user objects
  */
-function areUsersEqual(users1: User[] | null, users2: User[]): boolean {
+export function areUsersEqual(users1: User[] | null, users2: User[]): boolean {
   // Null is never equal to a non-empty array
   if (users1 === null) {
     return false;
@@ -599,9 +615,11 @@ function areUsersEqual(users1: User[] | null, users2: User[]): boolean {
 export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe {
   let firestoreUnsubscribe: Unsubscribe | null = null;
   let lastEmittedUsers: User[] | null = null;
+  let lastStorageChangeTime = 0;
 
   // Always set up localStorage listener for local changes
   const handleStorageChange = (event: Event) => {
+    lastStorageChangeTime = Date.now();
     const customEvent = event as CustomEvent<User[]>;
     if (customEvent.detail) {
       lastEmittedUsers = customEvent.detail;
@@ -626,11 +644,22 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
           const users = snapshot.docs.map((d) =>
             normalizeUserData(d.data() as Partial<User>, d.id)
           );
-          // Only emit Firestore data if it has users AND we haven't just emitted localStorage data
-          // This prevents race conditions where localStorage saves are overridden by Firestore listeners
+          // CRITICAL FIX: Prevent Firestore from overwriting recent localStorage changes
+          // If localStorage was updated within the last 100ms, ignore this Firestore update
+          // This prevents race conditions where Firestore subscriptions override user creation in localStorage
+          const timeSinceLastStorageChange = Date.now() - lastStorageChangeTime;
+          if (timeSinceLastStorageChange < 100) {
+            // Ignore Firestore update - localStorage change is more recent
+            return;
+          }
+
+          // Only emit Firestore data if it has users
           if (users.length > 0) {
-            lastEmittedUsers = users;
-            callback(users);
+            // Check if Firestore data differs from what we've already emitted
+            if (!areUsersEqual(lastEmittedUsers, users)) {
+              lastEmittedUsers = users;
+              callback(users);
+            }
           } else {
             // Firestore is empty, use localStorage
             const localUsers = getLocalUsers();
@@ -670,6 +699,43 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
       firestoreUnsubscribe();
     }
   };
+}
+
+/**
+ * TEST HELPER: Enables or disables auto-seeding of DEFAULT_USERS
+ * When disabled, getLocalUsers() returns empty array instead of seeding
+ *
+ * @internal For testing only - not for production use
+ * @param disable - If true, prevents DEFAULT_USERS from being seeded
+ */
+export function setDisableDefaultUserSeeding(disable: boolean): void {
+  if (disable) {
+    localStorage.setItem(TEST_MODE_FLAG, 'true');
+  } else {
+    localStorage.removeItem(TEST_MODE_FLAG);
+  }
+}
+
+/**
+ * TEST HELPER: Clears all users from localStorage and auth credentials
+ * Used by tests to ensure complete isolation between test cases
+ *
+ * This is necessary because getLocalUsers() auto-seeds DEFAULT_USERS
+ * when localStorage is empty. Tests need to clear both the user list
+ * AND prevent auto-seeding to achieve proper test isolation.
+ *
+ * @internal For testing only - not for production use
+ */
+export function clearAllUsersForTesting(): void {
+  // Disable seeding before clearing
+  localStorage.setItem(TEST_MODE_FLAG, 'true');
+
+  localStorage.removeItem(USERS_STORAGE_KEY);
+  localStorage.removeItem(AUTH_CREDENTIALS_KEY);
+  localStorage.removeItem(ONBOARDING_INSTANCES_STORAGE_KEY);
+  localStorage.removeItem('onboardinghub_suggestions');
+  localStorage.removeItem('onboardinghub_experts');
+  localStorage.removeItem('onboardinghub_activities');
 }
 
 /**

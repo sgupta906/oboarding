@@ -20,6 +20,9 @@ import {
   addUserToAuthCredentials,
   getAuthCredential,
   subscribeToUsers,
+  removeUserFromAuthCredentials,
+  areUsersEqual,
+  clearAllUsersForTesting,
 } from './userOperations';
 import type { User } from '../types';
 
@@ -63,11 +66,11 @@ const mockUser3: Omit<User, 'id'> = {
 
 describe('createUser', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should create a user successfully with all required fields', async () => {
@@ -229,13 +232,13 @@ describe('createUser', () => {
 
 describe('updateUser', () => {
   beforeEach(async () => {
-    localStorage.clear();
+    clearAllUsersForTesting();
     // Create a user to update
     await createUser(mockUser1, 'system');
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should update user email successfully', async () => {
@@ -409,11 +412,11 @@ describe('updateUser', () => {
 
 describe('deleteUser - CRITICAL BUG TEST', () => {
   beforeEach(async () => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should delete a user from localStorage', async () => {
@@ -727,11 +730,11 @@ describe('deleteUser - CRITICAL BUG TEST', () => {
 
 describe('userEmailExists', () => {
   beforeEach(async () => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should return false when email does not exist', async () => {
@@ -775,11 +778,11 @@ describe('userEmailExists', () => {
 
 describe('addUserToAuthCredentials', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should add new user to auth credentials', () => {
@@ -825,11 +828,11 @@ describe('addUserToAuthCredentials', () => {
 
 describe('getAuthCredential', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should retrieve credential by email', () => {
@@ -866,11 +869,11 @@ describe('getAuthCredential', () => {
 
 describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should remove user from auth credentials after deletion', () => {
@@ -878,8 +881,6 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
     addUserToAuthCredentials(email, 'employee', 'user-123');
     expect(getAuthCredential(email)).toBeDefined();
 
-    // Import the function to test
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     removeUserFromAuthCredentials(email);
 
     expect(getAuthCredential(email)).toBeNull();
@@ -890,14 +891,12 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
     addUserToAuthCredentials(email, 'employee', 'user-123');
     expect(getAuthCredential(email)).toBeDefined();
 
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     removeUserFromAuthCredentials(email.toUpperCase());
 
     expect(getAuthCredential(email.toLowerCase())).toBeNull();
   });
 
   it('should handle corrupted localStorage gracefully', () => {
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     localStorage.setItem('onboardinghub_auth_credentials', 'invalid json {{{');
 
     // Should not throw
@@ -913,7 +912,6 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
     const email = 'alice@company.com';
     addUserToAuthCredentials(email, 'employee', 'user-123');
 
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     removeUserFromAuthCredentials(email);
     expect(getAuthCredential(email)).toBeNull();
 
@@ -927,7 +925,6 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
     addUserToAuthCredentials('bob@company.com', 'manager', 'uid-2');
     addUserToAuthCredentials('charlie@company.com', 'admin', 'uid-3');
 
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     removeUserFromAuthCredentials('bob@company.com');
 
     expect(getAuthCredential('alice@company.com')).toBeDefined();
@@ -936,14 +933,12 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
   });
 
   it('should handle empty credentials storage', () => {
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     // localStorage has no auth credentials at all
 
     expect(() => removeUserFromAuthCredentials('test@company.com')).not.toThrow();
   });
 
   it('should handle non-array credentials format in localStorage', () => {
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     // Set credentials to an object instead of array (corrupted format)
     localStorage.setItem('onboardinghub_auth_credentials', JSON.stringify({ email: 'test@company.com' }));
 
@@ -955,7 +950,6 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
   });
 
   it('should handle credentials with null/undefined entries', () => {
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     const credentials = [
       { email: 'alice@company.com', role: 'employee', uid: 'uid-1' },
       null,
@@ -973,7 +967,6 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
   });
 
   it('should only save when credentials were actually modified', () => {
-    const { removeUserFromAuthCredentials } = require('./userOperations');
     addUserToAuthCredentials('alice@company.com', 'employee', 'uid-1');
 
     const spy = vi.spyOn(Storage.prototype, 'setItem');
@@ -995,11 +988,11 @@ describe('removeUserFromAuthCredentials - CRITICAL BUG FIX', () => {
 
 describe('listUsers', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should return all created users', async () => {
@@ -1038,11 +1031,11 @@ describe('listUsers', () => {
 
 describe('getUser', () => {
   beforeEach(async () => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should retrieve user by ID', async () => {
@@ -1072,11 +1065,11 @@ describe('getUser', () => {
 
 describe('subscribeToUsers', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should call callback with initial users', async () => {
@@ -1157,15 +1150,14 @@ describe('subscribeToUsers', () => {
 
 describe('areUsersEqual - CRITICAL BUG FIX', () => {
   beforeEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   afterEach(() => {
-    localStorage.clear();
+    clearAllUsersForTesting();
   });
 
   it('should return false for different user arrays', () => {
-    const { areUsersEqual } = require('./userOperations');
     const users1: User[] = [
       {
         id: 'id-1',
@@ -1195,7 +1187,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should return true for identical users', () => {
-    const { areUsersEqual } = require('./userOperations');
     const user: User = {
       id: 'id-1',
       email: 'alice@company.com',
@@ -1211,7 +1202,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should return false when comparing null to non-empty array', () => {
-    const { areUsersEqual } = require('./userOperations');
     const users: User[] = [
       {
         id: 'id-1',
@@ -1229,7 +1219,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should catch reordered arrays as different', () => {
-    const { areUsersEqual } = require('./userOperations');
     const user1: User = {
       id: 'id-1',
       email: 'alice@company.com',
@@ -1255,7 +1244,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should deep compare all user fields', () => {
-    const { areUsersEqual } = require('./userOperations');
     const baseUser: User = {
       id: 'id-1',
       email: 'alice@company.com',
@@ -1312,7 +1300,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should return false when array lengths differ', () => {
-    const { areUsersEqual } = require('./userOperations');
     const user1: User = {
       id: 'id-1',
       email: 'alice@company.com',
@@ -1339,7 +1326,6 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should prevent infinite update loops with new array instances', () => {
-    const { areUsersEqual } = require('./userOperations');
     const users: User[] = [
       {
         id: 'id-1',
@@ -1362,13 +1348,11 @@ describe('areUsersEqual - CRITICAL BUG FIX', () => {
   });
 
   it('should handle empty arrays correctly', () => {
-    const { areUsersEqual } = require('./userOperations');
     expect(areUsersEqual([], [])).toBe(true);
     expect(areUsersEqual(null, [])).toBe(false);
   });
 
   it('should detect changes in nested arrays (roles and profiles)', () => {
-    const { areUsersEqual } = require('./userOperations');
     const user: User = {
       id: 'id-1',
       email: 'alice@company.com',

@@ -14,7 +14,13 @@ import { NavBar } from './components/ui/NavBar';
  */
 function AppContent() {
   const { loading, isAuthenticated, role } = useAuth();
-  const [currentView, setCurrentView] = useState<'employee' | 'manager'>('employee');
+
+  // Initialize currentView based on user role: managers/admins start with manager view, employees with employee view
+  const getInitialView = (): 'employee' | 'manager' => {
+    return role === 'manager' || role === 'admin' ? 'manager' : 'employee';
+  };
+
+  const [currentView, setCurrentView] = useState<'employee' | 'manager'>(getInitialView);
   const [currentRoute, setCurrentRoute] = useState<'templates' | 'onboarding' | 'sign-out'>('onboarding');
 
   // Handle hash-based routing
