@@ -16,6 +16,7 @@ Guidance for Codex agents collaborating on OnboardingHub. Read this before takin
 ## Data, Auth, and Views
 - Auth flows are managed in `src/config/authContext.tsx` with Firebase or localStorage fallback. Roles (employee, manager, admin) control access to Employee/Manager/Template views inside `src/App.tsx`.
 - Onboarding data flows through the hooks layer (`src/hooks/`) which subscribes to Firestore via `services/dataClient.ts`. Employee timelines render via `src/views/EmployeeView.tsx`; the manager dashboard (KPIs, ActivityFeed, RotReport, suggestions) is in `src/views/ManagerView.tsx`.
+- Manager-only subscriptions run through `src/hooks/useManagerData.ts`, which keeps onboarding instance lists (used by `components/onboarding/EmployeeSelector.tsx`) live even when the dashboard tab is inactive so managers can inspect any employee timeline.
 - Mock fixtures in `src/data/mockData.ts` should mirror Firestore schemas and stay in sync with the shared types.
 
 ## Large-Context Analysis with Gemini
@@ -25,6 +26,7 @@ Guidance for Codex agents collaborating on OnboardingHub. Read this before takin
 
 ## Documentation & Output Boundaries
 - Respect the documentation policy in `AGENTS.md`: no auto-generated reports or new guide/summary files beyond the canonical set (README, CLAUDE, AGENTS, mvp, tickets). Update those files only when a ticket or user request demands it.
+- Non-canonical root docs were pruned; if you need historical implementation notes, rely on the canonical files above or ask product/engineering for context instead of recreating archived guides.
 - When summarizing work, include file references with line numbers, keep notes concise, and never fabricate test results.
 
 ## Quality Bar

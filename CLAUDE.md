@@ -214,11 +214,13 @@ src/
 **State Management:**
 - Currently using React `useState` in `OnboardingHub.tsx` component
 - State includes: steps array, suggestions array, active modal, current view
+- Manager-specific subscriptions now live in `src/hooks/useManagerData.ts`, which keeps onboarding instance lists hydrated for EmployeeSelector even when the dashboard tab is inactive while lazily loading suggestions/activities only when required.
 - Props passed down max 3 levels to avoid prop drilling complexity
 
 **Component Organization:**
 - `ui/` components are generic and reusable (Button, Card, Badge, Progress)
 - `onboarding/` components are Employee-specific (StepCard, Timeline, ActionBar)
+- `onboarding/EmployeeSelector.tsx` contains the manager-only dropdown that lets admins inspect other onboarding runs from the Employee view.
 - `manager/` components are Manager-specific (KPICard, ActivityFeed, RotReport)
 - `modals/` handle user interactions (SuggestEditModal, ReportBlockerModal)
 

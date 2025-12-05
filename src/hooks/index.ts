@@ -12,3 +12,4 @@ export { useRoles } from './useRoles';
 export { useUsers } from './useUsers';
 export { useOnboardingInstances } from './useOnboardingInstances';
 export { useEmployeeOnboarding } from './useEmployeeOnboarding';
+export { useManagerData } from './useManagerData';

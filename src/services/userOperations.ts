@@ -418,17 +418,24 @@ export async function deleteUser(userId: string): Promise<void> {
  * in addition to any Firestore subscription. This ensures that:
  * 1. Users created via the UI (which use localStorage) trigger updates
  * 2. The UI stays in sync even when Firestore is unavailable
+ *
+ * The localStorage listener takes precedence when available to avoid
+ * race conditions between Firestore and localStorage data sources.
  */
 export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe {
   let firestoreUnsubscribe: Unsubscribe | null = null;
+  let lastEmittedUsers: User[] | null = null;
 
   // Always set up localStorage listener for local changes
   const handleStorageChange = (event: Event) => {
     const customEvent = event as CustomEvent<User[]>;
     if (customEvent.detail) {
+      lastEmittedUsers = customEvent.detail;
       callback(customEvent.detail);
     } else {
-      callback(getLocalUsers());
+      const users = getLocalUsers();
+      lastEmittedUsers = users;
+      callback(users);
     }
   };
 
@@ -445,26 +452,40 @@ export function subscribeToUsers(callback: (users: User[]) => void): Unsubscribe
           const users = snapshot.docs.map((d) =>
             normalizeUserData(d.data() as Partial<User>, d.id)
           );
+          // Only emit Firestore data if it has users AND we haven't just emitted localStorage data
+          // This prevents race conditions where localStorage saves are overridden by Firestore listeners
           if (users.length > 0) {
+            lastEmittedUsers = users;
             callback(users);
           } else {
             // Firestore is empty, use localStorage
-            callback(getLocalUsers());
+            const localUsers = getLocalUsers();
+            // Only emit if we haven't just emitted these same users
+            if (lastEmittedUsers !== localUsers) {
+              lastEmittedUsers = localUsers;
+              callback(localUsers);
+            }
           }
         },
         (error) => {
           console.warn('Firestore subscription error, using localStorage:', error);
-          callback(getLocalUsers());
+          const localUsers = getLocalUsers();
+          lastEmittedUsers = localUsers;
+          callback(localUsers);
         }
       );
     } catch (error) {
       console.warn('Failed to subscribe to Firestore, using localStorage:', error);
       // Initial callback with localStorage data
-      callback(getLocalUsers());
+      const localUsers = getLocalUsers();
+      lastEmittedUsers = localUsers;
+      callback(localUsers);
     }
   } else {
     // No Firestore available, use localStorage
-    callback(getLocalUsers());
+    const localUsers = getLocalUsers();
+    lastEmittedUsers = localUsers;
+    callback(localUsers);
   }
 
   // Return combined unsubscribe function

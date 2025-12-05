@@ -8,16 +8,15 @@
  * - React.memo on expensive child components
  */
 
-import { useMemo, useState, useEffect, memo } from 'react';
+import { useMemo, useState, memo } from 'react';
 import { EmployeeView, ManagerView } from '../views';
 import { SuggestEditModal, ReportStuckModal } from '../components/modals';
+import { EmployeeSelector } from './onboarding';
 import { useAuth } from '../config/authContext';
 import {
-  useActivities,
   useEmployeeOnboarding,
-  useOnboardingInstances,
   useSteps,
-  useSuggestions,
+  useManagerData,
 } from '../hooks';
 import {
   createSuggestion,
@@ -26,7 +25,7 @@ import {
   updateStepStatus,
   updateSuggestionStatus,
 } from '../services/dataClient';
-import type { Step, StepStatus, ModalState, OnboardingInstance } from '../types';
+import type { Step, StepStatus, ModalState } from '../types';
 
 interface OnboardingHubProps {
   currentView?: 'employee' | 'manager';
@@ -36,48 +35,6 @@ interface OnboardingHubProps {
 // Memoized ManagerView to prevent unnecessary re-renders
 const MemoizedManagerView = memo(ManagerView);
 const MemoizedEmployeeView = memo(EmployeeView);
-
-/**
- * Custom hook to conditionally load manager-only data
- * Returns empty arrays when not a manager to avoid unnecessary Firestore subscriptions
- */
-function useManagerData(isManager: boolean, isManagerView: boolean) {
-  // Only subscribe when user is a manager AND viewing manager view
-  const shouldLoad = isManager && isManagerView;
-
-  const { data: suggestions, isLoading: suggestionsLoading } = useSuggestions(shouldLoad);
-  const { data: activities, isLoading: activitiesLoading } = useActivities(shouldLoad);
-  const { data: onboardingInstances, isLoading: instancesLoading } = useOnboardingInstances(shouldLoad);
-
-  // Add timeout fallback to prevent infinite loading (3 second timeout)
-  const [timedOut, setTimedOut] = useState(false);
-
-  useEffect(() => {
-    if (!shouldLoad) {
-      setTimedOut(false);
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      if (suggestionsLoading || activitiesLoading || instancesLoading) {
-        console.warn('Manager data loading timed out - using empty fallback');
-        setTimedOut(true);
-      }
-    }, 3000);
-
-    return () => clearTimeout(timeout);
-  }, [shouldLoad, suggestionsLoading, activitiesLoading, instancesLoading]);
-
-  // If timed out, treat as loaded with empty data
-  const effectiveLoading = !timedOut && (suggestionsLoading || activitiesLoading || instancesLoading);
-
-  return {
-    suggestions: shouldLoad ? suggestions : [],
-    activities: shouldLoad ? activities : [],
-    onboardingInstances: shouldLoad ? onboardingInstances : [],
-    isLoading: shouldLoad ? effectiveLoading : false,
-  };
-}
 
 export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) {
   const { user, role } = useAuth();
@@ -93,14 +50,17 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     employeeInstance?.id ?? ''
   );
 
-  // Manager-specific data (only load when manager AND viewing manager tab)
-  const isManagerView = isManager && currentView === 'manager';
+  const shouldLoadDashboardData = isManager && currentView === 'manager';
   const {
     suggestions,
     activities,
     onboardingInstances,
-    isLoading: managerDataLoading,
-  } = useManagerData(isManager, isManagerView);
+    isDashboardLoading,
+    areInstancesLoading,
+  } = useManagerData({
+    enableDashboardData: shouldLoadDashboardData,
+    enableInstances: isManager,
+  });
 
   // State for viewing other employees' onboarding (manager feature)
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -271,7 +231,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
             instances={onboardingInstances}
             selectedId={selectedInstanceId}
             onSelect={handleSelectEmployee}
-            isLoading={managerDataLoading}
+            isLoading={areInstancesLoading}
           />
         </div>
       )}
@@ -289,7 +249,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       )}
 
       {/* Manager Dashboard - only when manager is viewing manager tab */}
-      {isManager && currentView === 'manager' && !managerDataLoading && (
+      {isManager && currentView === 'manager' && !isDashboardLoading && (
         <MemoizedManagerView
           steps={managerSteps}
           suggestions={suggestions}
@@ -301,7 +261,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       )}
 
       {/* Loading state for manager view */}
-      {isManager && currentView === 'manager' && managerDataLoading && (
+      {isManager && currentView === 'manager' && isDashboardLoading && (
         <div className="min-h-screen flex items-center justify-center">
           <p className="text-slate-600">Loading dashboard...</p>
         </div>
@@ -327,54 +287,5 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
         </>
       )}
     </main>
-  );
-}
-
-/**
- * Employee Selector Component - Allows managers to switch between employee onboardings
- */
-interface EmployeeSelectorProps {
-  instances: OnboardingInstance[];
-  selectedId: string | null;
-  onSelect: (instanceId: string | null) => void;
-  isLoading?: boolean;
-}
-
-function EmployeeSelector({ instances, selectedId, onSelect, isLoading }: EmployeeSelectorProps) {
-  if (isLoading) {
-    return (
-      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-        <p className="text-sm text-slate-500">Loading employee list...</p>
-      </div>
-    );
-  }
-
-  if (instances.length === 0) {
-    return (
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-sm text-amber-700">No active onboarding instances found.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-      <label htmlFor="employee-selector" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-        Select Employee Onboarding
-      </label>
-      <select
-        id="employee-selector"
-        value={selectedId ?? ''}
-        onChange={(e) => onSelect(e.target.value || null)}
-        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
-      >
-        <option value="">-- Select an employee --</option>
-        {instances.map((instance) => (
-          <option key={instance.id} value={instance.id}>
-            {instance.employeeName} ({instance.department}) - {instance.progress}% complete
-          </option>
-        ))}
-      </select>
-    </div>
   );
 }

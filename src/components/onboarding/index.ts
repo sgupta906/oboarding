@@ -7,3 +7,4 @@ export { WelcomeHeader } from './WelcomeHeader';
 export { StepCard } from './StepCard';
 export { StepTimeline } from './StepTimeline';
 export { ActionBar } from './ActionBar';
+export { EmployeeSelector } from './EmployeeSelector';
