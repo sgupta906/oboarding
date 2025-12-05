@@ -27,7 +27,7 @@ import {
   CustomRole,
   Profile,
 } from '../types';
-import { addUserToAuthCredentials } from './userOperations';
+import { addUserToAuthCredentials, createUser, userEmailExists } from './userOperations';
 
 // ============================================================================
 // Collection References
@@ -536,12 +536,45 @@ export async function createOnboardingRunFromTemplate(
   // Step 5: Add the employee to auth credentials so they can sign in
   // Employee role is 'employee' by default for new onboarding users
   addUserToAuthCredentials(normalizedEmail, 'employee', instanceId);
+  await ensureUserRecordForOnboarding({
+    email: normalizedEmail,
+    name: employeeData.employeeName,
+    department: employeeData.department,
+  });
 
   // Step 6: Return the complete instance with the generated ID
   return {
     id: instanceId,
     ...newInstanceData,
   };
+}
+
+interface EnsureUserRecordInput {
+  email: string;
+  name: string;
+  department: string;
+}
+
+async function ensureUserRecordForOnboarding({ email, name, department }: EnsureUserRecordInput) {
+  try {
+    const exists = await userEmailExists(email);
+    if (exists) {
+      return;
+    }
+
+    await createUser(
+      {
+        email,
+        name,
+        roles: ['employee'],
+        profiles: department ? [department] : [],
+        createdBy: 'system',
+      },
+      'system'
+    );
+  } catch (error) {
+    console.warn('Failed to ensure user record for onboarding:', error);
+  }
 }
 
 /**
