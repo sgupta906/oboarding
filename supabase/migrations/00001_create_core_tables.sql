@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT users_email_unique UNIQUE (lower(email))
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (lower(email));
 
 -- 2. roles
 -- Firestore equivalent: 'roles' collection
@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS roles (
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT roles_name_unique UNIQUE (lower(name))
+  created_by UUID REFERENCES users(id) ON DELETE SET NULL
 );
+CREATE UNIQUE INDEX IF NOT EXISTS roles_name_unique ON roles (lower(name));
 
 -- 3. profiles
 -- Firestore equivalent: 'profiles' collection
