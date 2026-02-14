@@ -137,14 +137,6 @@ coverage/
 .com.apple.timemachine.donotpresent
 
 # ==========================================
-# Firebase Emulator
-# ==========================================
-.firebase/
-firebase_data/
-ui-debug.log
-database-debug.log
-
-# ==========================================
 # Optional: Lock files (uncomment if needed)
 # ==========================================
 # package-lock.json

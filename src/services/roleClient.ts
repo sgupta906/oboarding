@@ -7,9 +7,9 @@
 import {
   listRoles,
   getRole,
-  createRole as firestoreCreateRole,
-  updateRole as firestoreUpdateRole,
-  deleteRole as firestoreDeleteRole,
+  createRole as dbCreateRole,
+  updateRole as dbUpdateRole,
+  deleteRole as dbDeleteRole,
   roleNameExists,
   isRoleInUse,
 } from './supabase';
@@ -206,7 +206,7 @@ export async function createCustomRole(
   }
 
   // All validation passed, create the role
-  return firestoreCreateRole(name.trim(), description, createdBy);
+  return dbCreateRole(name.trim(), description, createdBy);
 }
 
 /**
@@ -260,7 +260,7 @@ export async function updateCustomRole(
     }
   }
 
-  return firestoreUpdateRole(roleId, updates);
+  return dbUpdateRole(roleId, updates);
 }
 
 /**
@@ -285,7 +285,7 @@ export async function deleteCustomRole(roleId: string): Promise<void> {
     );
   }
 
-  return firestoreDeleteRole(roleId);
+  return dbDeleteRole(roleId);
 }
 
 // ============================================================================
@@ -316,7 +316,7 @@ export async function seedDefaultRoles(userId: string = 'system'): Promise<numbe
 
     for (const roleName of DEFAULT_ROLES) {
       try {
-        await firestoreCreateRole(roleName, undefined, userId);
+        await dbCreateRole(roleName, undefined, userId);
         created++;
       } catch (error) {
         // Log but continue with other roles

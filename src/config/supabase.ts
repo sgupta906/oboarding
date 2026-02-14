@@ -2,8 +2,7 @@
  * Supabase Client Configuration
  *
  * Initializes a typed Supabase client for the OnboardingHub application.
- * This module mirrors the pattern established in `firebase.ts` -- both
- * read from VITE_* environment variables and export a configured client.
+ * Reads from VITE_* environment variables and exports a configured client.
  *
  * The client is typed with the Database interface so that all queries
  * (e.g. `supabase.from('users').select()`) are fully type-checked.

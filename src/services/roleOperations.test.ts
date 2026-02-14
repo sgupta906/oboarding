@@ -25,7 +25,7 @@ import type { CustomRole } from '../types';
 const ROLES_KEY = 'onboardinghub_roles';
 
 // Mock supabase service with localStorage-backed implementations
-// This preserves the integration test semantics from the old Firebase/localStorage era
+// This preserves the integration test semantics using localStorage-backed implementations
 vi.mock('./supabase', () => {
   const getRoles = (): CustomRole[] => {
     try { return JSON.parse(localStorage.getItem(ROLES_KEY) || '[]'); } catch { return []; }

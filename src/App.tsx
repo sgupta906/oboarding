@@ -103,7 +103,7 @@ function AppContent() {
  * Main App Component
  * Entry point for the application
  * Security layers:
- * 1. AuthProvider - Manages Firebase auth state and role-based access
+ * 1. AuthProvider - Manages Supabase auth state and role-based access
  * 2. DarkModeProvider - Manages UI theme
  * 3. Role-based routing in AppContent
  *

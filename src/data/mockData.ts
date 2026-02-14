@@ -1,5 +1,5 @@
 /**
- * Mock data simulating Firestore collections
+ * Mock data simulating database tables
  * This structure mirrors what would be stored in a real backend
  */
 

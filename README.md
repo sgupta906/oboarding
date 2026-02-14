@@ -129,8 +129,6 @@ For testing the complete sign-in flow:
    - `test-employee@example.com` → Employee role
    - `test-manager@example.com` → Manager role
    - `test-admin@example.com` → Admin role
-2. Click "Send Sign-In Link"
-3. You'll be authenticated and redirected to the appropriate view
 
 **Note**: This is a mock implementation. In production, users would receive actual email links.
 

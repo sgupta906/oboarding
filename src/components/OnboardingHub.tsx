@@ -1,6 +1,6 @@
 /**
  * OnboardingHub Component - Main application container
- * Now backed by real Firestore data via custom hooks and services.
+ * Now backed by real Supabase data via custom hooks and services.
  *
  * Performance Optimizations:
  * - Conditional hook loading: Manager-only hooks are only loaded when user is a manager

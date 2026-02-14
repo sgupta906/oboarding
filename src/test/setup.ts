@@ -63,7 +63,6 @@ function createLocalStorageMock() {
 if (typeof import.meta !== 'undefined') {
   // FORCE disable dev auth for tests - we use localStorage exclusively
   (import.meta.env as any).VITE_USE_DEV_AUTH = 'false';
-  (import.meta.env as any).VITE_FIREBASE_PROJECT_ID = '';
 }
 
 /**

@@ -19,9 +19,9 @@ import {
 } from './roleClient';
 import {
   listRoles,
-  createRole as firestoreCreateRole,
-  updateRole as firestoreUpdateRole,
-  deleteRole as firestoreDeleteRole,
+  createRole as dbCreateRole,
+  updateRole as dbUpdateRole,
+  deleteRole as dbDeleteRole,
   roleNameExists,
   isRoleInUse,
 } from './supabase';
@@ -206,9 +206,9 @@ describe('validateRoleNameUniqueness', () => {
     expect(result.error).toContain('case-insensitive');
   });
 
-  it('should return error on Firestore failure', async () => {
+  it('should return error on database failure', async () => {
     (roleNameExists as any).mockRejectedValue(
-      new Error('Firestore connection failed')
+      new Error('Database connection failed')
     );
     const result = await validateRoleNameUniqueness('TestRole');
     expect(result.valid).toBe(false);
@@ -272,7 +272,7 @@ describe('createCustomRole', () => {
 
   it('should create a role with valid inputs', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     const result = await createCustomRole(
       'Engineering',
@@ -281,7 +281,7 @@ describe('createCustomRole', () => {
     );
 
     expect(result).toEqual(mockRole);
-    expect(firestoreCreateRole).toHaveBeenCalledWith(
+    expect(dbCreateRole).toHaveBeenCalledWith(
       'Engineering',
       'Engineering team',
       'user-1'
@@ -290,7 +290,7 @@ describe('createCustomRole', () => {
 
   it('should create a role without description', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreCreateRole as any).mockResolvedValue({
+    (dbCreateRole as any).mockResolvedValue({
       ...mockRole,
       description: undefined,
     });
@@ -298,7 +298,7 @@ describe('createCustomRole', () => {
     const result = await createCustomRole('Sales', undefined, 'user-1');
 
     expect(result.description).toBeUndefined();
-    expect(firestoreCreateRole).toHaveBeenCalled();
+    expect(dbCreateRole).toHaveBeenCalled();
   });
 
   it('should reject invalid role name', async () => {
@@ -333,19 +333,19 @@ describe('createCustomRole', () => {
 
   it('should trim whitespace from name before creation', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     await createCustomRole('  Engineering  ', 'desc', 'user-1');
 
-    expect(firestoreCreateRole).toHaveBeenCalledWith('Engineering', 'desc', 'user-1');
+    expect(dbCreateRole).toHaveBeenCalledWith('Engineering', 'desc', 'user-1');
   });
 
-  it('should handle Firestore creation errors', async () => {
+  it('should handle database creation errors', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreCreateRole as any).mockRejectedValue(new Error('Firestore error'));
+    (dbCreateRole as any).mockRejectedValue(new Error('Database error'));
 
     const promise = createCustomRole('NewRole', 'desc', 'user-1');
-    await expect(promise).rejects.toThrow('Firestore error');
+    await expect(promise).rejects.toThrow('Database error');
   });
 });
 
@@ -360,35 +360,35 @@ describe('updateCustomRole', () => {
 
   it('should update role name', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreUpdateRole as any).mockResolvedValue(undefined);
+    (dbUpdateRole as any).mockResolvedValue(undefined);
 
     await updateCustomRole('role-1', { name: 'NewName' });
 
-    expect(firestoreUpdateRole).toHaveBeenCalledWith('role-1', {
+    expect(dbUpdateRole).toHaveBeenCalledWith('role-1', {
       name: 'NewName',
     });
   });
 
   it('should update role description', async () => {
-    (firestoreUpdateRole as any).mockResolvedValue(undefined);
+    (dbUpdateRole as any).mockResolvedValue(undefined);
 
     await updateCustomRole('role-1', { description: 'New description' });
 
-    expect(firestoreUpdateRole).toHaveBeenCalledWith('role-1', {
+    expect(dbUpdateRole).toHaveBeenCalledWith('role-1', {
       description: 'New description',
     });
   });
 
   it('should update both name and description', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    (firestoreUpdateRole as any).mockResolvedValue(undefined);
+    (dbUpdateRole as any).mockResolvedValue(undefined);
 
     await updateCustomRole('role-1', {
       name: 'NewName',
       description: 'New description',
     });
 
-    expect(firestoreUpdateRole).toHaveBeenCalledWith('role-1', {
+    expect(dbUpdateRole).toHaveBeenCalledWith('role-1', {
       name: 'NewName',
       description: 'New description',
     });
@@ -417,11 +417,11 @@ describe('updateCustomRole', () => {
   });
 
   it('should clear description if updated to empty string', async () => {
-    (firestoreUpdateRole as any).mockResolvedValue(undefined);
+    (dbUpdateRole as any).mockResolvedValue(undefined);
 
     await updateCustomRole('role-1', { description: '' });
 
-    expect(firestoreUpdateRole).toHaveBeenCalledWith('role-1', {
+    expect(dbUpdateRole).toHaveBeenCalledWith('role-1', {
       description: '',
     });
   });
@@ -438,12 +438,12 @@ describe('deleteCustomRole', () => {
 
   it('should delete an unused role', async () => {
     (isRoleInUse as any).mockResolvedValue(false);
-    (firestoreDeleteRole as any).mockResolvedValue(undefined);
+    (dbDeleteRole as any).mockResolvedValue(undefined);
 
     await deleteCustomRole('role-1');
 
     expect(isRoleInUse).toHaveBeenCalledWith('role-1');
-    expect(firestoreDeleteRole).toHaveBeenCalledWith('role-1');
+    expect(dbDeleteRole).toHaveBeenCalledWith('role-1');
   });
 
   it('should reject deletion of role in use', async () => {
@@ -453,7 +453,7 @@ describe('deleteCustomRole', () => {
     await expect(promise).rejects.toThrow(
       'Cannot delete this role because it is in use'
     );
-    expect(firestoreDeleteRole).not.toHaveBeenCalled();
+    expect(dbDeleteRole).not.toHaveBeenCalled();
   });
 
   it('should reject empty roleId', async () => {
@@ -461,12 +461,12 @@ describe('deleteCustomRole', () => {
     await expect(promise).rejects.toThrow('roleId must be a non-empty string');
   });
 
-  it('should handle Firestore deletion errors', async () => {
+  it('should handle database deletion errors', async () => {
     (isRoleInUse as any).mockResolvedValue(false);
-    (firestoreDeleteRole as any).mockRejectedValue(new Error('Firestore error'));
+    (dbDeleteRole as any).mockRejectedValue(new Error('Database error'));
 
     const promise = deleteCustomRole('role-1');
-    await expect(promise).rejects.toThrow('Firestore error');
+    await expect(promise).rejects.toThrow('Database error');
   });
 
   it('should provide meaningful error when role in use', async () => {
@@ -490,12 +490,12 @@ describe('seedDefaultRoles', () => {
 
   it('should seed default roles when collection is empty', async () => {
     (listRoles as any).mockResolvedValue([]);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     const created = await seedDefaultRoles('system');
 
     expect(created).toBe(7); // 7 default roles
-    expect(firestoreCreateRole).toHaveBeenCalledTimes(7);
+    expect(dbCreateRole).toHaveBeenCalledTimes(7);
   });
 
   it('should not seed if roles already exist', async () => {
@@ -504,16 +504,16 @@ describe('seedDefaultRoles', () => {
     const created = await seedDefaultRoles('system');
 
     expect(created).toBe(0);
-    expect(firestoreCreateRole).not.toHaveBeenCalled();
+    expect(dbCreateRole).not.toHaveBeenCalled();
   });
 
   it('should use custom userId for seeding', async () => {
     (listRoles as any).mockResolvedValue([]);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     await seedDefaultRoles('custom-user');
 
-    const calls = (firestoreCreateRole as any).mock.calls;
+    const calls = (dbCreateRole as any).mock.calls;
     calls.forEach((call: any[]) => {
       expect(call[2]).toBe('custom-user'); // createdBy is third parameter
     });
@@ -521,11 +521,11 @@ describe('seedDefaultRoles', () => {
 
   it('should default to system userId', async () => {
     (listRoles as any).mockResolvedValue([]);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     await seedDefaultRoles();
 
-    const calls = (firestoreCreateRole as any).mock.calls;
+    const calls = (dbCreateRole as any).mock.calls;
     calls.forEach((call: any[]) => {
       expect(call[2]).toBe('system');
     });
@@ -533,7 +533,7 @@ describe('seedDefaultRoles', () => {
 
   it('should seed all default roles with correct names', async () => {
     (listRoles as any).mockResolvedValue([]);
-    (firestoreCreateRole as any).mockResolvedValue(mockRole);
+    (dbCreateRole as any).mockResolvedValue(mockRole);
 
     await seedDefaultRoles('system');
 
@@ -547,7 +547,7 @@ describe('seedDefaultRoles', () => {
       'Marketing',
     ];
 
-    const calls = (firestoreCreateRole as any).mock.calls;
+    const calls = (dbCreateRole as any).mock.calls;
     const createdNames = calls.map((call: any[]) => call[0]);
 
     defaultRoles.forEach((role) => {
@@ -557,7 +557,7 @@ describe('seedDefaultRoles', () => {
 
   it('should continue seeding if one role fails', async () => {
     (listRoles as any).mockResolvedValue([]);
-    (firestoreCreateRole as any)
+    (dbCreateRole as any)
       .mockResolvedValueOnce(mockRole)
       .mockRejectedValueOnce(new Error('Failed to create Engineering'))
       .mockResolvedValue(mockRole);
@@ -570,7 +570,7 @@ describe('seedDefaultRoles', () => {
   });
 
   it('should handle listRoles failure', async () => {
-    (listRoles as any).mockRejectedValue(new Error('Firestore error'));
+    (listRoles as any).mockRejectedValue(new Error('Database error'));
 
     const promise = seedDefaultRoles('system');
     await expect(promise).rejects.toThrow('Failed to seed default roles');
@@ -602,8 +602,8 @@ describe('hasDefaultRoles', () => {
     expect(result).toBe(false);
   });
 
-  it('should handle Firestore errors gracefully', async () => {
-    (listRoles as any).mockRejectedValue(new Error('Firestore error'));
+  it('should handle database errors gracefully', async () => {
+    (listRoles as any).mockRejectedValue(new Error('Database error'));
 
     const result = await hasDefaultRoles();
 

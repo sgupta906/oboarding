@@ -35,7 +35,7 @@ export interface Database {
       // Core Tables (8) - from 00001_create_core_tables.sql
       // ================================================================
 
-      /** System users (employees, managers, admins). Firestore equivalent: 'users' collection. */
+      /** System users (employees, managers, admins). */
       users: {
         Row: {
           id: string;
@@ -64,7 +64,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Custom role definitions. Firestore equivalent: 'roles' collection. */
+      /** Custom role definitions. */
       roles: {
         Row: {
           id: string;
@@ -93,7 +93,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Department/role profiles. Firestore equivalent: 'profiles' collection. */
+      /** Department/role profiles. */
       profiles: {
         Row: {
           id: string;
@@ -119,7 +119,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Onboarding templates. Firestore equivalent: 'templates' collection. */
+      /** Onboarding templates. */
       templates: {
         Row: {
           id: string;
@@ -151,7 +151,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Profile-specific templates. Firestore equivalent: 'profileTemplates' collection. */
+      /** Profile-specific templates. */
       profile_templates: {
         Row: {
           id: string;
@@ -189,7 +189,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Active onboarding runs. Firestore equivalent: 'onboarding_instances' collection. */
+      /** Active onboarding runs. */
       onboarding_instances: {
         Row: {
           id: string;
@@ -236,7 +236,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Step feedback/suggestions. Firestore equivalent: 'suggestions' collection. */
+      /** Step feedback/suggestions. */
       suggestions: {
         Row: {
           id: string;
@@ -268,7 +268,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Audit trail. Firestore equivalent: 'activities' collection. */
+      /** Audit trail. */
       activities: {
         Row: {
           id: string;
@@ -307,7 +307,7 @@ export interface Database {
       // Step Child Tables (3) - from 00002_create_step_tables.sql
       // ================================================================
 
-      /** Steps belonging to a template. Firestore equivalent: Template.steps[] embedded array. */
+      /** Steps belonging to a template. */
       template_steps: {
         Row: {
           id: string;
@@ -348,7 +348,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Steps belonging to an onboarding instance. Firestore equivalent: OnboardingInstance.steps[] embedded array. */
+      /** Steps belonging to an onboarding instance. */
       instance_steps: {
         Row: {
           id: string;
@@ -389,7 +389,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Steps belonging to a profile template. Firestore equivalent: ProfileTemplate.steps[] embedded array. */
+      /** Steps belonging to a profile template. */
       profile_template_steps: {
         Row: {
           id: string;
@@ -434,7 +434,7 @@ export interface Database {
       // Junction Tables (5) - from 00003_create_junction_tables.sql
       // ================================================================
 
-      /** User role assignments. Firestore equivalent: User.roles[] embedded array. */
+      /** User role assignments. */
       user_roles: {
         Row: {
           user_id: string;
@@ -451,7 +451,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** User profile assignments. Firestore equivalent: User.profiles[] embedded array. */
+      /** User profile assignments. */
       user_profiles: {
         Row: {
           user_id: string;
@@ -468,7 +468,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Profile role tag assignments. Firestore equivalent: Profile.roleTags[] embedded array. */
+      /** Profile role tag assignments. */
       profile_role_tags: {
         Row: {
           profile_id: string;
@@ -485,7 +485,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Instance profile assignments. Firestore equivalent: OnboardingInstance.profileIds[] embedded array. */
+      /** Instance profile assignments. */
       instance_profiles: {
         Row: {
           instance_id: string;
@@ -502,7 +502,7 @@ export interface Database {
         Relationships: [];
       };
 
-      /** Instance template references. Firestore equivalent: OnboardingInstance.templateIds[] embedded array. */
+      /** Instance template references. */
       instance_template_refs: {
         Row: {
           instance_id: string;

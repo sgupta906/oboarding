@@ -1,6 +1,6 @@
 /**
  * Core Type Definitions for OnboardingHub
- * These types mirror the Firestore schema structure
+ * These types mirror the Supabase database schema
  */
 
 // ============================================================================
@@ -13,7 +13,7 @@ export const ROLE_NAME_PATTERN = /^[a-zA-Z0-9 \-]+$/; // Alphanumeric, regular s
 
 /**
  * Represents a custom role that can be assigned to employees
- * Maps to Firestore 'roles' collection
+ * Maps to Supabase 'roles' table
  */
 export interface CustomRole {
   id: string;
@@ -35,7 +35,7 @@ export interface RoleNameValidationResult {
 /**
  * Represents a profile/department with associated role tags
  * Allows employees and managers to filter steps by profile
- * Maps to Firestore 'profiles' collection
+ * Maps to Supabase 'profiles' table
  */
 export interface Profile {
   id: string;
@@ -49,7 +49,7 @@ export interface Profile {
 /**
  * Represents a profile-specific onboarding template
  * Contains shared step lists that can be assigned to multiple profiles
- * Maps to Firestore 'profileTemplates' collection
+ * Maps to Supabase 'profile_templates' table
  */
 export interface ProfileTemplate {
   id: string;
@@ -78,7 +78,7 @@ export interface ProfileTemplateValidationResult {
 
 /**
  * Represents a system user (employee/manager/admin)
- * Maps to Firestore 'users' collection
+ * Maps to Supabase 'users' table
  */
 export interface User {
   id: string;
@@ -112,7 +112,7 @@ export interface UserEmailValidationResult {
 
 /**
  * Represents a single onboarding step/task
- * Maps to Firestore 'steps' collection documents
+ * Represents a single onboarding step/task
  */
 export interface Step {
   id: number;
@@ -132,7 +132,7 @@ export type StepStatus = 'pending' | 'completed' | 'stuck';
 
 /**
  * Represents a suggestion or feedback on a step
- * Maps to Firestore 'suggestions' collection
+ * Maps to Supabase 'suggestions' table
  */
 export interface Suggestion {
   id: number | string;
@@ -238,7 +238,7 @@ export interface Activity {
 
 /**
  * Represents an onboarding template (standard flow for a role)
- * Maps to Firestore 'templates' collection
+ * Maps to Supabase 'templates' table
  */
 export interface Template {
   id: string;
@@ -253,7 +253,7 @@ export interface Template {
 
 /**
  * Represents a single instance of onboarding for an employee
- * Maps to Firestore 'onboarding_instances' collection
+ * Maps to Supabase 'onboarding_instances' table
  */
 export interface OnboardingInstance {
   id: string;
