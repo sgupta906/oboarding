@@ -167,7 +167,7 @@ export function CreateTemplateModal({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             aria-label="Save template"
           >
             {isSubmitting ? (
@@ -215,7 +215,7 @@ export function CreateTemplateModal({
             value={templateName}
             onChange={(e) => setTemplateName(e.target.value)}
             placeholder="e.g., Engineering Onboarding"
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
             required
             aria-required="true"
             aria-label="Template name"
@@ -242,7 +242,7 @@ export function CreateTemplateModal({
                     type="checkbox"
                     checked={selectedRoles.includes(role.name)}
                     onChange={() => handleRoleToggle(role.name)}
-                    className="w-4 h-4 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className="w-4 h-4 text-brand-600 rounded focus:ring-2 focus:ring-brand-500 cursor-pointer"
                     aria-label={`Include ${role.name} role`}
                     disabled={rolesLoading}
                   />
@@ -268,7 +268,7 @@ export function CreateTemplateModal({
                   value={s}
                   checked={status === s}
                   onChange={() => setStatus(s)}
-                  className="w-4 h-4 text-indigo-600 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-4 h-4 text-brand-600 focus:ring-2 focus:ring-brand-500 cursor-pointer"
                   aria-label={`Set status to ${s}`}
                 />
                 <span className="text-sm text-slate-700">{s}</span>
@@ -286,7 +286,7 @@ export function CreateTemplateModal({
             <button
               type="button"
               onClick={handleAddStep}
-              className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
+              className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 transition-colors"
               aria-label="Add new step"
             >
               <Plus size={16} />
@@ -319,7 +319,7 @@ export function CreateTemplateModal({
                     value={step.title}
                     onChange={(e) => handleStepChange(index, 'title', e.target.value)}
                     placeholder="Step title"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                     aria-label={`Step ${index + 1} title`}
                   />
                 </div>
@@ -340,7 +340,7 @@ export function CreateTemplateModal({
                     }
                     placeholder="Step description"
                     rows={2}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors resize-none"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
                     aria-label={`Step ${index + 1} description`}
                   />
                 </div>
@@ -362,7 +362,7 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'owner', e.target.value)
                       }
                       placeholder="e.g., IT Support"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} owner`}
                     />
                   </div>
@@ -381,7 +381,7 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'expert', e.target.value)
                       }
                       placeholder="e.g., John Doe"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} expert`}
                     />
                   </div>

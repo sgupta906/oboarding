@@ -98,7 +98,7 @@ export function ReportStuckModal({
               Expert Being Notified
             </p>
             <div className="flex items-center gap-2 mt-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              <div className="w-8 h-8 bg-gradient-to-br from-brand-400 to-brand-600 rounded-full flex items-center justify-center text-white text-xs font-bold">
                 {step.expert.charAt(0)}
               </div>
               <div>

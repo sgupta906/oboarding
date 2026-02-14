@@ -21,12 +21,12 @@ export function ManagerDashboardHeader({
 }: ManagerDashboardHeaderProps) {
   return (
     <div className="flex justify-between items-center">
-      <h1 className="text-2xl font-bold text-slate-900">
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
         Onboarding Dashboard
       </h1>
       <button
         onClick={onNewHireClick}
-        className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+        className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors"
         aria-label="Add a new employee onboarding. Use this for employees, interns, or contractors who need to complete onboarding steps."
         title="Add a new employee onboarding. Creates guided onboarding steps for the new hire."
       >

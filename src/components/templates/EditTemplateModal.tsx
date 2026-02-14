@@ -226,7 +226,7 @@ export function EditTemplateModal({
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 aria-label="Save template changes"
               >
                 {isSubmitting ? (
@@ -274,7 +274,7 @@ export function EditTemplateModal({
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
               required
               aria-required="true"
               aria-label="Template name"
@@ -294,7 +294,7 @@ export function EditTemplateModal({
                     type="checkbox"
                     checked={selectedRoles.includes(role)}
                     onChange={() => handleRoleToggle(role)}
-                    className="w-4 h-4 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className="w-4 h-4 text-brand-600 rounded focus:ring-2 focus:ring-brand-500 cursor-pointer"
                     aria-label={`Include ${role} role`}
                   />
                   <span className="text-sm text-slate-700">{role}</span>
@@ -318,7 +318,7 @@ export function EditTemplateModal({
                     value={s}
                     checked={status === s}
                     onChange={() => setStatus(s)}
-                    className="w-4 h-4 text-indigo-600 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className="w-4 h-4 text-brand-600 focus:ring-2 focus:ring-brand-500 cursor-pointer"
                     aria-label={`Set status to ${s}`}
                   />
                   <span className="text-sm text-slate-700">{s}</span>
@@ -336,7 +336,7 @@ export function EditTemplateModal({
               <button
                 type="button"
                 onClick={handleAddStep}
-                className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
+                className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 transition-colors"
                 aria-label="Add new step"
               >
                 <Plus size={16} />
@@ -370,7 +370,7 @@ export function EditTemplateModal({
                       onChange={(e) =>
                         handleStepChange(index, 'title', e.target.value)
                       }
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} title`}
                     />
                   </div>
@@ -390,7 +390,7 @@ export function EditTemplateModal({
                         handleStepChange(index, 'description', e.target.value)
                       }
                       rows={2}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors resize-none"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
                       aria-label={`Step ${index + 1} description`}
                     />
                   </div>
@@ -411,7 +411,7 @@ export function EditTemplateModal({
                         onChange={(e) =>
                           handleStepChange(index, 'owner', e.target.value)
                         }
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                         aria-label={`Step ${index + 1} owner`}
                       />
                     </div>
@@ -429,7 +429,7 @@ export function EditTemplateModal({
                         onChange={(e) =>
                           handleStepChange(index, 'expert', e.target.value)
                         }
-                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                         aria-label={`Step ${index + 1} expert`}
                       />
                     </div>

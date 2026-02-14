@@ -108,13 +108,13 @@ export function ManagerView({
       <ManagerDashboardHeader onNewHireClick={handleOpenCreateOnboarding} />
 
       {/* Tab Navigation */}
-      <div className="flex gap-4 border-b border-slate-200">
+      <div className="flex gap-4 border-b border-slate-200 dark:border-slate-700">
         <button
           onClick={() => setActiveTab('dashboard')}
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
             activeTab === 'dashboard'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Show dashboard view"
           aria-current={activeTab === 'dashboard' ? 'page' : undefined}
@@ -125,8 +125,8 @@ export function ManagerView({
           onClick={() => setActiveTab('roles')}
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
             activeTab === 'roles'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Show roles management view"
           aria-current={activeTab === 'roles' ? 'page' : undefined}
@@ -137,8 +137,8 @@ export function ManagerView({
           onClick={() => setActiveTab('users')}
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
             activeTab === 'users'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
           aria-label="Show users management view"
           aria-current={activeTab === 'users' ? 'page' : undefined}
@@ -149,8 +149,8 @@ export function ManagerView({
 
       {/* Success Toast Message */}
       {successMessage && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-          <p className="text-sm font-medium text-emerald-800">{successMessage}</p>
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">{successMessage}</p>
         </div>
       )}
 
@@ -187,15 +187,15 @@ export function ManagerView({
 
       {/* Roles Tab Content */}
       {activeTab === 'roles' && (
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <RoleManagementPanel userId="system" />
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <RoleManagementPanel />
         </div>
       )}
 
       {/* Users Tab Content */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <UsersPanel userId="system" />
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <UsersPanel />
         </div>
       )}
 

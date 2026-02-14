@@ -87,10 +87,10 @@ export function SuggestEditModal({
         <button
           onClick={(e) => handleSubmit(e)}
           disabled={!isValid || isSubmitting}
-          className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 ${
+          className={`px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition-all duration-200 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 ${
             isValid && !isSubmitting
-              ? 'text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95'
-              : 'text-white bg-indigo-400 opacity-60 cursor-not-allowed'
+              ? 'text-white bg-brand-600 hover:bg-brand-700 active:scale-95'
+              : 'text-white bg-brand-400 opacity-60 cursor-not-allowed'
           }`}
           aria-label={isSubmitting ? 'Submitting suggestion' : 'Submit suggestion'}
           title={!isValid ? 'Suggestion must be between 10 and 500 characters' : undefined}
@@ -129,8 +129,8 @@ export function SuggestEditModal({
               showValidation && isTooShort
                 ? 'border-amber-300 bg-amber-50 focus:ring-amber-500'
                 : isValid || text.length === 0
-                  ? 'border-slate-200 focus:ring-indigo-500 focus:border-transparent'
-                  : 'border-slate-200 focus:ring-indigo-500 focus:border-transparent'
+                  ? 'border-slate-200 focus:ring-brand-500 focus:border-transparent'
+                  : 'border-slate-200 focus:ring-brand-500 focus:border-transparent'
             }`}
             placeholder="e.g., The screenshot is outdated, the button is actually green... (minimum 10 characters)"
             value={text}

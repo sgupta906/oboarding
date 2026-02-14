@@ -145,7 +145,7 @@ export function CreateUserModal({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || rolesLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             aria-label="Create user"
           >
             {isSubmitting ? (
@@ -189,10 +189,10 @@ export function CreateUserModal({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="e.g., john.doe@company.com"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.email
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -220,10 +220,10 @@ export function CreateUserModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g., John Doe"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.name
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -259,7 +259,7 @@ export function CreateUserModal({
                     type="checkbox"
                     checked={selectedRoles.includes(role.name)}
                     onChange={() => handleRoleChange(role.name)}
-                    className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                     aria-label={`Select role: ${role.name}`}
                     disabled={isSubmitting}
                   />
@@ -291,7 +291,7 @@ export function CreateUserModal({
                   type="checkbox"
                   checked={selectedProfiles.includes(profile)}
                   onChange={() => handleProfileChange(profile)}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                   aria-label={`Select profile: ${profile}`}
                   disabled={isSubmitting}
                 />

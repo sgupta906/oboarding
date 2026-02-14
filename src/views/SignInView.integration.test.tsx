@@ -61,7 +61,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'test-manager@example.com');
@@ -88,7 +88,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'unknown@example.com');
@@ -107,7 +107,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       // Submit button should be disabled without email
@@ -132,7 +132,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'test-manager@example.com');
@@ -158,7 +158,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'test-manager@example.com');
@@ -185,7 +185,7 @@ describe('SignInView Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address') as HTMLInputElement;
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'test-manager@example.com');
@@ -248,7 +248,7 @@ describe('SignInView Integration', () => {
       // Tab to submit button
       await user.tab();
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
       expect(submitButton).toHaveFocus();
 

@@ -41,7 +41,7 @@ interface UseRolesReturn {
  * @param userId - Current user ID for role creation operations (defaults to 'system')
  * @returns Object with roles data, loading state, error state, and operations
  */
-export function useRoles(userId: string = 'system'): UseRolesReturn {
+export function useRoles(userId?: string): UseRolesReturn {
   const [roles, setRoles] = useState<CustomRole[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,11 +86,11 @@ export function useRoles(userId: string = 'system'): UseRolesReturn {
     async (
       name: string,
       description?: string,
-      createdBy: string = userId
+      createdBy?: string
     ): Promise<CustomRole> => {
       try {
         setError(null);
-        const newRole = await createCustomRole(name, description, createdBy);
+        const newRole = await createCustomRole(name, description, createdBy ?? userId ?? null);
         // Note: Real-time subscription will update the roles list
         return newRole;
       } catch (err) {

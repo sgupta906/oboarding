@@ -154,7 +154,7 @@ export function CreateRoleModal({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !isFormValid}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
             aria-label="Create role"
             aria-busy={isSubmitting}
           >
@@ -199,12 +199,12 @@ export function CreateRoleModal({
               onBlur={() => setTouched((prev) => ({ ...prev, name: true }))}
               placeholder="e.g., Senior Developer"
               maxLength={MAX_ROLE_NAME_LENGTH}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors pr-10 ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors pr-10 ${
                 touched.name && validationState.name.error
                   ? 'border-red-300 bg-red-50 focus:ring-red-500'
                   : touched.name && validationState.name.valid
                     ? 'border-emerald-300 bg-emerald-50 focus:ring-emerald-500'
-                    : 'border-slate-300 focus:ring-indigo-500'
+                    : 'border-slate-300 focus:ring-brand-500'
               }`}
               required
               aria-required="true"
@@ -254,12 +254,12 @@ export function CreateRoleModal({
               placeholder="Describe this role and its responsibilities..."
               maxLength={MAX_DESCRIPTION_LENGTH}
               rows={4}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors resize-none ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors resize-none ${
                 touched.description && validationState.description.error
                   ? 'border-red-300 bg-red-50 focus:ring-red-500'
                   : touched.description && validationState.description.valid && description.trim()
                     ? 'border-emerald-300 bg-emerald-50 focus:ring-emerald-500'
-                    : 'border-slate-300 focus:ring-indigo-500'
+                    : 'border-slate-300 focus:ring-brand-500'
               }`}
               aria-invalid={touched.description && !!validationState.description.error}
               aria-describedby={

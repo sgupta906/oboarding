@@ -319,16 +319,13 @@ describe('createCustomRole', () => {
     await expect(promise).rejects.toThrow('Invalid role description');
   });
 
-  it('should reject empty createdBy', async () => {
+  it('should accept null createdBy', async () => {
     (roleNameExists as any).mockResolvedValue(false);
-    const promise = createCustomRole('NewRole', 'desc', '');
-    await expect(promise).rejects.toThrow('createdBy must be a non-empty string');
-  });
+    (dbCreateRole as any).mockResolvedValue({ ...mockRole, createdBy: null });
 
-  it('should reject null createdBy', async () => {
-    (roleNameExists as any).mockResolvedValue(false);
-    const promise = createCustomRole('NewRole', 'desc', null as any);
-    await expect(promise).rejects.toThrow('createdBy must be a non-empty string');
+    const result = await createCustomRole('NewRole', 'desc', null);
+    expect(result.createdBy).toBeNull();
+    expect(dbCreateRole).toHaveBeenCalledWith('NewRole', 'desc', null);
   });
 
   it('should trim whitespace from name before creation', async () => {
@@ -519,7 +516,7 @@ describe('seedDefaultRoles', () => {
     });
   });
 
-  it('should default to system userId', async () => {
+  it('should default to null userId', async () => {
     (listRoles as any).mockResolvedValue([]);
     (dbCreateRole as any).mockResolvedValue(mockRole);
 
@@ -527,7 +524,7 @@ describe('seedDefaultRoles', () => {
 
     const calls = (dbCreateRole as any).mock.calls;
     calls.forEach((call: any[]) => {
-      expect(call[2]).toBe('system');
+      expect(call[2]).toBeNull();
     });
   });
 

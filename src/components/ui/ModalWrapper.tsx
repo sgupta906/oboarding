@@ -69,19 +69,19 @@ export function ModalWrapper({
       }}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${sizeClass} overflow-hidden animate-in fade-in zoom-in duration-200`}
+        className={`bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full ${sizeClass} overflow-hidden animate-in fade-in zoom-in duration-200`}
         role="dialog"
         aria-labelledby="modal-title"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 flex justify-between items-start gap-4">
-          <h3 id="modal-title" className="text-lg font-bold text-slate-900">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex justify-between items-start gap-4">
+          <h3 id="modal-title" className="text-lg font-bold text-slate-900 dark:text-white">
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded-lg p-1"
+            className="text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 rounded-lg p-1"
             aria-label="Close modal"
             title="Press Escape to close"
           >
@@ -96,7 +96,7 @@ export function ModalWrapper({
 
         {/* Footer */}
         {footer && (
-          <div className="bg-slate-50 p-4 border-t border-slate-200">
+          <div className="bg-slate-50 dark:bg-slate-700 p-4 border-t border-slate-200 dark:border-slate-700">
             {footer}
           </div>
         )}

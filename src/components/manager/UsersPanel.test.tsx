@@ -24,6 +24,15 @@ vi.mock('../../hooks', () => ({
     isLoading: false,
   }),
 }));
+vi.mock('../../config/authContext', () => ({
+  useAuth: () => ({
+    user: { uid: 'test-manager-uid', email: 'test-manager@example.com', role: 'manager' },
+    role: 'manager',
+    loading: false,
+    isAuthenticated: true,
+    signOut: vi.fn(),
+  }),
+}));
 
 describe('UsersPanel Component', () => {
   const mockUsers: User[] = [
@@ -67,7 +76,7 @@ describe('UsersPanel Component', () => {
   });
 
   it('should render users panel with header', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('User Administration')).toBeInTheDocument();
     expect(screen.getByText('Manage system users, assign roles and profiles')).toBeInTheDocument();
@@ -80,7 +89,7 @@ describe('UsersPanel Component', () => {
       isLoading: true,
     });
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('Loading users...')).toBeInTheDocument();
   });
@@ -91,14 +100,14 @@ describe('UsersPanel Component', () => {
       users: [],
     });
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('No users yet')).toBeInTheDocument();
     expect(screen.getByText('Create your first user to get started')).toBeInTheDocument();
   });
 
   it('should display users in table', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('jane@company.com')).toBeInTheDocument();
@@ -106,21 +115,21 @@ describe('UsersPanel Component', () => {
   });
 
   it('should display user roles as badges', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const badges = screen.getAllByText('employee');
     expect(badges.length).toBeGreaterThan(0);
   });
 
   it('should display user profiles', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('Engineering')).toBeInTheDocument();
     expect(screen.getByText('Sales')).toBeInTheDocument();
   });
 
   it('should open create modal when clicking new user button', async () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const newUserButton = screen.getByLabelText(/Add a system user/i);
     fireEvent.click(newUserButton);
@@ -143,7 +152,7 @@ describe('UsersPanel Component', () => {
 
     mockUseUsers.createNewUser.mockResolvedValue(newUser);
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const newUserButton = screen.getByLabelText(/Add a system user/i);
     fireEvent.click(newUserButton);
@@ -170,7 +179,7 @@ describe('UsersPanel Component', () => {
 
     mockUseUsers.createNewUser.mockResolvedValue(newUser);
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     // In real scenario, this would be triggered by form submission
     // Verify that if it were called, logging would work
@@ -178,21 +187,21 @@ describe('UsersPanel Component', () => {
   });
 
   it('should display edit button for each user', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const editButtons = screen.getAllByLabelText(/Edit user/);
     expect(editButtons.length).toBe(mockUsers.length);
   });
 
   it('should display delete button for each user', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const deleteButtons = screen.getAllByLabelText(/Delete user/);
     expect(deleteButtons.length).toBe(mockUsers.length);
   });
 
   it('should open edit modal when clicking edit button', async () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const editButton = screen.getByLabelText('Edit user John Doe');
     fireEvent.click(editButton);
@@ -205,7 +214,7 @@ describe('UsersPanel Component', () => {
   it('should confirm before deleting user', async () => {
     const windowConfirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const deleteButton = screen.getByLabelText('Delete user John Doe');
     fireEvent.click(deleteButton);
@@ -222,7 +231,7 @@ describe('UsersPanel Component', () => {
 
     mockUseUsers.removeUser.mockResolvedValue(undefined);
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     const deleteButton = screen.getByLabelText('Delete user John Doe');
     fireEvent.click(deleteButton);
@@ -238,7 +247,7 @@ describe('UsersPanel Component', () => {
       error: 'Failed to load users',
     });
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     expect(screen.getByText('Failed to load users')).toBeInTheDocument();
   });
@@ -256,7 +265,7 @@ describe('UsersPanel Component', () => {
 
     mockUseUsers.createNewUser.mockResolvedValue(newUser);
 
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     // In real scenario, this would be triggered by form submission
     // Verify that success messages can be displayed
@@ -264,7 +273,7 @@ describe('UsersPanel Component', () => {
   });
 
   it('should be accessible with proper ARIA labels', () => {
-    render(<UsersPanel userId="admin-1" />);
+    render(<UsersPanel />);
 
     // Check for proper button labels
     expect(screen.getByLabelText(/Add a system user/i)).toBeInTheDocument();

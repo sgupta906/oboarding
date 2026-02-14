@@ -103,7 +103,7 @@ export async function isRoleInUse(roleId: string): Promise<boolean> {
 export async function createRole(
   name: string,
   description: string | undefined,
-  createdBy: string
+  createdBy: string | null
 ): Promise<CustomRole> {
   const now = toISO(Date.now());
   const trimmedName = name.trim();

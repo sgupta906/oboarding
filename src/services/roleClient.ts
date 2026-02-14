@@ -180,7 +180,7 @@ export function validateRoleDescription(
 export async function createCustomRole(
   name: string,
   description: string | undefined,
-  createdBy: string
+  createdBy: string | null
 ): Promise<CustomRole> {
   // Validate name
   const nameValidation = validateRoleName(name);
@@ -198,11 +198,6 @@ export async function createCustomRole(
   const descValidation = validateRoleDescription(description);
   if (!descValidation.valid) {
     throw new Error(`Invalid role description: ${descValidation.error}`);
-  }
-
-  // Validate createdBy
-  if (!createdBy || typeof createdBy !== 'string' || createdBy.trim().length === 0) {
-    throw new Error('createdBy must be a non-empty string');
   }
 
   // All validation passed, create the role
@@ -303,7 +298,7 @@ export async function deleteCustomRole(roleId: string): Promise<void> {
  * @param userId - User ID for createdBy field (defaults to 'system')
  * @returns Promise resolving to number of roles created
  */
-export async function seedDefaultRoles(userId: string = 'system'): Promise<number> {
+export async function seedDefaultRoles(userId: string | null = null): Promise<number> {
   try {
     const existingRoles = await listRoles();
 

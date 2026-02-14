@@ -51,14 +51,14 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
     return (
       <Card className="p-8 text-center">
         <div className="flex justify-center mb-3">
-          <div className="p-3 rounded-full bg-slate-100">
+          <div className="p-3 rounded-full bg-slate-100 dark:bg-slate-700">
             <ActivityIcon size={24} className="text-slate-400" />
           </div>
         </div>
-        <p className="text-slate-600 font-medium">
+        <p className="text-slate-600 dark:text-slate-300 font-medium">
           No activity yet
         </p>
-        <p className="text-slate-400 text-sm mt-1">
+        <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">
           Employee actions will appear here
         </p>
       </Card>
@@ -70,21 +70,21 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
       {/* Collapsable Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors duration-150 border-b border-slate-100"
+        className="flex items-center justify-between w-full px-4 py-3 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors duration-150 border-b border-slate-100 dark:border-slate-700"
         aria-expanded={isExpanded}
         aria-label={isExpanded ? 'Collapse activity feed' : 'Expand activity feed'}
       >
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-900">
+          <span className="text-sm font-semibold text-slate-900 dark:text-white">
             Activity Feed
           </span>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">
             {limitedActivities.length}
           </span>
         </div>
         <ChevronDown
           size={18}
-          className={`text-slate-600 transition-transform duration-200 ${
+          className={`text-slate-600 dark:text-slate-400 transition-transform duration-200 ${
             isExpanded ? 'transform rotate-180' : ''
           }`}
         />
@@ -92,22 +92,22 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
 
       {/* Activity List - Scrollable Content */}
       {isExpanded && (
-        <div className="overflow-y-auto max-h-[400px] divide-y divide-slate-100">
+        <div className="overflow-y-auto max-h-[400px] divide-y divide-slate-100 dark:divide-slate-700">
           {limitedActivities.map((activity) => (
             <div
               key={activity.id}
-              className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors duration-150 group"
+              className="p-4 flex items-start gap-4 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors duration-150 group"
             >
               {/* User Avatar Circle */}
               <div className="flex-shrink-0">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm group-hover:shadow-md transition-shadow">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-xs font-bold text-white shadow-sm group-hover:shadow-md transition-shadow">
                   {activity.userInitials}
                 </div>
               </div>
 
               {/* Activity Content */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 break-words">
+                <p className="text-sm font-medium text-slate-900 dark:text-white break-words">
                   <span className="font-semibold">{activity.userInitials}</span>{' '}
                   {activity.action}
                 </p>
@@ -123,7 +123,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
 
           {/* Show more indicator if there are more activities */}
           {activities.length > 10 && (
-            <div className="p-3 text-center text-xs text-slate-500 bg-slate-50 font-medium">
+            <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-700 font-medium">
               Showing 10 of {activities.length} activities
             </div>
           )}

@@ -20,8 +20,8 @@ export function ActivitySection({ activities }: ActivitySectionProps) {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
-          <Clock size={18} className="text-indigo-600" />
-          <h2 className="text-lg font-bold text-slate-900">
+          <Clock size={18} className="text-brand-600" />
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">
             Live Activity
           </h2>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DarkModeProvider } from './context/DarkModeContext';
 import { AuthProvider, useAuth } from './config/authContext';
 import { OnboardingHub } from './components/OnboardingHub';
@@ -21,7 +21,25 @@ function AppContent() {
   };
 
   const [currentView, setCurrentView] = useState<'employee' | 'manager'>(getInitialView);
+  const previousRoleRef = useRef<typeof role>(undefined);
   const [currentRoute, setCurrentRoute] = useState<'templates' | 'onboarding' | 'sign-out'>('onboarding');
+
+  // Set correct initial view when role resolves or changes (e.g. sign-out then sign-in as different user)
+  useEffect(() => {
+    // Only act when role transitions from null/undefined to an actual value
+    if (role !== null && previousRoleRef.current !== role) {
+      previousRoleRef.current = role;
+      if (role === 'manager' || role === 'admin') {
+        setCurrentView('manager');
+      } else {
+        setCurrentView('employee');
+      }
+    }
+    // Reset tracking when user signs out (role becomes null)
+    if (role === null) {
+      previousRoleRef.current = undefined;
+    }
+  }, [role]);
 
   // Handle hash-based routing
   useEffect(() => {
@@ -47,7 +65,7 @@ function AppContent() {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto" />
+          <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mx-auto" />
           <p className="text-slate-600 dark:text-slate-400">Loading...</p>
         </div>
       </div>
@@ -88,12 +106,10 @@ function AppContent() {
     );
   }
 
-  // Show main onboarding experience if authenticated (with NavBar for managers)
+  // Show main onboarding experience if authenticated (NavBar for ALL authenticated users)
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-      {canAccessTemplates && (
-        <NavBar currentView={currentView} onViewChange={setCurrentView} />
-      )}
+      <NavBar currentView={currentView} onViewChange={setCurrentView} />
       <OnboardingHub currentView={currentView} onViewChange={setCurrentView} />
     </div>
   );

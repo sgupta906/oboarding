@@ -133,15 +133,15 @@ export function SignInView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="bg-indigo-600 text-white p-2 rounded-lg">
+          <div className="bg-brand-600 text-white p-2 rounded-lg">
             <ChevronRight size={24} strokeWidth={3} />
           </div>
           <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-            Onboard<span className="text-indigo-600">Hub</span>
+            Onboard<span className="text-brand-600">Hub</span>
           </span>
         </div>
 
@@ -204,7 +204,7 @@ export function SignInView() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 disabled={loading || submitted}
-                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               />
             </div>
 
@@ -212,7 +212,7 @@ export function SignInView() {
             <button
               type="submit"
               disabled={loading || submitted || !email}
-              className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -221,8 +221,8 @@ export function SignInView() {
                 </>
               ) : (
                 <>
-                  <Mail size={18} />
-                  Send Sign-In Link
+                  <LogIn size={18} />
+                  Sign In
                 </>
               )}
             </button>
@@ -238,7 +238,7 @@ export function SignInView() {
             {isEmulatorMode && (
               <div className="mb-4 space-y-2">
                 <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                  Quick Login (Emulator Mode):
+                  Quick Login (Dev Mode):
                 </p>
                 <div className="grid grid-cols-1 gap-2">
                   {TEST_ACCOUNTS.map((account) => (

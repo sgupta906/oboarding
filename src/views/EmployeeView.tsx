@@ -36,8 +36,8 @@ function EmployeeHeader() {
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Employee Status Indicator */}
         <div className="flex items-center gap-2">
-          <div className="bg-indigo-100 dark:bg-indigo-900 rounded-lg p-2">
-            <Shield size={20} className="text-indigo-600 dark:text-indigo-400" />
+          <div className="bg-brand-100 dark:bg-brand-900 rounded-lg p-2">
+            <Shield size={20} className="text-brand-600 dark:text-brand-400" />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-semibold text-slate-900 dark:text-white">

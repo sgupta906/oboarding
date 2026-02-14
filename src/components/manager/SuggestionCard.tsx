@@ -56,7 +56,7 @@ export function SuggestionCard({
             {stepTitle.length > 20 ? '...' : ''}
           </Badge>
           {/* Priority indicator - optional, can be based on step frequency */}
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 text-xs font-medium">
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs font-medium">
             <AlertCircle size={12} />
             Pending
           </div>
@@ -64,14 +64,14 @@ export function SuggestionCard({
         <span className="text-xs text-slate-400 whitespace-nowrap">{timeAgo}</span>
       </div>
 
-      <p className="text-sm text-slate-700 mb-3 leading-relaxed">
+      <p className="text-sm text-slate-700 dark:text-slate-300 mb-3 leading-relaxed">
         {suggestion.text}
       </p>
 
       <div className="flex justify-between items-center">
-        <div className="text-xs text-slate-500 font-medium">
+        <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
           Suggested by{' '}
-          <span className="text-slate-700 font-semibold">
+          <span className="text-slate-700 dark:text-slate-300 font-semibold">
             {suggestion.user}
           </span>
         </div>

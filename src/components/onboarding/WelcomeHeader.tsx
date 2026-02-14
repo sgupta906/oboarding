@@ -36,13 +36,13 @@ export function WelcomeHeader({
       : `${safeProgress}% complete`;
 
   return (
-    <div className="bg-gradient-to-r from-indigo-600 to-violet-600 rounded-2xl p-8 text-white shadow-xl">
+    <div className="bg-gradient-to-r from-brand-600 to-brand-400 rounded-2xl p-8 text-white shadow-xl">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h1 className="text-3xl font-bold mb-2">
             Welcome to the Team, {employeeName}!
           </h1>
-          <p className="text-indigo-100">Day 1 Onboarding • {team}</p>
+          <p className="text-brand-100">Day 1 Onboarding • {team}</p>
         </div>
 
         {/* Profile Selector Dropdown */}
@@ -50,7 +50,7 @@ export function WelcomeHeader({
           <div className="flex flex-col items-end">
             <label
               htmlFor="profile-selector"
-              className="text-sm font-medium text-indigo-100 mb-2"
+              className="text-sm font-medium text-brand-100 mb-2"
             >
               Filter by Role:
             </label>

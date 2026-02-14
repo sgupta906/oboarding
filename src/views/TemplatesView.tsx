@@ -132,7 +132,7 @@ export function TemplatesView() {
           </div>
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
             aria-label="Create new template"
           >
             <Plus size={20} />
@@ -154,7 +154,7 @@ export function TemplatesView() {
         {isLoading && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center space-y-4">
-              <Loader2 className="w-12 h-12 text-indigo-600 dark:text-indigo-400 animate-spin mx-auto" />
+              <Loader2 className="w-12 h-12 text-brand-600 dark:text-brand-400 animate-spin mx-auto" />
               <p className="text-slate-600 dark:text-slate-400">
                 Loading templates...
               </p>
@@ -200,7 +200,7 @@ export function TemplatesView() {
             </p>
             <button
               onClick={() => setCreateModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors"
               aria-label="Create your first template"
             >
               <Plus size={20} />
@@ -274,7 +274,7 @@ export function TemplatesView() {
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex gap-2">
                   <button
                     onClick={() => handleEditClick(template)}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950 rounded transition-colors"
                     aria-label={`Edit template: ${template.name}`}
                     title="Edit template"
                   >

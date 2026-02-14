@@ -13,6 +13,17 @@ import type { CustomRole } from '../../types';
 // Mock the useRoles hook
 vi.mock('../../hooks/useRoles');
 
+// Mock the useAuth hook
+vi.mock('../../config/authContext', () => ({
+  useAuth: () => ({
+    user: { uid: 'test-manager-uid', email: 'test-manager@example.com', role: 'manager' },
+    role: 'manager',
+    loading: false,
+    isAuthenticated: true,
+    signOut: vi.fn(),
+  }),
+}));
+
 const mockRoles: CustomRole[] = [
   {
     id: '1',
@@ -470,17 +481,10 @@ describe('RoleManagementPanel', () => {
   });
 
   describe('User ID Tracking', () => {
-    it('passes userId to useRoles hook', () => {
-      const userId = 'user-123';
-      render(<RoleManagementPanel userId={userId} />);
-
-      expect(rolesHook.useRoles).toHaveBeenCalledWith(userId);
-    });
-
-    it('uses default userId when not provided', () => {
+    it('passes auth user uid to useRoles hook', () => {
       render(<RoleManagementPanel />);
 
-      expect(rolesHook.useRoles).toHaveBeenCalledWith('system');
+      expect(rolesHook.useRoles).toHaveBeenCalledWith('test-manager-uid');
     });
   });
 });

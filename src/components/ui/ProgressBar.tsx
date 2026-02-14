@@ -6,7 +6,7 @@
 import type { ProgressBarProps } from '../../types';
 
 const variantMap = {
-  default: 'bg-indigo-600',
+  default: 'bg-brand-600',
   success: 'bg-emerald-600',
   warning: 'bg-amber-600',
   error: 'bg-rose-600',

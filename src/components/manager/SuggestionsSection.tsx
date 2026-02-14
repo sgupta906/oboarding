@@ -38,8 +38,8 @@ export function SuggestionsSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <Edit3 size={18} className="text-indigo-600" />
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <Edit3 size={18} className="text-brand-600" />
           Documentation Feedback
           <span className="ml-2 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
             {pendingSuggestions.length}
@@ -50,14 +50,14 @@ export function SuggestionsSection({
       {pendingSuggestions.length === 0 ? (
         <Card className="p-8 text-center">
           <div className="flex justify-center mb-3">
-            <div className="p-3 rounded-full bg-emerald-100">
+            <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
               <CheckCircle size={24} className="text-emerald-600" />
             </div>
           </div>
-          <p className="text-slate-600 font-medium">
+          <p className="text-slate-600 dark:text-slate-300 font-medium">
             All caught up!
           </p>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">
             No pending suggestions at this time.
           </p>
         </Card>

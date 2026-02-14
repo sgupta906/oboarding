@@ -48,14 +48,14 @@ export function SignOutView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="bg-indigo-600 text-white p-2 rounded-lg">
+          <div className="bg-brand-600 text-white p-2 rounded-lg">
             <ChevronRight size={24} strokeWidth={3} />
           </div>
           <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-            Onboard<span className="text-indigo-600">Hub</span>
+            Onboard<span className="text-brand-600">Hub</span>
           </span>
         </div>
 
@@ -64,9 +64,9 @@ export function SignOutView() {
             <>
               <div className="flex justify-center">
                 <div className="relative w-16 h-16 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-4 border-indigo-100 dark:border-slate-700"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-600 dark:border-t-indigo-500 animate-spin"></div>
-                  <LogOut size={24} className="text-indigo-600 dark:text-indigo-400 relative z-10" />
+                  <div className="absolute inset-0 rounded-full border-4 border-brand-100 dark:border-slate-700"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-brand-600 dark:border-t-brand-500 animate-spin"></div>
+                  <LogOut size={24} className="text-brand-600 dark:text-brand-400 relative z-10" />
                 </div>
               </div>
               <div className="text-center space-y-2">
@@ -93,7 +93,7 @@ export function SignOutView() {
               </div>
               <button
                 onClick={handleReturnToSignIn}
-                className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 <LogOut size={18} />
                 Return to Sign In
@@ -114,7 +114,7 @@ export function SignOutView() {
               </div>
               <button
                 onClick={handleReturnToSignIn}
-                className="w-full px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
+                className="w-full px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2"
               >
                 <LogOut size={18} />
                 Return to Sign In

@@ -28,13 +28,13 @@ export function StepCard({
   const borderColorMap = {
     stuck: 'border-l-rose-500 ring-2 ring-rose-100 bg-rose-50/30',
     completed: 'border-l-emerald-500 bg-emerald-50/20',
-    pending: 'border-l-indigo-500',
+    pending: 'border-l-brand-500',
   };
 
   const indicatorBgMap = {
     stuck: 'bg-rose-500 animate-pulse ring-2 ring-rose-200',
     completed: 'bg-emerald-500',
-    pending: 'bg-indigo-600',
+    pending: 'bg-brand-600',
   };
 
   const isStuck = step.status === 'stuck';

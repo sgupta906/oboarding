@@ -9,21 +9,21 @@ import { Card } from '../ui';
 import type { KPICardProps } from '../../types';
 
 const colorBgMap = {
-  success: 'bg-emerald-50 border-l-emerald-500 hover:bg-emerald-100',
-  error: 'bg-rose-50 border-l-rose-500 hover:bg-rose-100',
-  warning: 'bg-amber-50 border-l-amber-500 hover:bg-amber-100',
+  success: 'bg-emerald-50 dark:bg-emerald-900/30 border-l-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/50',
+  error: 'bg-rose-50 dark:bg-rose-900/30 border-l-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/50',
+  warning: 'bg-amber-50 dark:bg-amber-900/30 border-l-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/50',
 };
 
 const colorTextMap = {
-  success: 'text-emerald-600',
-  error: 'text-rose-600',
-  warning: 'text-amber-600',
+  success: 'text-emerald-600 dark:text-emerald-400',
+  error: 'text-rose-600 dark:text-rose-400',
+  warning: 'text-amber-600 dark:text-amber-400',
 };
 
 const colorIconBgMap = {
-  success: 'bg-emerald-100 text-emerald-600',
-  error: 'bg-rose-100 text-rose-600',
-  warning: 'bg-amber-100 text-amber-600',
+  success: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+  error: 'bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400',
+  warning: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400',
 };
 
 interface EnhancedKPICardProps extends KPICardProps {
@@ -59,8 +59,8 @@ export function KPICard({
       >
         <div className="flex justify-between items-start">
           <div>
-            <p className="text-slate-500 text-sm font-medium">{label}</p>
-            <h3 className="text-4xl font-bold text-slate-900 mt-2 transition-transform duration-200 hover:scale-105">
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{label}</p>
+            <h3 className="text-4xl font-bold text-slate-900 dark:text-white mt-2 transition-transform duration-200 hover:scale-105">
               {value}
             </h3>
           </div>

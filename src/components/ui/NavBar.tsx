@@ -43,11 +43,11 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 text-white p-1.5 rounded-lg">
+          <div className="bg-brand-600 text-white p-1.5 rounded-lg">
             <ChevronRight size={20} strokeWidth={3} />
           </div>
           <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
-            Onboard<span className="text-indigo-600">Hub</span>
+            Onboard<span className="text-brand-600">Hub</span>
           </span>
         </div>
 
@@ -58,7 +58,7 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
               {/* Templates Link */}
               <a
                 href="#/templates"
-                className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
                 aria-label="Go to Templates"
               >
                 Templates
@@ -105,7 +105,7 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
           {/* Dark Mode Toggle Button */}
           <button
             onClick={toggleDarkMode}
-            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+            className="p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
             aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             title={isDarkMode ? 'Light mode' : 'Dark mode'}
           >

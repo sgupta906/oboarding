@@ -7,21 +7,20 @@
 import { useState } from 'react';
 import { Users, Edit2, Trash2, Plus } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
+import { useAuth } from '../../config/authContext';
 import { CreateUserModal, EditUserModal } from '../modals';
 import { logActivity } from '../../services/supabase';
 import type { User, UserFormData } from '../../types';
-
-interface UsersPanelProps {
-  userId: string; // ID of the manager performing the action
-}
 
 /**
  * Renders the user management panel for managers
  * Displays list of users with CRUD operations
  * Logs all operations to activity feed
- * @param userId - ID of the manager performing actions (for audit logging)
+ * Gets the current user ID from useAuth() for audit logging
  */
-export function UsersPanel({ userId }: UsersPanelProps) {
+export function UsersPanel() {
+  const { user } = useAuth();
+  const userId = user?.uid ?? 'unknown';
   const { users, isLoading, error: hookError, createNewUser, editUser, removeUser, reset } = useUsers();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -215,7 +214,7 @@ export function UsersPanel({ userId }: UsersPanelProps) {
                         {user.roles.map((role) => (
                           <span
                             key={role}
-                            className="inline-flex px-2 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded text-xs font-medium"
+                            className="inline-flex px-2 py-1 bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 rounded text-xs font-medium"
                           >
                             {role}
                           </span>
@@ -243,7 +242,7 @@ export function UsersPanel({ userId }: UsersPanelProps) {
                         <button
                           onClick={() => handleOpenEditModal(user)}
                           disabled={isSubmitting}
-                          className="inline-flex items-center gap-1 px-3 py-1 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-1 text-sm text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-slate-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           aria-label={`Edit user ${user.name}`}
                           title="Edit user"
                         >
@@ -283,8 +282,8 @@ export function UsersPanel({ userId }: UsersPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg">
-            <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+          <div className="p-2 bg-brand-100 dark:bg-brand-900/40 rounded-lg">
+            <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">User Administration</h2>
@@ -296,7 +295,7 @@ export function UsersPanel({ userId }: UsersPanelProps) {
         <button
           onClick={handleOpenCreateModal}
           disabled={isSubmitting}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 dark:bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 dark:bg-brand-600 text-white font-medium rounded-lg hover:bg-brand-700 dark:hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Add a system user (manager, admin, contractor). Use New Hire on the Dashboard to onboard employees."
           title="Add a manager, admin, or contractor. For onboarding employees, use 'New Hire' on the Dashboard."
         >
@@ -330,7 +329,7 @@ export function UsersPanel({ userId }: UsersPanelProps) {
       {isLoading && (
         <div className="p-8 text-center">
           <div className="inline-flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-brand-600 dark:border-brand-400 border-t-transparent rounded-full animate-spin" />
             <span className="text-sm text-slate-600 dark:text-slate-400">Loading users...</span>
           </div>
         </div>

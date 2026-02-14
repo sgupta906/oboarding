@@ -299,27 +299,10 @@ describe('createCustomRole - Integration Tests', () => {
     expect(role.description).toBe(desc);
   });
 
-  it('should reject empty createdBy', async () => {
-    const promise = createCustomRole(mockRole1Data.name, 'description', '');
-    await expect(promise).rejects.toThrow('createdBy must be a non-empty string');
-  });
-
-  it('should reject null createdBy', async () => {
-    const promise = createCustomRole(
-      mockRole1Data.name,
-      'description',
-      null as any
-    );
-    await expect(promise).rejects.toThrow('createdBy must be a non-empty string');
-  });
-
-  it('should reject whitespace-only createdBy', async () => {
-    const promise = createCustomRole(
-      mockRole1Data.name,
-      'description',
-      '   '
-    );
-    await expect(promise).rejects.toThrow('createdBy must be a non-empty string');
+  it('should accept null createdBy', async () => {
+    const role = await createCustomRole(mockRole1Data.name, 'description', null);
+    expect(role).toBeDefined();
+    expect(role.createdBy).toBeNull();
   });
 
   it('should set timestamps correctly', async () => {
@@ -662,12 +645,12 @@ describe('seedDefaultRoles - Integration Tests', () => {
     });
   });
 
-  it('should default to system userId', async () => {
+  it('should default to null userId', async () => {
     await seedDefaultRoles();
 
     const roles = await listRoles();
     roles.forEach((role) => {
-      expect(role.createdBy).toBe('system');
+      expect(role.createdBy).toBeNull();
     });
   });
 

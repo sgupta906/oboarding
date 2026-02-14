@@ -91,7 +91,7 @@ describe('Auth Flow Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, TEST_USERS.employee.email);
@@ -122,7 +122,7 @@ describe('Auth Flow Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       // Try invalid email
@@ -154,7 +154,7 @@ describe('Auth Flow Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       await user.type(emailInput, 'unknown@example.com');
@@ -460,7 +460,7 @@ describe('Auth Flow Integration', () => {
       );
 
       // Check for quick-login section header
-      expect(screen.getByText('Quick Login (Emulator Mode):')).toBeInTheDocument();
+      expect(screen.getByText('Quick Login (Dev Mode):')).toBeInTheDocument();
 
       // Check for quick-login buttons for each role
       expect(screen.getByRole('button', { name: /Employee/i })).toBeInTheDocument();
@@ -548,7 +548,7 @@ describe('Auth Flow Integration', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const submitButton = screen.getByRole('button', {
-        name: /Send Sign-In Link/i,
+        name: /Sign In/i,
       });
 
       // Sign in

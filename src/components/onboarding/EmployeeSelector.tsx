@@ -46,7 +46,7 @@ function EmployeeSelectorComponent({
         id="employee-selector"
         value={selectedId ?? ''}
         onChange={(event) => onSelect(event.target.value || null)}
-        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+        className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
       >
         <option value="">-- Select an employee --</option>
         {instances.map((instance) => (

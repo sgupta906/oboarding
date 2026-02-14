@@ -174,7 +174,7 @@ export function CreateOnboardingModal({
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || templatesLoading || templates.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             aria-label="Create onboarding instance"
           >
             {isSubmitting ? (
@@ -234,10 +234,10 @@ export function CreateOnboardingModal({
             value={employeeName}
             onChange={(e) => setEmployeeName(e.target.value)}
             placeholder="e.g., John Smith"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.employeeName
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -274,10 +274,10 @@ export function CreateOnboardingModal({
             value={employeeEmail}
             onChange={(e) => setEmployeeEmail(e.target.value)}
             placeholder="e.g., john.smith@company.com"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.employeeEmail
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -314,10 +314,10 @@ export function CreateOnboardingModal({
               id="role-select"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
                 hasAttemptedSubmit && fieldErrors.role
                   ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                  : 'border-slate-300 focus:ring-indigo-500'
+                  : 'border-slate-300 focus:ring-brand-500'
               }`}
               required
               aria-required="true"
@@ -361,10 +361,10 @@ export function CreateOnboardingModal({
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
             placeholder="e.g., Engineering, Sales"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.department
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -402,10 +402,10 @@ export function CreateOnboardingModal({
             id="template-select"
             value={templateId}
             onChange={(e) => setTemplateId(e.target.value)}
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-indigo-500 outline-none transition-colors ${
+            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.templateId
                 ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-indigo-500'
+                : 'border-slate-300 focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -437,29 +437,29 @@ export function CreateOnboardingModal({
 
         {/* Template Preview */}
         {selectedTemplate && !isSubmitting && (
-          <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-            <h4 className="font-semibold text-sm text-indigo-900 mb-2">
+          <div className="p-4 bg-brand-50 border border-brand-200 rounded-lg">
+            <h4 className="font-semibold text-sm text-brand-900 mb-2">
               Template Preview
             </h4>
-            <p className="text-sm text-indigo-800 mb-3">
+            <p className="text-sm text-brand-800 mb-3">
               <strong>{selectedTemplate.name}</strong>
             </p>
             {selectedTemplate.description && (
-              <p className="text-sm text-indigo-700 mb-3">{selectedTemplate.description}</p>
+              <p className="text-sm text-brand-700 mb-3">{selectedTemplate.description}</p>
             )}
-            <div className="flex items-center gap-2 text-sm text-indigo-700">
+            <div className="flex items-center gap-2 text-sm text-brand-700">
               <span className="font-medium">
                 {selectedTemplate.steps.length}
                 {selectedTemplate.steps.length === 1 ? ' step' : ' steps'}:
               </span>
-              <ul className="list-inside text-sm text-indigo-700 space-y-1">
+              <ul className="list-inside text-sm text-brand-700 space-y-1">
                 {selectedTemplate.steps.slice(0, 5).map((step, idx) => (
                   <li key={idx} className="truncate">
                     {idx + 1}. {step.title}
                   </li>
                 ))}
                 {selectedTemplate.steps.length > 5 && (
-                  <li className="text-indigo-600 italic">
+                  <li className="text-brand-600 italic">
                     ...and {selectedTemplate.steps.length - 5} more
                   </li>
                 )}
@@ -481,7 +481,7 @@ export function CreateOnboardingModal({
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
+            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
             aria-label="Employee start date"
             disabled={isSubmitting}
           />

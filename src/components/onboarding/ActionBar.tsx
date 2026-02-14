@@ -88,7 +88,7 @@ export function ActionBar({
 
           <button
             onClick={() => onSuggestEdit(step.id)}
-            className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ml-auto focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 active:scale-95"
+            className="flex items-center gap-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ml-auto focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 active:scale-95"
             aria-label={`Suggest edit for ${step.title}`}
           >
             <Edit3 size={16} /> Suggest Edit

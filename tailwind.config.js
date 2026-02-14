@@ -14,30 +14,17 @@ export default {
        */
       colors: {
         brand: {
-          50: '#eef2ff',   // Lightest indigo tint
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',   // Primary brand color
-          600: '#4f46e5',   // Deep indigo (main CTA color)
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
-        },
-        violet: {
-          50: '#faf5ff',
-          100: '#f3e8ff',
-          200: '#e9d5ff',
-          300: '#d8b4fe',
-          400: '#c084fc',
-          500: '#a855f7',   // Accent violet
-          600: '#9333ea',
-          700: '#7e22ce',
-          800: '#6b21a8',
-          900: '#581c87',
-          950: '#3b0764',
+          50: '#EBF5FF',   // Lightest tint
+          100: '#D6EBFF',
+          200: '#ADD6FF',
+          300: '#7ABFFF',
+          400: '#47A5F5',
+          500: '#329AF0',   // Accent blue (lighter)
+          600: '#1C7CD6',   // Primary blue (main CTA)
+          700: '#1565B8',
+          800: '#104E94',
+          900: '#0B3A70',
+          950: '#06234A',   // Darkest
         },
 
         /**
@@ -179,8 +166,8 @@ export default {
        */
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-brand': 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-        'gradient-brand-subtle': 'linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)',
+        'gradient-brand': 'linear-gradient(135deg, #1C7CD6 0%, #329AF0 100%)',
+        'gradient-brand-subtle': 'linear-gradient(135deg, #EBF5FF 0%, #D6EBFF 100%)',
       },
 
       /**
