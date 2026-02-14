@@ -200,12 +200,14 @@ describe('toSuggestion', () => {
 
 describe('toActivity', () => {
   it('maps all camelCase fields correctly', () => {
+    // Use a recent timestamp so formatTimeAgo produces 'just now'
+    const recentISO = new Date(Date.now() - 5000).toISOString();
     const row = {
       id: 'act-1',
       user_initials: 'JD',
       action: 'Created template',
       time_ago: '2 hours ago',
-      timestamp: '2026-01-01T10:00:00.000Z',
+      timestamp: recentISO,
       user_id: 'user-1',
       resource_type: 'template',
       resource_id: 'tpl-1',
@@ -215,7 +217,7 @@ describe('toActivity', () => {
     expect(act.id).toBe('act-1');
     expect(act.userInitials).toBe('JD');
     expect(act.action).toBe('Created template');
-    expect(act.timeAgo).toBe('2 hours ago');
+    expect(act.timeAgo).toBe('just now');
     expect(act.userId).toBe('user-1');
     expect(act.resourceType).toBe('template');
     expect(act.resourceId).toBe('tpl-1');
@@ -274,7 +276,7 @@ describe('toRole', () => {
 
     const role = toRole(row);
     expect(role.description).toBeUndefined();
-    expect(role.createdBy).toBe('system');
+    expect(role.createdBy).toBe('Unknown');
   });
 });
 
@@ -371,6 +373,6 @@ describe('toUser', () => {
     const user = toUser(row, [], []);
     expect(user.roles).toEqual([]);
     expect(user.profiles).toEqual([]);
-    expect(user.createdBy).toBe('system');
+    expect(user.createdBy).toBe('Unknown');
   });
 });

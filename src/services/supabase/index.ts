@@ -91,7 +91,6 @@ export {
   deleteUser,
   userEmailExists,
   subscribeToUsers,
-  areUsersEqual,
   addUserToAuthCredentials,
   getAuthCredential,
   removeUserFromAuthCredentials,

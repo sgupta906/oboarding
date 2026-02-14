@@ -159,7 +159,7 @@ export function CreateTemplateModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Cancel creating template"
           >
             Cancel
@@ -185,12 +185,12 @@ export function CreateTemplateModal({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Error Messages */}
         {(error || validationErrors.length > 0) && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-800 mb-2">
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300 mb-2">
               {error || 'Please fix the following errors:'}
             </p>
             {validationErrors.length > 0 && (
-              <ul className="text-sm text-red-700 space-y-1 ml-4">
+              <ul className="text-sm text-red-700 dark:text-red-400 space-y-1 ml-4">
                 {validationErrors.map((err, index) => (
                   <li key={index} className="list-disc">
                     {err}
@@ -205,7 +205,7 @@ export function CreateTemplateModal({
         <div>
           <label
             htmlFor="template-name"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Template Name
           </label>
@@ -215,7 +215,7 @@ export function CreateTemplateModal({
             value={templateName}
             onChange={(e) => setTemplateName(e.target.value)}
             placeholder="e.g., Engineering Onboarding"
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
             required
             aria-required="true"
             aria-label="Template name"
@@ -224,13 +224,13 @@ export function CreateTemplateModal({
 
         {/* Role Tags */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-3">
             Applicable Roles
           </label>
           {rolesLoading ? (
-            <div className="text-slate-500 text-sm">Loading roles...</div>
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Loading roles...</div>
           ) : roles.length === 0 ? (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-800 dark:text-amber-300">
               No roles available. Please create a role first.
             </div>
           ) : (
@@ -246,7 +246,7 @@ export function CreateTemplateModal({
                     aria-label={`Include ${role.name} role`}
                     disabled={rolesLoading}
                   />
-                  <span className="text-sm text-slate-700">{role.name}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
                 </label>
               ))}
             </fieldset>
@@ -255,7 +255,7 @@ export function CreateTemplateModal({
 
         {/* Status */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-3">
             Status
           </label>
           <fieldset className="flex gap-4">
@@ -271,7 +271,7 @@ export function CreateTemplateModal({
                   className="w-4 h-4 text-brand-600 focus:ring-2 focus:ring-brand-500 cursor-pointer"
                   aria-label={`Set status to ${s}`}
                 />
-                <span className="text-sm text-slate-700">{s}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{s}</span>
               </label>
             ))}
           </fieldset>
@@ -280,13 +280,13 @@ export function CreateTemplateModal({
         {/* Steps */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
               Onboarding Steps
             </label>
             <button
               type="button"
               onClick={handleAddStep}
-              className="flex items-center gap-1 text-sm text-brand-600 hover:text-brand-700 transition-colors"
+              className="flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors"
               aria-label="Add new step"
             >
               <Plus size={16} />
@@ -298,10 +298,10 @@ export function CreateTemplateModal({
             {steps.map((step, index) => (
               <div
                 key={index}
-                className="p-4 border border-slate-200 rounded-lg space-y-3 relative"
+                className="p-4 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg space-y-3 relative"
               >
                 {/* Step Number */}
-                <div className="absolute top-2 right-2 text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                <div className="absolute top-2 right-2 text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-1 rounded">
                   Step {index + 1}
                 </div>
 
@@ -309,7 +309,7 @@ export function CreateTemplateModal({
                 <div>
                   <label
                     htmlFor={`step-title-${index}`}
-                    className="block text-xs font-medium text-slate-600 mb-1"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                   >
                     Title
                   </label>
@@ -319,7 +319,7 @@ export function CreateTemplateModal({
                     value={step.title}
                     onChange={(e) => handleStepChange(index, 'title', e.target.value)}
                     placeholder="Step title"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                     aria-label={`Step ${index + 1} title`}
                   />
                 </div>
@@ -328,7 +328,7 @@ export function CreateTemplateModal({
                 <div>
                   <label
                     htmlFor={`step-desc-${index}`}
-                    className="block text-xs font-medium text-slate-600 mb-1"
+                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                   >
                     Description
                   </label>
@@ -340,7 +340,7 @@ export function CreateTemplateModal({
                     }
                     placeholder="Step description"
                     rows={2}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
                     aria-label={`Step ${index + 1} description`}
                   />
                 </div>
@@ -350,7 +350,7 @@ export function CreateTemplateModal({
                   <div>
                     <label
                       htmlFor={`step-owner-${index}`}
-                      className="block text-xs font-medium text-slate-600 mb-1"
+                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                     >
                       Owner
                     </label>
@@ -362,14 +362,14 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'owner', e.target.value)
                       }
                       placeholder="e.g., IT Support"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} owner`}
                     />
                   </div>
                   <div>
                     <label
                       htmlFor={`step-expert-${index}`}
-                      className="block text-xs font-medium text-slate-600 mb-1"
+                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
                     >
                       Expert
                     </label>
@@ -381,7 +381,7 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'expert', e.target.value)
                       }
                       placeholder="e.g., John Doe"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} expert`}
                     />
                   </div>
@@ -392,7 +392,7 @@ export function CreateTemplateModal({
                   <button
                     type="button"
                     onClick={() => handleRemoveStep(index)}
-                    className="absolute top-2 right-10 p-1 text-slate-400 hover:text-red-600 transition-colors"
+                    className="absolute top-2 right-10 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                     aria-label={`Remove step ${index + 1}`}
                   >
                     <Trash2 size={16} />

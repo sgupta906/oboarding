@@ -91,7 +91,8 @@ export function useRoles(userId?: string): UseRolesReturn {
       try {
         setError(null);
         const newRole = await createCustomRole(name, description, createdBy ?? userId ?? null);
-        // Note: Real-time subscription will update the roles list
+        // Optimistic: update local state immediately (Realtime reconciles later)
+        setRoles(prev => [...prev, newRole]);
         return newRole;
       } catch (err) {
         const errorMessage =
@@ -114,7 +115,10 @@ export function useRoles(userId?: string): UseRolesReturn {
       try {
         setError(null);
         await updateCustomRole(roleId, updates);
-        // Note: Real-time subscription will update the roles list
+        // Optimistic: update local state immediately
+        setRoles(prev => prev.map(r =>
+          r.id === roleId ? { ...r, ...updates, updatedAt: Date.now() } : r
+        ));
       } catch (err) {
         const errorMessage =
           err instanceof Error
@@ -132,7 +136,8 @@ export function useRoles(userId?: string): UseRolesReturn {
     try {
       setError(null);
       await deleteCustomRole(roleId);
-      // Note: Real-time subscription will update the roles list
+      // Optimistic: remove from local state immediately
+      setRoles(prev => prev.filter(r => r.id !== roleId));
     } catch (err) {
       const errorMessage =
         err instanceof Error

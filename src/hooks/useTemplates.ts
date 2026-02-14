@@ -1,13 +1,18 @@
 /**
  * useTemplates Hook - Subscribes to real-time template updates
  * Manages subscription lifecycle and provides loading/error states
- * Similar to useSteps pattern but for onboarding templates
+ * Includes CRUD wrappers with optimistic local state updates
  *
  * Performance: Includes timeout fallback to prevent infinite loading
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { subscribeToTemplates } from '../services/supabase';
+import {
+  subscribeToTemplates,
+  createTemplate as svcCreateTemplate,
+  updateTemplate as svcUpdateTemplate,
+  deleteTemplate as svcDeleteTemplate,
+} from '../services/supabase';
 import type { Template } from '../types';
 
 interface UseTemplatesReturn {
@@ -15,13 +20,17 @@ interface UseTemplatesReturn {
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
+  create: (template: Omit<Template, 'id' | 'createdAt'>) => Promise<string>;
+  update: (id: string, updates: Partial<Template>) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 }
 
 /**
  * Custom hook for subscribing to templates with real-time updates
  * Automatically manages subscription and cleanup on unmount
  * Includes 3-second timeout fallback to prevent infinite loading
- * @returns Object with templates data, loading state, error state, and refetch function
+ * Provides CRUD wrappers that optimistically update local state
+ * @returns Object with templates data, loading state, error state, and CRUD functions
  */
 export function useTemplates(): UseTemplatesReturn {
   const [data, setData] = useState<Template[]>([]);
@@ -77,8 +86,32 @@ export function useTemplates(): UseTemplatesReturn {
     };
   }, [refetchCount]);
 
+  // CRUD wrappers with optimistic local state updates
+
+  const create = useCallback(async (template: Omit<Template, 'id' | 'createdAt'>): Promise<string> => {
+    const id = await svcCreateTemplate(template);
+    // Optimistic: add to local state immediately
+    const optimistic: Template = { ...template, id, createdAt: Date.now() };
+    setData(prev => [...prev, optimistic]);
+    return id;
+  }, []);
+
+  const update = useCallback(async (id: string, updates: Partial<Template>): Promise<void> => {
+    await svcUpdateTemplate(id, updates);
+    // Optimistic: update local state immediately
+    setData(prev => prev.map(t =>
+      t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t
+    ));
+  }, []);
+
+  const remove = useCallback(async (id: string): Promise<void> => {
+    await svcDeleteTemplate(id);
+    // Optimistic: remove from local state immediately
+    setData(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   // If timed out, treat as loaded with empty data (not an error)
   const effectiveLoading = !timedOut && isLoading;
 
-  return { data, isLoading: effectiveLoading, error, refetch };
+  return { data, isLoading: effectiveLoading, error, refetch, create, update, remove };
 }

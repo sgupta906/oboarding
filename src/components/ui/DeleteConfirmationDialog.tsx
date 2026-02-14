@@ -50,7 +50,7 @@ export function DeleteConfirmationDialog({
       role="presentation"
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200"
+        className="bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200"
         role="alertdialog"
         aria-labelledby="dialog-title"
         aria-describedby="dialog-description"
@@ -61,7 +61,7 @@ export function DeleteConfirmationDialog({
           <div className="flex justify-center">
             <div
               className={`inline-flex justify-center items-center w-12 h-12 rounded-full ${
-                isDangerous ? 'bg-red-100' : 'bg-amber-100'
+                isDangerous ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'
               }`}
             >
               <AlertTriangle
@@ -72,22 +72,22 @@ export function DeleteConfirmationDialog({
           </div>
 
           {/* Title */}
-          <h2 id="dialog-title" className="text-lg font-bold text-slate-900 text-center">
+          <h2 id="dialog-title" className="text-lg font-bold text-slate-900 dark:text-slate-50 text-center">
             {title}
           </h2>
 
           {/* Message */}
-          <p id="dialog-description" className="text-slate-600 text-center text-sm">
+          <p id="dialog-description" className="text-slate-600 dark:text-slate-300 text-center text-sm">
             {message}
           </p>
         </div>
 
         {/* Buttons */}
-        <div className="bg-slate-50 p-4 border-t border-slate-200 flex gap-3">
+        <div className="bg-slate-50 dark:bg-slate-700 p-4 border-t border-slate-200 dark:border-slate-600 flex gap-3">
           <button
             onClick={onCancel}
             disabled={isLoading}
-            className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
             aria-label={cancelLabel}
           >
             {cancelLabel}

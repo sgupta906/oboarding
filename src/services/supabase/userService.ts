@@ -421,29 +421,6 @@ export async function deleteUser(userId: string): Promise<void> {
 }
 
 /**
- * Deep equality check for User arrays.
- * Prevents infinite update loops in subscribeToUsers.
- */
-export function areUsersEqual(users1: User[] | null, users2: User[]): boolean {
-  if (users1 === null) return false;
-  if (users1.length !== users2.length) return false;
-
-  return users1.every((user1, index) => {
-    const user2 = users2[index];
-    return (
-      user1.id === user2.id &&
-      user1.email === user2.email &&
-      user1.name === user2.name &&
-      JSON.stringify(user1.roles) === JSON.stringify(user2.roles) &&
-      JSON.stringify(user1.profiles) === JSON.stringify(user2.profiles) &&
-      user1.createdAt === user2.createdAt &&
-      user1.updatedAt === user2.updatedAt &&
-      user1.createdBy === user2.createdBy
-    );
-  });
-}
-
-/**
  * Subscribes to real-time user updates.
  */
 export function subscribeToUsers(

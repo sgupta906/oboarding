@@ -6,8 +6,8 @@
 
 import { supabase } from '../../config/supabase';
 import type { Template, Step } from '../../types';
-import type { TemplateRow, TemplateStepRow } from './mappers';
-import { toTemplate, toISO } from './mappers';
+import type { TemplateRow, TemplateStepRow, InstanceRow, InstanceStepRow } from './mappers';
+import { toTemplate, toInstance, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 
 type TemplateInsert = Database['public']['Tables']['templates']['Insert'];
@@ -184,11 +184,21 @@ export async function updateTemplate(
 async function syncTemplateStepsToInstances(templateId: string, newSteps: Step[]): Promise<void> {
   try {
     // Lazy import to avoid circular dependency at module load time
-    const { listOnboardingInstances, updateOnboardingInstance } = await import('./instanceService');
+    const { updateOnboardingInstance } = await import('./instanceService');
 
-    // Find all instances using this template
-    const allInstances = await listOnboardingInstances();
-    const instances = allInstances.filter((inst) => inst.templateId === templateId);
+    // Fetch only instances using this template (not ALL instances)
+    const { data, error } = await supabase
+      .from('onboarding_instances')
+      .select('*, instance_steps(*)')
+      .eq('template_id', templateId);
+
+    if (error) {
+      throw new Error(`Failed to fetch instances for template ${templateId}: ${error.message}`);
+    }
+
+    const instances = (data ?? []).map((row: any) =>
+      toInstance(row as InstanceRow, ((row as any).instance_steps ?? []) as InstanceStepRow[])
+    );
 
     for (const instance of instances) {
       try {

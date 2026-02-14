@@ -218,44 +218,63 @@ export async function updateOnboardingInstance(
 
 /**
  * Updates the status of a step inside an onboarding instance and recalculates progress.
- * Validates that the stepId exists before updating.
+ * Uses direct UPDATE queries instead of fetch-rebuild-delete-insert.
+ * 3 targeted queries instead of 4+ broad queries.
  */
 export async function updateStepStatus(
   instanceId: string,
   stepId: number,
   status: StepStatus
 ): Promise<void> {
-  // Step 1: Fetch the instance
-  const instance = await getOnboardingInstance(instanceId);
-  if (!instance) {
-    throw new Error(`Onboarding instance not found: ${instanceId}`);
+  // Step 1: Update the specific step row directly
+  const { data: updatedRows, error: stepError } = await supabase
+    .from('instance_steps')
+    .update({ status })
+    .eq('instance_id', instanceId)
+    .eq('position', stepId)
+    .select('position');
+
+  if (stepError) {
+    throw new Error(`Failed to update step status: ${stepError.message}`);
   }
 
-  // Step 2: Validate that stepId exists
-  const stepExists = instance.steps.some((step) => step.id === stepId);
-  if (!stepExists) {
+  if (!updatedRows || updatedRows.length === 0) {
     throw new Error(
-      `Step with ID ${stepId} not found in onboarding instance ${instanceId}. ` +
-      `Available step IDs: ${instance.steps.map((s) => s.id).join(', ')}`
+      `Step with position ${stepId} not found in onboarding instance ${instanceId}.`
     );
   }
 
-  // Step 3: Update the step with the new status
-  const updatedSteps = instance.steps.map((step) =>
-    step.id === stepId ? { ...step, status } : step
-  );
+  // Step 2: Recalculate progress from all steps
+  const { data: allSteps, error: fetchError } = await supabase
+    .from('instance_steps')
+    .select('status')
+    .eq('instance_id', instanceId);
 
-  // Step 4: Recalculate progress
-  const completedCount = updatedSteps.filter((step) => step.status === 'completed').length;
-  const progress = updatedSteps.length === 0
+  if (fetchError) {
+    throw new Error(`Failed to fetch steps for progress calculation: ${fetchError.message}`);
+  }
+
+  const stepsList = allSteps ?? [];
+  const completedCount = stepsList.filter(s => s.status === 'completed').length;
+  const progress = stepsList.length === 0
     ? 0
-    : Math.round((completedCount / updatedSteps.length) * 100);
+    : Math.round((completedCount / stepsList.length) * 100);
 
-  // Step 5: Update the instance
-  await updateOnboardingInstance(instanceId, {
-    steps: updatedSteps,
-    progress,
-  });
+  // Step 3: Update instance progress (and status/completed_at if 100%)
+  const instanceUpdates: Record<string, unknown> = { progress };
+  if (progress === 100) {
+    instanceUpdates.status = 'completed';
+    instanceUpdates.completed_at = new Date().toISOString();
+  }
+
+  const { error: progressError } = await supabase
+    .from('onboarding_instances')
+    .update(instanceUpdates)
+    .eq('id', instanceId);
+
+  if (progressError) {
+    throw new Error(`Failed to update instance progress: ${progressError.message}`);
+  }
 }
 
 // ============================================================================
@@ -551,7 +570,7 @@ export function subscribeToEmployeeInstance(
     .channel(`employee-instance-${normalizedEmail}`)
     .on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'onboarding_instances' },
+      { event: '*', schema: 'public', table: 'onboarding_instances', filter: `employee_email=eq.${normalizedEmail}` },
       () => {
         fetchEmployeeInstance().then(callback).catch(console.error);
       }

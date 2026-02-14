@@ -86,6 +86,9 @@ describe('TemplatesView Component', () => {
       isLoading: true,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -99,6 +102,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -115,6 +121,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -132,6 +141,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: mockError,
       refetch: mockRefetch,
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -148,6 +160,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -165,6 +180,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -183,6 +201,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -196,6 +217,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -211,6 +235,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -224,6 +251,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -237,6 +267,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -251,6 +284,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);
@@ -265,6 +301,9 @@ describe('TemplatesView Component', () => {
       isLoading: false,
       error: null,
       refetch: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      remove: vi.fn(),
     });
 
     render(<TemplatesView />);

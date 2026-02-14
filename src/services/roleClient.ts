@@ -182,25 +182,19 @@ export async function createCustomRole(
   description: string | undefined,
   createdBy: string | null
 ): Promise<CustomRole> {
-  // Validate name
+  // Validate name (local, no network)
   const nameValidation = validateRoleName(name);
   if (!nameValidation.valid) {
     throw new Error(`Invalid role name: ${nameValidation.error}`);
   }
 
-  // Check for duplicates
-  const uniquenessCheck = await validateRoleNameUniqueness(name);
-  if (!uniquenessCheck.valid) {
-    throw new Error(`Role name not unique: ${uniquenessCheck.error}`);
-  }
-
-  // Validate description if provided
+  // Validate description if provided (local, no network)
   const descValidation = validateRoleDescription(description);
   if (!descValidation.valid) {
     throw new Error(`Invalid role description: ${descValidation.error}`);
   }
 
-  // All validation passed, create the role
+  // Create the role -- DB unique constraint handles duplicate names
   return dbCreateRole(name.trim(), description, createdBy);
 }
 

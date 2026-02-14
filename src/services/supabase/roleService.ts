@@ -79,31 +79,21 @@ export async function isRoleInUse(roleId: string): Promise<boolean> {
   const role = await getRole(roleId);
   if (!role) return false;
 
-  // Check templates
-  const { data: templateData, error: templateError } = await supabase
-    .from('templates')
-    .select('id')
-    .eq('role', role.name)
-    .limit(1);
+  // Check templates and instances in parallel
+  const [templateResult, instanceResult] = await Promise.all([
+    supabase.from('templates').select('id').eq('role', role.name).limit(1),
+    supabase.from('onboarding_instances').select('id').eq('role', role.name).limit(1),
+  ]);
 
-  if (templateError) {
-    throw new Error(`Failed to check role usage in templates: ${templateError.message}`);
+  if (templateResult.error) {
+    throw new Error(`Failed to check role usage in templates: ${templateResult.error.message}`);
   }
 
-  if ((templateData ?? []).length > 0) return true;
-
-  // Check onboarding instances
-  const { data: instanceData, error: instanceError } = await supabase
-    .from('onboarding_instances')
-    .select('id')
-    .eq('role', role.name)
-    .limit(1);
-
-  if (instanceError) {
-    throw new Error(`Failed to check role usage in instances: ${instanceError.message}`);
+  if (instanceResult.error) {
+    throw new Error(`Failed to check role usage in instances: ${instanceResult.error.message}`);
   }
 
-  return (instanceData ?? []).length > 0;
+  return (templateResult.data ?? []).length > 0 || (instanceResult.data ?? []).length > 0;
 }
 
 /**
@@ -138,6 +128,10 @@ export async function createRole(
     .single();
 
   if (error) {
+    // Handle unique constraint violation with a user-friendly message
+    if (error.code === '23505' || error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+      throw new Error(`A role with name "${trimmedName}" already exists`);
+    }
     throw new Error(`Failed to create role: ${error.message}`);
   }
 

@@ -9,6 +9,7 @@ import { Users, Edit2, Trash2, Plus } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
 import { useAuth } from '../../config/authContext';
 import { CreateUserModal, EditUserModal } from '../modals';
+import { DeleteConfirmationDialog } from '../ui';
 import { logActivity } from '../../services/supabase';
 import type { User, UserFormData } from '../../types';
 
@@ -28,6 +29,7 @@ export function UsersPanel() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const handleOpenCreateModal = () => {
     setSubmitError(null);
@@ -125,32 +127,36 @@ export function UsersPanel() {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    if (!window.confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
-      return;
-    }
+  const handleDeleteUser = (user: User) => {
+    setUserToDelete(user);
+  };
 
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    const targetUser = userToDelete;
+    setUserToDelete(null);
     setIsSubmitting(true);
     setSubmitError(null);
 
     try {
-      await removeUser(user.id);
+      await removeUser(targetUser.id);
 
       // Log activity
       try {
         await logActivity({
           userInitials: userId.slice(0, 2).toUpperCase(),
-          action: `Deleted user: ${user.name} (${user.email})`,
+          action: `Deleted user: ${targetUser.name} (${targetUser.email})`,
           timeAgo: 'just now',
           userId,
           resourceType: 'user',
-          resourceId: user.id,
+          resourceId: targetUser.id,
         });
       } catch (logErr) {
         console.warn('Failed to log activity:', logErr);
       }
 
-      setSuccessMessage(`User ${user.name} deleted successfully`);
+      setSuccessMessage(`User ${targetUser.name} deleted successfully`);
 
       // Clear success message after delay
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -371,6 +377,18 @@ export function UsersPanel() {
         onSubmit={handleEditUser}
         isSubmitting={isSubmitting}
         error={submitError}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={!!userToDelete}
+        title="Delete User"
+        message={`Are you sure you want to delete ${userToDelete?.name ?? 'this user'}? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmDeleteUser}
+        onCancel={() => setUserToDelete(null)}
+        isLoading={isSubmitting}
       />
     </div>
   );

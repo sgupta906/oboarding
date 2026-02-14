@@ -96,17 +96,8 @@ export function SignInView() {
         return;
       }
 
-      // Attempt sign-in
+      // Attempt sign-in (authService dispatches authStorageChange internally)
       await signInWithEmailLink(email);
-
-      // Dispatch custom event to notify AuthProvider of localStorage changes
-      // This is necessary because browser doesn't fire storage events on
-      // the same tab that made the change (only on other tabs/windows)
-      window.dispatchEvent(
-        new CustomEvent('authStorageChange', {
-          detail: { key: 'mockAuthUser' },
-        }),
-      );
 
       // Show success message
       setSubmitted(true);

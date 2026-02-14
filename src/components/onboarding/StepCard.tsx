@@ -26,8 +26,8 @@ export function StepCard({
   onReportStuck,
 }: StepCardProps) {
   const borderColorMap = {
-    stuck: 'border-l-rose-500 ring-2 ring-rose-100 bg-rose-50/30',
-    completed: 'border-l-emerald-500 bg-emerald-50/20',
+    stuck: 'border-l-rose-500 ring-2 ring-rose-100 dark:ring-rose-900 bg-rose-50/30 dark:bg-rose-950/20',
+    completed: 'border-l-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20',
     pending: 'border-l-brand-500',
   };
 
@@ -67,14 +67,14 @@ export function StepCard({
               )}
             </div>
             {/* Visual progress connector line below (hidden for last step on mobile) */}
-            <div className="hidden md:block w-0.5 h-6 mt-1 bg-slate-200" aria-hidden="true" />
+            <div className="hidden md:block w-0.5 h-6 mt-1 bg-slate-200 dark:bg-slate-600" aria-hidden="true" />
           </div>
 
           {/* Content */}
           <div className="flex-1">
             <div className="flex justify-between items-start mb-2 gap-3">
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
                   {step.title}
                   {isStuck && (
                     <Badge
@@ -113,8 +113,8 @@ export function StepCard({
             <p
               className={`leading-relaxed mb-4 transition-colors duration-300 ${
                 isCompleted
-                  ? 'text-slate-500 line-through'
-                  : 'text-slate-600'
+                  ? 'text-slate-500 dark:text-slate-500 line-through'
+                  : 'text-slate-600 dark:text-slate-400'
               }`}
               aria-live="polite"
             >
@@ -123,13 +123,13 @@ export function StepCard({
 
             {/* Status indicator message */}
             {isStuck && (
-              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2">
+              <div className="mb-4 p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-700 rounded-lg flex items-start gap-2">
                 <AlertTriangle
                   size={16}
-                  className="text-rose-600 flex-shrink-0 mt-0.5"
+                  className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5"
                   aria-hidden="true"
                 />
-                <p className="text-sm text-rose-700">
+                <p className="text-sm text-rose-700 dark:text-rose-300">
                   You reported being stuck on this step. <strong>{step.expert}</strong> has
                   been notified and will help soon.
                 </p>

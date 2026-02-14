@@ -1,13 +1,12 @@
 /**
  * TemplatesView Component - Manager dashboard for template CRUD operations
  * Displays list of templates with ability to create, edit, and delete
- * Uses real-time subscription via useTemplates hook
+ * Uses real-time subscription via useTemplates hook with optimistic updates
  */
 
 import { useState } from 'react';
 import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy } from 'lucide-react';
 import { useTemplates } from '../hooks';
-import { createTemplate, updateTemplate, deleteTemplate } from '../services/supabase';
 import { CreateTemplateModal } from '../components/templates/CreateTemplateModal';
 import { EditTemplateModal } from '../components/templates/EditTemplateModal';
 import { Badge } from '../components/ui';
@@ -19,7 +18,7 @@ import type { Template } from '../types';
  * Displays templates in a responsive table/card layout with real-time updates
  */
 export function TemplatesView() {
-  const { data: templates, isLoading, error, refetch } = useTemplates();
+  const { data: templates, isLoading, error, refetch, create, update, remove } = useTemplates();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -42,10 +41,9 @@ export function TemplatesView() {
     setCreateError(null);
 
     try {
-      await createTemplate(template);
+      await create(template);
       setCreateModalOpen(false);
       showSuccessMessage('Template created successfully');
-      refetch();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to create template';
@@ -63,11 +61,10 @@ export function TemplatesView() {
     setEditError(null);
 
     try {
-      await updateTemplate(id, updates);
+      await update(id, updates);
       setEditModalOpen(false);
       setSelectedTemplate(null);
       showSuccessMessage('Template updated successfully');
-      refetch();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to update template';
@@ -81,11 +78,10 @@ export function TemplatesView() {
     setIsDeleting(true);
 
     try {
-      await deleteTemplate(id);
+      await remove(id);
       setEditModalOpen(false);
       setSelectedTemplate(null);
       showSuccessMessage(`Template "${name}" deleted successfully`);
-      refetch();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Failed to delete template';
@@ -96,10 +92,10 @@ export function TemplatesView() {
   };
 
   const handleDuplicateTemplate = async (template: Template) => {
+    const { id: _id, createdAt: _createdAt, ...rest } = template;
     const newTemplate = {
-      ...template,
+      ...rest,
       name: `${template.name} (Copy)`,
-      createdAt: undefined,
     };
     await handleCreateTemplate(newTemplate);
   };
@@ -291,7 +287,7 @@ export function TemplatesView() {
                     <span className="hidden sm:inline">Duplicate</span>
                   </button>
                   <button
-                    onClick={() => handleEditClick(template)}
+                    onClick={() => handleDeleteTemplate(template.id, template.name)}
                     className="flex items-center justify-center p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors"
                     aria-label={`Delete template: ${template.name}`}
                     title="Delete template"

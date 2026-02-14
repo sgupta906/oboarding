@@ -145,14 +145,11 @@ describe('SignInView Integration', () => {
       ).toBeInTheDocument();
     });
 
-    it('dispatches custom storage change event after successful sign-in', async () => {
+    it('delegates auth event dispatch to signInWithEmailLink', async () => {
       const user = userEvent.setup();
       vi.mocked(authService.signInWithEmailLink).mockResolvedValueOnce(
         undefined
       );
-
-      // Spy on dispatchEvent to verify custom event is fired
-      const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent');
 
       renderSignInView();
 
@@ -164,15 +161,10 @@ describe('SignInView Integration', () => {
       await user.type(emailInput, 'test-manager@example.com');
       await user.click(submitButton);
 
-      // Custom event should be dispatched to notify AuthProvider of localStorage change
-      expect(dispatchEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'authStorageChange',
-          detail: { key: 'mockAuthUser' },
-        })
+      // signInWithEmailLink handles authStorageChange dispatch internally
+      expect(authService.signInWithEmailLink).toHaveBeenCalledWith(
+        'test-manager@example.com'
       );
-
-      dispatchEventSpy.mockRestore();
     });
 
     it('disables form during submission', async () => {

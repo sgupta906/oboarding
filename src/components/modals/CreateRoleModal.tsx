@@ -146,7 +146,7 @@ export function CreateRoleModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
             aria-label="Cancel creating role"
           >
             Cancel
@@ -176,9 +176,9 @@ export function CreateRoleModal({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Server Error Message */}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
-            <p className="text-sm font-medium text-red-800">{error}</p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-3">
+            <AlertCircle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
           </div>
         )}
 
@@ -186,7 +186,7 @@ export function CreateRoleModal({
         <div>
           <label
             htmlFor="role-name"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Role Name <span className="text-red-500" aria-label="required">*</span>
           </label>
@@ -201,10 +201,10 @@ export function CreateRoleModal({
               maxLength={MAX_ROLE_NAME_LENGTH}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors pr-10 ${
                 touched.name && validationState.name.error
-                  ? 'border-red-300 bg-red-50 focus:ring-red-500'
+                  ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
                   : touched.name && validationState.name.valid
-                    ? 'border-emerald-300 bg-emerald-50 focus:ring-emerald-500'
-                    : 'border-slate-300 focus:ring-brand-500'
+                    ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-600 focus:ring-emerald-500'
+                    : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
               }`}
               required
               aria-required="true"
@@ -227,11 +227,11 @@ export function CreateRoleModal({
             )}
           </div>
           {touched.name && validationState.name.error && (
-            <p id="name-error" className="text-sm text-red-600 mt-2">
+            <p id="name-error" className="text-sm text-red-600 dark:text-red-400 mt-2">
               {validationState.name.error}
             </p>
           )}
-          <div className="text-xs text-slate-500 mt-2">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             {name.length}/{MAX_ROLE_NAME_LENGTH} characters
           </div>
         </div>
@@ -240,10 +240,10 @@ export function CreateRoleModal({
         <div>
           <label
             htmlFor="role-description"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Description
-            <span className="text-slate-500 font-normal"> (optional)</span>
+            <span className="text-slate-500 dark:text-slate-400 font-normal"> (optional)</span>
           </label>
           <div className="relative">
             <textarea
@@ -256,10 +256,10 @@ export function CreateRoleModal({
               rows={4}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors resize-none ${
                 touched.description && validationState.description.error
-                  ? 'border-red-300 bg-red-50 focus:ring-red-500'
+                  ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
                   : touched.description && validationState.description.valid && description.trim()
-                    ? 'border-emerald-300 bg-emerald-50 focus:ring-emerald-500'
-                    : 'border-slate-300 focus:ring-brand-500'
+                    ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-600 focus:ring-emerald-500'
+                    : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
               }`}
               aria-invalid={touched.description && !!validationState.description.error}
               aria-describedby={
@@ -270,18 +270,18 @@ export function CreateRoleModal({
             />
           </div>
           {touched.description && validationState.description.error && (
-            <p id="description-error" className="text-sm text-red-600 mt-2">
+            <p id="description-error" className="text-sm text-red-600 dark:text-red-400 mt-2">
               {validationState.description.error}
             </p>
           )}
-          <div className="text-xs text-slate-500 mt-2">
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             {description.length}/{MAX_DESCRIPTION_LENGTH} characters
           </div>
         </div>
 
         {/* Form Hints */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-800">
+        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <p className="text-xs text-blue-800 dark:text-blue-300">
             <strong>Tip:</strong> Role names should be descriptive and specific to your organization's
             structure (e.g., "Senior Developer", "Sales Manager").
           </p>

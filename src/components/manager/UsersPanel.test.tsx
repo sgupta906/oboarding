@@ -211,30 +211,43 @@ describe('UsersPanel Component', () => {
     });
   });
 
-  it('should confirm before deleting user', async () => {
-    const windowConfirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
+  it('should show confirmation dialog before deleting user', async () => {
     render(<UsersPanel />);
 
     const deleteButton = screen.getByLabelText('Delete user John Doe');
     fireEvent.click(deleteButton);
 
-    expect(windowConfirmSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Are you sure you want to delete John Doe')
-    );
+    await waitFor(() => {
+      expect(screen.getByText('Delete User')).toBeInTheDocument();
+      expect(
+        screen.getByText(/Are you sure you want to delete John Doe/)
+      ).toBeInTheDocument();
+    });
 
-    windowConfirmSpy.mockRestore();
+    // Cancel by clicking Cancel
+    const cancelButton = screen.getByLabelText('Cancel');
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Delete User')).not.toBeInTheDocument();
+    });
   });
 
-  it('should delete user when confirmed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-
+  it('should delete user when confirmed in dialog', async () => {
     mockUseUsers.removeUser.mockResolvedValue(undefined);
 
     render(<UsersPanel />);
 
     const deleteButton = screen.getByLabelText('Delete user John Doe');
     fireEvent.click(deleteButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete User')).toBeInTheDocument();
+    });
+
+    // Click Delete confirm button
+    const confirmButton = screen.getByLabelText('Delete');
+    fireEvent.click(confirmButton);
 
     await waitFor(() => {
       expect(mockUseUsers.removeUser).toHaveBeenCalledWith('user-1');

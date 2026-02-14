@@ -17,7 +17,8 @@ type ActivityInsert = Database['public']['Tables']['activities']['Insert'];
 export async function listActivities(): Promise<Activity[]> {
   const { data, error } = await supabase
     .from('activities')
-    .select('*');
+    .select('*')
+    .order('timestamp', { ascending: false });
 
   if (error) {
     throw new Error(`Failed to fetch activities: ${error.message}`);

@@ -307,13 +307,13 @@ describe('createCustomRole', () => {
   });
 
   it('should reject duplicate role names', async () => {
-    (roleNameExists as any).mockResolvedValue(true);
+    // DB unique constraint handles duplicates now (no pre-check)
+    (dbCreateRole as any).mockRejectedValue(new Error('A role with name "Engineering" already exists'));
     const promise = createCustomRole('Engineering', 'desc', 'user-1');
     await expect(promise).rejects.toThrow('already exists');
   });
 
   it('should reject invalid description', async () => {
-    (roleNameExists as any).mockResolvedValue(false);
     const overLongDesc = 'A'.repeat(501);
     const promise = createCustomRole('NewRole', overLongDesc, 'user-1');
     await expect(promise).rejects.toThrow('Invalid role description');

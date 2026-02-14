@@ -19,6 +19,7 @@ import type {
   Template,
   User,
 } from '../../types';
+import { formatTimeAgo } from '../../utils/timeUtils';
 
 // ============================================================================
 // Database Row Type Aliases (for readability)
@@ -188,12 +189,13 @@ export function toSuggestion(row: SuggestionRow): Suggestion {
  * Maps an activities row to an application Activity type.
  */
 export function toActivity(row: ActivityRow): Activity {
+  const timestamp = toOptionalUnixMs(row.timestamp);
   return {
     id: row.id,
     userInitials: row.user_initials,
     action: row.action,
-    timeAgo: row.time_ago ?? '',
-    timestamp: toOptionalUnixMs(row.timestamp),
+    timeAgo: formatTimeAgo(timestamp),
+    timestamp,
     userId: row.user_id ?? undefined,
     resourceType: row.resource_type ?? undefined,
     resourceId: row.resource_id ?? undefined,
@@ -210,7 +212,7 @@ export function toRole(row: RoleRow): CustomRole {
     description: row.description ?? undefined,
     createdAt: toUnixMs(row.created_at),
     updatedAt: toUnixMs(row.updated_at),
-    createdBy: row.created_by ?? 'system',
+    createdBy: row.created_by ?? 'Unknown',
   };
 }
 
@@ -224,7 +226,7 @@ export function toProfile(row: ProfileRow, roleTagRows: ProfileRoleTagRow[]): Pr
     description: row.description ?? undefined,
     roleTags: roleTagRows.map((rt) => rt.role_tag),
     createdAt: toUnixMs(row.created_at),
-    createdBy: row.created_by ?? 'system',
+    createdBy: row.created_by ?? 'Unknown',
   };
 }
 
@@ -246,7 +248,7 @@ export function toProfileTemplate(
       .map(toStep),
     createdAt: toUnixMs(row.created_at),
     updatedAt: toOptionalUnixMs(row.updated_at),
-    createdBy: row.created_by ?? 'system',
+    createdBy: row.created_by ?? 'Unknown',
     version: row.version,
     isPublished: row.is_published,
   };
@@ -269,6 +271,6 @@ export function toUser(
     profiles: profileRows.map((p) => p.profile_name),
     createdAt: toUnixMs(row.created_at),
     updatedAt: toUnixMs(row.updated_at),
-    createdBy: row.created_by ?? 'system',
+    createdBy: row.created_by ?? 'Unknown',
   };
 }

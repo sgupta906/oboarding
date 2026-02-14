@@ -166,7 +166,7 @@ export function CreateOnboardingModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Cancel creating onboarding"
           >
             Cancel
@@ -191,23 +191,23 @@ export function CreateOnboardingModal({
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Intro Section */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-900">
+        <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <p className="text-sm text-blue-900 dark:text-blue-300">
             This creates a guided onboarding journey for a new employee. Select a role-based template
             to get started. The employee will see a "Quest Log" with tasks to complete.
           </p>
         </div>
         {/* Server Error Messages */}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-800">{error}</p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
           </div>
         )}
 
         {/* Template Unavailable Error */}
         {!templatesLoading && templates.length === 0 && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm font-medium text-amber-800">
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
               No templates available. Please create a template before creating an onboarding instance.
             </p>
           </div>
@@ -215,8 +215,8 @@ export function CreateOnboardingModal({
 
         {/* Loading Templates Message */}
         {templatesLoading && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">Loading templates...</p>
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-300">Loading templates...</p>
           </div>
         )}
 
@@ -224,7 +224,7 @@ export function CreateOnboardingModal({
         <div>
           <label
             htmlFor="employee-name"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Employee Name <span className="text-red-500">*</span>
           </label>
@@ -236,8 +236,8 @@ export function CreateOnboardingModal({
             placeholder="e.g., John Smith"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.employeeName
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -252,7 +252,7 @@ export function CreateOnboardingModal({
           {hasAttemptedSubmit && fieldErrors.employeeName && (
             <p
               id="employee-name-error"
-              className="mt-1 text-sm text-red-600"
+              className="mt-1 text-sm text-red-600 dark:text-red-400"
               role="alert"
             >
               {fieldErrors.employeeName}
@@ -264,7 +264,7 @@ export function CreateOnboardingModal({
         <div>
           <label
             htmlFor="employee-email"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Email Address <span className="text-red-500">*</span>
           </label>
@@ -276,8 +276,8 @@ export function CreateOnboardingModal({
             placeholder="e.g., john.smith@company.com"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.employeeEmail
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -292,7 +292,7 @@ export function CreateOnboardingModal({
           {hasAttemptedSubmit && fieldErrors.employeeEmail && (
             <p
               id="employee-email-error"
-              className="mt-1 text-sm text-red-600"
+              className="mt-1 text-sm text-red-600 dark:text-red-400"
               role="alert"
             >
               {fieldErrors.employeeEmail}
@@ -302,11 +302,11 @@ export function CreateOnboardingModal({
 
         {/* Role Selection */}
         <div>
-          <label htmlFor="role-select" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="role-select" className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
             Role <span className="text-red-500">*</span>
           </label>
           {rolesLoading ? (
-            <div className="w-full px-4 py-2 border border-slate-300 rounded-lg bg-slate-50 text-slate-500">
+            <div className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
               Loading roles...
             </div>
           ) : (
@@ -316,8 +316,8 @@ export function CreateOnboardingModal({
               onChange={(e) => setRole(e.target.value)}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
                 hasAttemptedSubmit && fieldErrors.role
-                  ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                  : 'border-slate-300 focus:ring-brand-500'
+                  ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                  : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
               }`}
               required
               aria-required="true"
@@ -336,12 +336,12 @@ export function CreateOnboardingModal({
             </select>
           )}
           {hasAttemptedSubmit && fieldErrors.role && (
-            <p id="role-error" className="mt-1 text-sm text-red-600" role="alert">
+            <p id="role-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
               {fieldErrors.role}
             </p>
           )}
           {!rolesLoading && roles.length === 0 && (
-            <p className="mt-2 text-sm text-amber-700 bg-amber-50 p-2 rounded">
+            <p className="mt-2 text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-2 rounded">
               No roles available. Please create a role first.
             </p>
           )}
@@ -351,7 +351,7 @@ export function CreateOnboardingModal({
         <div>
           <label
             htmlFor="department"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Department <span className="text-red-500">*</span>
           </label>
@@ -363,8 +363,8 @@ export function CreateOnboardingModal({
             placeholder="e.g., Engineering, Sales"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.department
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -379,7 +379,7 @@ export function CreateOnboardingModal({
           {hasAttemptedSubmit && fieldErrors.department && (
             <p
               id="department-error"
-              className="mt-1 text-sm text-red-600"
+              className="mt-1 text-sm text-red-600 dark:text-red-400"
               role="alert"
             >
               {fieldErrors.department}
@@ -391,11 +391,11 @@ export function CreateOnboardingModal({
         <div>
           <label
             htmlFor="template-select"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
             Role-Based Template <span className="text-red-500">*</span>
           </label>
-          <p className="text-xs text-slate-600 mb-2">
+          <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
             Select a template that matches the employee's role (e.g., Engineer, Sales)
           </p>
           <select
@@ -404,8 +404,8 @@ export function CreateOnboardingModal({
             onChange={(e) => setTemplateId(e.target.value)}
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.templateId
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -427,7 +427,7 @@ export function CreateOnboardingModal({
           {hasAttemptedSubmit && fieldErrors.templateId && (
             <p
               id="template-error"
-              className="mt-1 text-sm text-red-600"
+              className="mt-1 text-sm text-red-600 dark:text-red-400"
               role="alert"
             >
               {fieldErrors.templateId}
@@ -437,29 +437,29 @@ export function CreateOnboardingModal({
 
         {/* Template Preview */}
         {selectedTemplate && !isSubmitting && (
-          <div className="p-4 bg-brand-50 border border-brand-200 rounded-lg">
-            <h4 className="font-semibold text-sm text-brand-900 mb-2">
+          <div className="p-4 bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-700 rounded-lg">
+            <h4 className="font-semibold text-sm text-brand-900 dark:text-brand-300 mb-2">
               Template Preview
             </h4>
-            <p className="text-sm text-brand-800 mb-3">
+            <p className="text-sm text-brand-800 dark:text-brand-300 mb-3">
               <strong>{selectedTemplate.name}</strong>
             </p>
             {selectedTemplate.description && (
-              <p className="text-sm text-brand-700 mb-3">{selectedTemplate.description}</p>
+              <p className="text-sm text-brand-700 dark:text-brand-400 mb-3">{selectedTemplate.description}</p>
             )}
-            <div className="flex items-center gap-2 text-sm text-brand-700">
+            <div className="flex items-center gap-2 text-sm text-brand-700 dark:text-brand-400">
               <span className="font-medium">
                 {selectedTemplate.steps.length}
                 {selectedTemplate.steps.length === 1 ? ' step' : ' steps'}:
               </span>
-              <ul className="list-inside text-sm text-brand-700 space-y-1">
+              <ul className="list-inside text-sm text-brand-700 dark:text-brand-400 space-y-1">
                 {selectedTemplate.steps.slice(0, 5).map((step, idx) => (
                   <li key={idx} className="truncate">
                     {idx + 1}. {step.title}
                   </li>
                 ))}
                 {selectedTemplate.steps.length > 5 && (
-                  <li className="text-brand-600 italic">
+                  <li className="text-brand-600 dark:text-brand-500 italic">
                     ...and {selectedTemplate.steps.length - 5} more
                   </li>
                 )}
@@ -472,20 +472,20 @@ export function CreateOnboardingModal({
         <div>
           <label
             htmlFor="start-date"
-            className="block text-sm font-medium text-slate-700 mb-2"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2"
           >
-            Start Date <span className="text-slate-500">(Optional)</span>
+            Start Date <span className="text-slate-500 dark:text-slate-400">(Optional)</span>
           </label>
           <input
             id="start-date"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
             aria-label="Employee start date"
             disabled={isSubmitting}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
             The date when the employee starts. Leave blank if not yet determined.
           </p>
         </div>

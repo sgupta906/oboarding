@@ -42,6 +42,11 @@ vi.mock('./supabase', () => {
     ),
     isRoleInUse: vi.fn(async () => false),
     createRole: vi.fn(async (name: string, description: string | undefined, createdBy: string) => {
+      const roles = getRoles();
+      // Simulate DB unique constraint on role name (case-insensitive)
+      if (roles.some(r => r.name.toLowerCase() === name.trim().toLowerCase())) {
+        throw new Error(`A role with name "${name.trim()}" already exists`);
+      }
       const now = Date.now();
       const role: CustomRole = {
         id: `role-${now}-${Math.random().toString(36).slice(2, 7)}`,
@@ -51,7 +56,6 @@ vi.mock('./supabase', () => {
         updatedAt: now,
         createdBy,
       };
-      const roles = getRoles();
       roles.push(role);
       saveRoles(roles);
       return role;

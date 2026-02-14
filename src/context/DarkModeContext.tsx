@@ -31,8 +31,6 @@ export function DarkModeProvider({ children }: { children: ReactNode }) {
     return false;
   });
 
-  const [isInitialized, setIsInitialized] = useState(false);
-
   // Apply theme to document root on mount and when isDarkMode changes
   useEffect(() => {
     const root = document.documentElement;
@@ -45,18 +43,11 @@ export function DarkModeProvider({ children }: { children: ReactNode }) {
 
     // Persist to localStorage
     localStorage.setItem('theme-preference', isDarkMode ? 'dark' : 'light');
-
-    setIsInitialized(true);
   }, [isDarkMode]);
 
   const toggleDarkMode = () => {
     setIsDarkMode((prev) => !prev);
   };
-
-  // Prevent content flash by waiting for initialization
-  if (!isInitialized) {
-    return <>{children}</>;
-  }
 
   return (
     <DarkModeContext.Provider value={{ isDarkMode, toggleDarkMode }}>
