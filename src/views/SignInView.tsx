@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronRight, Mail, AlertCircle, Loader, LogIn } from 'lucide-react';
+import { Mail, AlertCircle, Loader, LogIn } from 'lucide-react';
 import { signInWithEmailLink } from '../services/authService';
 import { useAuth, impersonateUserForQA } from '../config/authContext';
 import type { UserRole } from '../config/authTypes';
@@ -137,9 +137,7 @@ export function SignInView() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="bg-brand-600 text-white p-2 rounded-lg">
-            <ChevronRight size={24} strokeWidth={3} />
-          </div>
+          <img src="/shyftlogo.png" alt="Shyft Solutions logo" className="h-10 w-auto" />
           <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
             Onboard<span className="text-brand-600">Hub</span>
           </span>

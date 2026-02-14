@@ -12,6 +12,15 @@ import type { Database } from '../../types/database.types';
 type RoleInsert = Database['public']['Tables']['roles']['Insert'];
 
 /**
+ * Validates whether a string is a valid UUID v4 format.
+ * Used to prevent inserting non-UUID strings into UUID columns.
+ */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(value: string): boolean {
+  return UUID_REGEX.test(value);
+}
+
+/**
  * Fetches all custom roles.
  */
 export async function listRoles(): Promise<CustomRole[]> {
@@ -109,12 +118,17 @@ export async function createRole(
   const trimmedName = name.trim();
   const trimmedDesc = description !== undefined ? description.trim() : null;
 
+  // Only pass createdBy if it's a valid UUID; otherwise use null.
+  // Dev auth generates non-UUID identifiers like "test-test-manager"
+  // which would cause a Postgres type error on the UUID column.
+  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+
   const row: RoleInsert = {
     name: trimmedName,
     description: trimmedDesc,
     created_at: now,
     updated_at: now,
-    created_by: createdBy,
+    created_by: safeCreatedBy,
   };
 
   const { data, error } = await supabase

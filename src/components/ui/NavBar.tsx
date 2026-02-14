@@ -4,7 +4,8 @@
  * Manager and Admin roles can switch views, Employee role is restricted to Employee view
  */
 
-import { ChevronRight, Lock, LogOut, Moon, Sun } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Lock, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../config/authContext';
 import { useDarkMode } from '../../context/DarkModeContext';
 import type { NavBarProps } from '../../types';
@@ -21,6 +22,19 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
   const { role } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
 
+  // Track current hash route for active-state styling on Templates
+  const [isTemplatesRoute, setIsTemplatesRoute] = useState(
+    window.location.hash === '#/templates'
+  );
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setIsTemplatesRoute(window.location.hash === '#/templates');
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // Determine if user can access manager view
   // Only manager and admin roles can access manager view
   const canAccessManagerView = role === 'manager' || role === 'admin';
@@ -34,18 +48,24 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
     }
   };
 
+  const handleTemplatesClick = () => {
+    window.location.hash = '#/templates';
+  };
+
   const handleSignOut = () => {
     window.location.hash = '#/sign-out';
   };
+
+  // Shared styles for active/inactive nav items within the switcher
+  const activeStyle = 'bg-white dark:bg-slate-800 shadow text-slate-900 dark:text-white';
+  const inactiveStyle = 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300';
 
   return (
     <nav className="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="bg-brand-600 text-white p-1.5 rounded-lg">
-            <ChevronRight size={20} strokeWidth={3} />
-          </div>
+          <img src="/shyftlogo.png" alt="Shyft Solutions logo" className="h-8 w-auto" />
           <span className="font-bold text-xl tracking-tight text-slate-900 dark:text-white">
             Onboard<span className="text-brand-600">Hub</span>
           </span>
@@ -55,40 +75,43 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
         <div className="flex items-center gap-4">
           {canAccessManagerView && (
             <>
-              {/* Templates Link */}
-              <a
-                href="#/templates"
-                className="px-3 py-1.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
-                aria-label="Go to Templates"
-              >
-                Templates
-              </a>
-
-              {/* View Switcher */}
+              {/* Unified Navigation Switcher */}
               <div className="flex bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
                 <button
                   onClick={() => handleViewChange('employee')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    currentView === 'employee'
-                      ? 'bg-white dark:bg-slate-800 shadow text-slate-900 dark:text-white'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    currentView === 'employee' && !isTemplatesRoute
+                      ? activeStyle
+                      : inactiveStyle
                   }`}
                   aria-label="Switch to Employee view"
-                  aria-pressed={currentView === 'employee'}
+                  aria-pressed={currentView === 'employee' && !isTemplatesRoute}
                 >
                   Employee View
                 </button>
                 <button
                   onClick={() => handleViewChange('manager')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    currentView === 'manager'
-                      ? 'bg-white dark:bg-slate-800 shadow text-slate-900 dark:text-white'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    currentView === 'manager' && !isTemplatesRoute
+                      ? activeStyle
+                      : inactiveStyle
                   }`}
                   aria-label="Switch to Manager view"
-                  aria-pressed={currentView === 'manager'}
+                  aria-pressed={currentView === 'manager' && !isTemplatesRoute}
                 >
                   Manager View
+                </button>
+                <button
+                  onClick={handleTemplatesClick}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    isTemplatesRoute
+                      ? activeStyle
+                      : inactiveStyle
+                  }`}
+                  aria-label="Go to Templates"
+                  aria-pressed={isTemplatesRoute}
+                >
+                  Templates
                 </button>
               </div>
             </>

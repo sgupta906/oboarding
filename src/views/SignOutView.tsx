@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../config/authContext';
 
 export function SignOutView() {
@@ -51,9 +51,7 @@ export function SignOutView() {
     <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white dark:from-slate-900 dark:to-slate-950 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="flex items-center gap-2 mb-8 justify-center">
-          <div className="bg-brand-600 text-white p-2 rounded-lg">
-            <ChevronRight size={24} strokeWidth={3} />
-          </div>
+          <img src="/shyftlogo.png" alt="Shyft Solutions logo" className="h-10 w-auto" />
           <span className="font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
             Onboard<span className="text-brand-600">Hub</span>
           </span>
