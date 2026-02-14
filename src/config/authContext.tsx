@@ -4,8 +4,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from './firebase';
+import { supabase } from './supabase';
 import { getUserRole, signOut } from '../services/authService';
 import type { AuthUser, UserRole, AuthContextValue } from './authTypes';
 
@@ -16,10 +15,10 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 /**
  * Test user impersonation (development/QA only)
- * When using Firebase emulator, allows switching between test user accounts
+ * When using dev auth mode, allows switching between test user accounts
  * without re-authentication for faster QA workflows.
  *
- * Security: This mechanism is only available when VITE_USE_FIREBASE_EMULATOR=true
+ * Security: This mechanism is only available when VITE_USE_DEV_AUTH=true
  * and must never be exposed in production builds.
  */
 export interface ImpersonateUserOptions {
@@ -32,13 +31,13 @@ export interface ImpersonateUserOptions {
  * This allows testers to quickly switch between different user roles
  * without going through the sign-in flow.
  *
- * SECURITY WARNING: This is development-only and relies on VITE_USE_FIREBASE_EMULATOR
+ * SECURITY WARNING: This is development-only and relies on VITE_USE_DEV_AUTH
  * Check should prevent this from being available in production.
  */
 export function impersonateUserForQA(options: ImpersonateUserOptions): void {
-  // Verify we're in emulator mode before allowing impersonation
-  if (import.meta.env.VITE_USE_FIREBASE_EMULATOR !== 'true') {
-    console.error('Test user impersonation is only available in emulator mode');
+  // Verify we're in dev auth mode before allowing impersonation
+  if (import.meta.env.VITE_USE_DEV_AUTH !== 'true') {
+    console.error('Test user impersonation is only available in dev auth mode');
     return;
   }
 
@@ -65,7 +64,7 @@ export function impersonateUserForQA(options: ImpersonateUserOptions): void {
 
 /**
  * Helper function to load and validate mock auth from localStorage
- * Used for development fallback when Firebase emulator is not running
+ * Used for development fallback when Supabase instance is not connected
  *
  * @returns Parsed AuthUser if valid mock auth exists, null otherwise
  */
@@ -106,9 +105,9 @@ function loadMockAuthFromStorage(): AuthUser | null {
  * Should wrap the entire app to provide auth state everywhere
  *
  * Responsibilities:
- * 1. Listen to Firebase auth state changes via onAuthStateChanged
+ * 1. Listen to Supabase auth state changes via onAuthStateChange
  * 2. Listen to localStorage storage events (for mock auth fallback)
- * 3. Fetch user's role from Firestore on auth state change
+ * 3. Fetch user's role from Supabase on auth state change
  * 4. Handle loading state while fetching auth and role data
  * 5. Provide auth context to all child components
  *
@@ -118,7 +117,7 @@ function loadMockAuthFromStorage(): AuthUser | null {
  * - Storage events are handled reactively to support localStorage updates
  *
  * localStorage fallback:
- * - When Firebase emulator is not running, uses localStorage for dev auth
+ * - When Supabase instance is not connected, uses localStorage for dev auth
  * - Listens for 'storage' events to detect localStorage updates from signInWithEmailLink
  * - Automatically updates auth state when localStorage is modified
  */
@@ -132,63 +131,65 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check localStorage for mock auth first (fallback for development without emulator)
+    // Check localStorage for mock auth first (fallback for development without live Supabase)
     const mockUser = loadMockAuthFromStorage();
     if (mockUser) {
       setUser(mockUser);
       setRole(mockUser.role);
       setLoading(false);
-      return; // Don't listen to Firebase if using mock auth
+      return; // Don't listen to Supabase if using mock auth
     }
 
-    // Listen to Firebase auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser && firebaseUser.email) {
-          // User is authenticated, fetch their role from Firestore
-          const userRole = await getUserRole(firebaseUser.uid);
+    // Listen to Supabase auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        try {
+          if (session?.user?.email) {
+            // User is authenticated, fetch their role from Supabase
+            const userRole = await getUserRole(session.user.id);
 
-          if (userRole) {
-            // Successfully fetched role
-            const authUser: AuthUser = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              role: userRole,
-            };
+            if (userRole) {
+              // Successfully fetched role
+              const authUser: AuthUser = {
+                uid: session.user.id,
+                email: session.user.email,
+                role: userRole,
+              };
 
-            setUser(authUser);
-            setRole(userRole);
+              setUser(authUser);
+              setRole(userRole);
+            } else {
+              // Failed to get role, clear user state
+              console.warn(
+                'User authenticated but role not found in database',
+              );
+              setUser(null);
+              setRole(null);
+            }
           } else {
-            // Failed to get role, clear user state
-            console.warn(
-              'User authenticated but role not found in Firestore',
-            );
+            // User is not authenticated
             setUser(null);
             setRole(null);
           }
-        } else {
-          // User is not authenticated
+        } catch (error) {
+          console.error('Error in auth state change handler:', error);
           setUser(null);
           setRole(null);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error in auth state change handler:', error);
-        setUser(null);
-        setRole(null);
-      } finally {
-        setLoading(false);
-      }
-    });
+      },
+    );
 
     // Cleanup subscription on unmount
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
     /**
      * Handle localStorage changes for mock auth fallback
      * This listener is triggered when signInWithEmailLink writes to localStorage
-     * in development environments where Firebase emulator is not running.
+     * in development environments where Supabase instance is not connected.
      *
      * The storage event fires on OTHER tabs/windows when localStorage changes,
      * but NOT on the current tab. We use a custom approach to detect changes:

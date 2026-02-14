@@ -18,26 +18,22 @@ import type { UserRole } from '../config/authTypes';
 // Mock the auth service
 vi.mock('../services/authService');
 
-// Mock Firebase Auth
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn((_auth, callback) => {
-    callback(null);
-    return () => {};
-  }),
-  createUserWithEmailAndPassword: vi.fn(),
+// Mock Supabase client for AuthProvider
+vi.mock('../config/supabase', () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: vi.fn((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      }),
+    },
+  },
 }));
 
-// Mock Firebase config
-vi.mock('../config/firebase', () => ({
-  auth: {},
-  firestore: {},
-  storage: {},
-}));
-
-// Set Firebase emulator env BEFORE any component imports
-// This is needed for SignInView to detect emulator mode on initialization
+// Set dev auth env BEFORE any component imports
+// This is needed for SignInView to detect dev auth mode on initialization
 if (typeof import.meta !== 'undefined') {
-  (import.meta.env as any).VITE_USE_FIREBASE_EMULATOR = 'true';
+  (import.meta.env as any).VITE_USE_DEV_AUTH = 'true';
 }
 
 // Mock the mock data
@@ -170,7 +166,7 @@ describe('Auth Flow Integration', () => {
     });
 
     /**
-     * Test: localStorage fallback works when Firebase unavailable
+     * Test: localStorage fallback works when Supabase unavailable
      * Acceptance: Auth state persists in localStorage when emulator down
      */
     it('uses localStorage fallback for authentication', () => {
@@ -369,7 +365,7 @@ describe('Auth Flow Integration', () => {
     it('prevents impersonation when not in emulator mode', () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // This test verifies the guard, but since VITE_USE_FIREBASE_EMULATOR
+      // This test verifies the guard, but since VITE_USE_DEV_AUTH
       // is set to 'true' by default in our test setup, we would need
       // to mock import.meta.env to test the false case
       // For now, we verify that impersonation succeeds in emulator mode
@@ -454,7 +450,7 @@ describe('Auth Flow Integration', () => {
   describe('Test Account UI Display', () => {
     /**
      * Test: Quick-login buttons display in emulator mode
-     * Acceptance: SignInView shows test account buttons when VITE_USE_FIREBASE_EMULATOR is true
+     * Acceptance: SignInView shows test account buttons when VITE_USE_DEV_AUTH is true
      */
     it('shows quick-login buttons when in emulator mode', async () => {
       render(

@@ -1,6 +1,6 @@
 /**
  * Auth Service Tests
- * Tests for Firebase authentication service functions
+ * Tests for Supabase authentication service functions
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -10,26 +10,84 @@ import {
   signInWithEmailLink,
   setUserRole,
   getUserRole,
-  getCurrentUser,
   signOut,
 } from './authService';
-import * as firebaseAuth from 'firebase/auth';
-import * as firestore from 'firebase/firestore';
 
-// Mock Firebase modules
-vi.mock('firebase/auth');
-vi.mock('firebase/firestore');
+// Mock Supabase client - use vi.hoisted() so mocks are available when vi.mock factory runs
+const {
+  mockSupabaseAuth,
+  mockUpsert,
+  mockInsert,
+  mockDeleteEq,
+  mockDelete,
+  mockSingle,
+  mockEq,
+  mockSelect,
+  mockFrom,
+} = vi.hoisted(() => {
+  const mockSupabaseAuth = {
+    signUp: vi.fn(),
+    signInWithPassword: vi.fn(),
+    signOut: vi.fn(),
+    getUser: vi.fn(),
+  };
 
-// Mock firebase config
-vi.mock('../config/firebase', () => ({
-  auth: {},
-  firestore: {},
-  storage: {},
+  const mockUpsert = vi.fn().mockResolvedValue({ error: null });
+  const mockInsert = vi.fn().mockResolvedValue({ error: null });
+  const mockDeleteEq = vi.fn().mockResolvedValue({ error: null });
+  const mockDelete = vi.fn().mockReturnValue({ eq: mockDeleteEq });
+  const mockSingle = vi.fn();
+  const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
+  const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+
+  const mockFrom = vi.fn().mockImplementation((table: string) => {
+    if (table === 'users') {
+      return {
+        upsert: mockUpsert,
+        select: mockSelect,
+      };
+    }
+    if (table === 'user_roles') {
+      return {
+        delete: mockDelete,
+        insert: mockInsert,
+      };
+    }
+    return {};
+  });
+
+  return {
+    mockSupabaseAuth,
+    mockUpsert,
+    mockInsert,
+    mockDeleteEq,
+    mockDelete,
+    mockSingle,
+    mockEq,
+    mockSelect,
+    mockFrom,
+  };
+});
+
+vi.mock('../config/supabase', () => ({
+  supabase: {
+    auth: mockSupabaseAuth,
+    from: mockFrom,
+  },
+}));
+
+// Mock getAuthCredential from ./supabase barrel
+vi.mock('./supabase', () => ({
+  getAuthCredential: vi.fn().mockReturnValue(null),
 }));
 
 describe('Auth Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset default return values
+    mockUpsert.mockResolvedValue({ error: null });
+    mockInsert.mockResolvedValue({ error: null });
+    mockDeleteEq.mockResolvedValue({ error: null });
   });
 
   describe('signInWithEmailLink - Error Cases', () => {
@@ -58,136 +116,124 @@ describe('Auth Service', () => {
 
     it('should handle email with whitespace', async () => {
       // This should work - the function trims whitespace
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockResolvedValueOnce({
-        user: { uid: 'test-uid', email: 'test-manager@example.com' },
-      } as any);
-
-      const mockTimestamp = { toMillis: vi.fn().mockReturnValue(1000) };
-      vi.mocked(firestore.doc).mockReturnValue('userRef' as any);
-      vi.mocked(firestore.setDoc).mockResolvedValue(undefined as any);
-      vi.mocked(firestore.getDoc).mockResolvedValue({
-        exists: () => false,
-      } as any);
-      vi.mocked(firestore.Timestamp.now).mockReturnValue(mockTimestamp as any);
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'test-uid', identities: [{}] } },
+        error: null,
+      });
 
       // Should not throw for email with whitespace
       await expect(
         signInWithEmailLink('  test-manager@example.com  ')
       ).resolves.not.toThrow();
     });
-
-    it('should handle Firebase auth network errors gracefully', async () => {
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockRejectedValueOnce(
-        new Error('Firebase: Error (auth/network-request-failed).')
-      );
-
-      await expect(signInWithEmailLink('test-manager@example.com')).rejects.toThrow();
-    });
-
-    it('should handle Firebase auth initialization errors', async () => {
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockRejectedValueOnce(
-        new Error('Firebase: Error (auth/app-not-initialized).')
-      );
-
-      await expect(signInWithEmailLink('test-employee@example.com')).rejects.toThrow();
-    });
   });
 
   describe('setUserRole', () => {
-    // Note: Full setUserRole tests require proper Firestore initialization
-    // These tests verify the public API behavior
-    it('should call Firestore doc() with users collection and uid', async () => {
-      const mockSetDoc = vi.fn().mockResolvedValue(undefined);
-      const mockGetDoc = vi.fn().mockResolvedValue({
-        exists: () => false,
+    it('should upsert user row and set role in user_roles', async () => {
+      await setUserRole('uid-123', 'user@example.com', 'employee');
+
+      // Verify user upsert was called
+      expect(mockFrom).toHaveBeenCalledWith('users');
+      expect(mockUpsert).toHaveBeenCalledWith({
+        id: 'uid-123',
+        email: 'user@example.com',
+        name: 'user',
+        updated_at: expect.any(String),
       });
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-      const mockTimestamp = {
-        now: vi.fn().mockReturnValue({
-          toMillis: vi.fn().mockReturnValue(1000),
-        }),
-      };
 
-      vi.mocked(firestore.setDoc).mockImplementation(mockSetDoc as any);
-      vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
-      vi.mocked(firestore.Timestamp).mockReturnValue(
-        mockTimestamp as any,
-      );
+      // Verify old roles were deleted
+      expect(mockFrom).toHaveBeenCalledWith('user_roles');
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockDeleteEq).toHaveBeenCalledWith('user_id', 'uid-123');
 
-      try {
-        await setUserRole('uid-123', 'user@example.com', 'employee');
-        // If it succeeds, verify the calls
-        expect(mockDoc).toHaveBeenCalled();
-      } catch {
-        // Timestamp mock failures are acceptable in this test environment
-        // The important thing is the API contract is correct
-      }
+      // Verify new role was inserted
+      expect(mockInsert).toHaveBeenCalledWith({
+        user_id: 'uid-123',
+        role_name: 'employee',
+      });
+    });
+
+    it('should throw if user upsert fails', async () => {
+      mockUpsert.mockResolvedValueOnce({
+        error: { message: 'Upsert failed' },
+      });
+
+      await expect(
+        setUserRole('uid-123', 'user@example.com', 'employee')
+      ).rejects.toBeTruthy();
+    });
+
+    it('should throw if role delete fails', async () => {
+      mockDeleteEq.mockResolvedValueOnce({
+        error: { message: 'Delete failed' },
+      });
+
+      await expect(
+        setUserRole('uid-123', 'user@example.com', 'employee')
+      ).rejects.toBeTruthy();
+    });
+
+    it('should throw if role insert fails', async () => {
+      mockInsert.mockResolvedValueOnce({
+        error: { message: 'Insert failed' },
+      });
+
+      await expect(
+        setUserRole('uid-123', 'user@example.com', 'employee')
+      ).rejects.toBeTruthy();
     });
   });
 
   describe('getUserRole', () => {
-    it('should retrieve user role from Firestore', async () => {
-      const mockUserData = {
-        uid: 'uid-123',
-        email: 'user@example.com',
-        role: 'employee',
-      };
-
-      const mockGetDoc = vi.fn().mockResolvedValue({
-        exists: () => true,
-        data: () => mockUserData,
+    it('should retrieve user role from Supabase', async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: {
+          id: 'uid-123',
+          email: 'user@example.com',
+          user_roles: [{ role_name: 'employee' }],
+        },
+        error: null,
       });
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-
-      vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
 
       const role = await getUserRole('uid-123');
 
       expect(role).toBe('employee');
-      expect(mockGetDoc).toHaveBeenCalled();
+      expect(mockFrom).toHaveBeenCalledWith('users');
+      expect(mockSelect).toHaveBeenCalledWith('*, user_roles(role_name)');
+      expect(mockEq).toHaveBeenCalledWith('id', 'uid-123');
     });
 
     it('should return null when user document does not exist', async () => {
-      const mockGetDoc = vi.fn().mockResolvedValue({
-        exists: () => false,
+      mockSingle.mockResolvedValueOnce({
+        data: null,
+        error: { code: 'PGRST116', message: 'Not found' },
       });
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-
-      vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
 
       const role = await getUserRole('non-existent-uid');
 
       expect(role).toBeNull();
     });
 
-    it('should return null when Firestore error occurs', async () => {
-      vi.mocked(firestore.getDoc).mockRejectedValue(
-        new Error('Firestore error'),
-      );
-      vi.mocked(firestore.doc).mockReturnValue('userDocRef' as any);
+    it('should return null when Supabase error occurs', async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: null,
+        error: { code: 'UNKNOWN', message: 'Database error' },
+      });
 
       const role = await getUserRole('uid-123');
 
       expect(role).toBeNull();
     });
 
-    it('should return null when role field is missing', async () => {
-      const mockUserDataNoRole = {
-        uid: 'uid-123',
-        email: 'user@example.com',
-      };
-
-      const mockGetDoc = vi.fn().mockResolvedValue({
-        exists: () => true,
-        data: () => mockUserDataNoRole,
+    it('should return null when user has no roles', async () => {
+      mockSingle.mockResolvedValueOnce({
+        data: {
+          id: 'uid-123',
+          email: 'user@example.com',
+          user_roles: [],
+        },
+        error: null,
       });
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-
-      vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
 
       const role = await getUserRole('uid-123');
 
@@ -195,9 +241,6 @@ describe('Auth Service', () => {
     });
 
     it('should return different roles correctly', async () => {
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
-
       const testRoles: Array<'employee' | 'manager' | 'admin'> = [
         'employee',
         'manager',
@@ -205,91 +248,19 @@ describe('Auth Service', () => {
       ];
 
       for (const testRole of testRoles) {
-        const mockUserData = {
-          uid: 'uid-123',
-          email: 'user@example.com',
-          role: testRole,
-        };
-
-        const mockGetDoc = vi.fn().mockResolvedValue({
-          exists: () => true,
-          data: () => mockUserData,
+        mockSingle.mockResolvedValueOnce({
+          data: {
+            id: 'uid-123',
+            email: 'user@example.com',
+            user_roles: [{ role_name: testRole }],
+          },
+          error: null,
         });
-
-        vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
 
         const role = await getUserRole('uid-123');
 
         expect(role).toBe(testRole);
       }
-    });
-  });
-
-  describe('getCurrentUser', () => {
-    it('should return current authenticated user with role', async () => {
-      // Note: getCurrentUser requires proper Firebase Auth initialization
-      // This test verifies the API pattern
-      const mockGetDoc = vi.fn().mockResolvedValue({
-        exists: () => true,
-        data: () => ({
-          uid: 'uid-123',
-          email: 'user@example.com',
-          role: 'manager',
-        }),
-      });
-      const mockDoc = vi.fn().mockReturnValue('userDocRef');
-
-      vi.mocked(firestore.getDoc).mockImplementation(mockGetDoc as any);
-      vi.mocked(firestore.doc).mockImplementation(mockDoc as any);
-
-      // getCurrentUser returns null when auth is not initialized in tests
-      const user = await getCurrentUser();
-      expect(user).toBeNull();
-    });
-
-    it('should return null when no user is authenticated', async () => {
-      vi.spyOn(firebaseAuth, 'getAuth').mockReturnValue({
-        currentUser: null,
-      } as unknown as firebaseAuth.Auth);
-
-      const user = await getCurrentUser();
-
-      expect(user).toBeNull();
-    });
-
-    it('should return null when user has no email', async () => {
-      const mockFirebaseUserNoEmail = {
-        uid: 'uid-123',
-        email: null,
-      };
-
-      vi.spyOn(firebaseAuth, 'getAuth').mockReturnValue({
-        currentUser: mockFirebaseUserNoEmail,
-      } as unknown as firebaseAuth.Auth);
-
-      const user = await getCurrentUser();
-
-      expect(user).toBeNull();
-    });
-
-    it('should return null when role fetch fails', async () => {
-      const mockFirebaseUser = {
-        uid: 'uid-123',
-        email: 'user@example.com',
-      };
-
-      vi.spyOn(firebaseAuth, 'getAuth').mockReturnValue({
-        currentUser: mockFirebaseUser,
-      } as unknown as firebaseAuth.Auth);
-
-      vi.mocked(firestore.getDoc).mockRejectedValue(
-        new Error('Firestore error'),
-      );
-      vi.mocked(firestore.doc).mockReturnValue('userDocRef' as any);
-
-      const user = await getCurrentUser();
-
-      expect(user).toBeNull();
     });
   });
 
@@ -300,119 +271,167 @@ describe('Auth Service', () => {
       ).rejects.toThrow('Email not recognized');
     });
 
-    it('should accept test-employee email', async () => {
-      // Note: Full sign-in tests require Firebase initialization
-      // This test verifies email validation logic
-      const mockCreateUser = vi.fn().mockResolvedValue({
-        user: { uid: 'new-uid' },
+    it('should accept test-employee email via Supabase signUp', async () => {
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'new-uid', identities: [{ id: '1' }] } },
+        error: null,
       });
 
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockImplementation(
-        mockCreateUser as any,
-      );
+      // Should not throw
+      await expect(
+        signInWithEmailLink('test-employee@example.com')
+      ).resolves.not.toThrow();
 
-      try {
-        // Employee email should be recognized
-        await signInWithEmailLink('test-employee@example.com');
-        // Success or Timestamp mock error both indicate email was accepted
-      } catch (error: any) {
-        // Timestamp initialization errors are acceptable
-        // The important thing is we got past email validation
-        expect(error.message).not.toContain('Email not recognized');
-      }
+      expect(mockSupabaseAuth.signUp).toHaveBeenCalledWith({
+        email: 'test-employee@example.com',
+        password: 'mockPassword123!',
+      });
     });
 
     it('should accept test-manager email', async () => {
-      const mockCreateUser = vi.fn().mockResolvedValue({
-        user: { uid: 'manager-uid' },
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'manager-uid', identities: [{ id: '1' }] } },
+        error: null,
       });
 
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockImplementation(
-        mockCreateUser as any,
-      );
-
-      try {
-        await signInWithEmailLink('test-manager@example.com');
-      } catch (error: any) {
-        expect(error.message).not.toContain('Email not recognized');
-      }
+      await expect(
+        signInWithEmailLink('test-manager@example.com')
+      ).resolves.not.toThrow();
     });
 
     it('should accept test-admin email', async () => {
-      const mockCreateUser = vi.fn().mockResolvedValue({
-        user: { uid: 'admin-uid' },
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'admin-uid', identities: [{ id: '1' }] } },
+        error: null,
       });
 
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockImplementation(
-        mockCreateUser as any,
+      await expect(
+        signInWithEmailLink('test-admin@example.com')
+      ).resolves.not.toThrow();
+    });
+
+    it('should try signInWithPassword when user already exists', async () => {
+      // signUp returns user with empty identities = user already exists
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'existing-uid', identities: [] } },
+        error: null,
+      });
+
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: 'existing-uid' } },
+        error: null,
+      });
+
+      await expect(
+        signInWithEmailLink('test-employee@example.com')
+      ).resolves.not.toThrow();
+
+      expect(mockSupabaseAuth.signInWithPassword).toHaveBeenCalledWith({
+        email: 'test-employee@example.com',
+        password: 'mockPassword123!',
+      });
+    });
+
+    it('should fall back to localStorage when Supabase auth unavailable', async () => {
+      mockSupabaseAuth.signUp.mockRejectedValueOnce(
+        new Error('Supabase connection failed')
       );
 
-      try {
-        await signInWithEmailLink('test-admin@example.com');
-      } catch (error: any) {
-        expect(error.message).not.toContain('Email not recognized');
+      await signInWithEmailLink('test-employee@example.com');
+
+      // Should have stored in localStorage
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        expect(parsed.email).toBe('test-employee@example.com');
+        expect(parsed.role).toBe('employee');
       }
     });
 
-    it('should throw other auth errors', async () => {
-      const mockCreateUserError = new Error('auth/invalid-email');
-      (mockCreateUserError as any).code = 'auth/invalid-email';
+    it('should fall back to localStorage when signInWithPassword fails', async () => {
+      // signUp says user exists
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'existing-uid', identities: [] } },
+        error: null,
+      });
 
-      vi.mocked(firebaseAuth.createUserWithEmailAndPassword).mockRejectedValue(
-        mockCreateUserError,
-      );
+      // signInWithPassword fails
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Invalid credentials' },
+      });
 
-      await expect(
-        signInWithEmailLink('test-employee@example.com'),
-      ).rejects.toThrow();
+      await signInWithEmailLink('test-employee@example.com');
+
+      // Should have fallen back to localStorage
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+    });
+
+    it('should use getAuthCredential for Users panel-created users', async () => {
+      // Re-import and mock getAuthCredential
+      const { getAuthCredential } = await import('./supabase');
+      vi.mocked(getAuthCredential).mockReturnValueOnce({
+        email: 'panel-user@example.com',
+        role: 'manager',
+        uid: 'panel-uid',
+      });
+
+      await signInWithEmailLink('panel-user@example.com');
+
+      // Should have stored in localStorage without calling Supabase auth
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        expect(parsed.uid).toBe('panel-uid');
+        expect(parsed.role).toBe('manager');
+      }
+
+      expect(mockSupabaseAuth.signUp).not.toHaveBeenCalled();
     });
   });
 
   describe('signOut', () => {
     it('should clear localStorage mock auth', async () => {
-      // Mock localStorage using vi.stubGlobal
       const mockRemoveItem = vi.fn();
       vi.stubGlobal('localStorage', {
         removeItem: mockRemoveItem,
       } as any);
 
-      const mockSignOut = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(firebaseAuth.signOut).mockImplementation(mockSignOut as any);
+      mockSupabaseAuth.signOut.mockResolvedValueOnce({ error: null });
 
       await signOut();
 
       expect(mockRemoveItem).toHaveBeenCalledWith('mockAuthUser');
     });
 
-    it('should gracefully handle Firebase signOut failure', async () => {
-      // Mock localStorage using vi.stubGlobal
+    it('should gracefully handle Supabase signOut failure', async () => {
       const mockRemoveItem = vi.fn();
       vi.stubGlobal('localStorage', {
         removeItem: mockRemoveItem,
       } as any);
 
-      const signOutError = new Error('Sign-out failed');
-
-      vi.mocked(firebaseAuth.signOut).mockRejectedValue(signOutError);
+      mockSupabaseAuth.signOut.mockRejectedValueOnce(
+        new Error('Sign-out failed')
+      );
 
       // Should not throw - just log warning
       await expect(signOut()).resolves.not.toThrow();
     });
 
-    it('should call Firebase signOut when available', async () => {
-      // Mock localStorage using vi.stubGlobal
+    it('should call Supabase signOut', async () => {
       const mockRemoveItem = vi.fn();
       vi.stubGlobal('localStorage', {
         removeItem: mockRemoveItem,
       } as any);
 
-      const mockSignOut = vi.fn().mockResolvedValue(undefined);
-
-      vi.mocked(firebaseAuth.signOut).mockImplementation(mockSignOut as any);
+      mockSupabaseAuth.signOut.mockResolvedValueOnce({ error: null });
 
       await signOut();
 
-      expect(mockSignOut).toHaveBeenCalled();
+      expect(mockSupabaseAuth.signOut).toHaveBeenCalled();
     });
   });
 });

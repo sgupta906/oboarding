@@ -51,9 +51,9 @@ function createLocalStorageMock() {
 }
 
 /**
- * Default Firebase environment for tests
- * DISABLE Firestore for tests to ensure localStorage-only testing
- * This prevents cross-test pollution from the running Firebase Emulator
+ * Default auth environment for tests
+ * DISABLE dev auth for tests to ensure localStorage-only testing
+ * This prevents cross-test pollution from a running Supabase instance
  *
  * Tests should use localStorage only - this ensures:
  * - Clean test isolation with no persistent emulator data
@@ -61,8 +61,8 @@ function createLocalStorageMock() {
  * - Predictable behavior with our test helper functions
  */
 if (typeof import.meta !== 'undefined') {
-  // FORCE disable Firebase for tests - we use localStorage exclusively
-  (import.meta.env as any).VITE_USE_FIREBASE_EMULATOR = 'false';
+  // FORCE disable dev auth for tests - we use localStorage exclusively
+  (import.meta.env as any).VITE_USE_DEV_AUTH = 'false';
   (import.meta.env as any).VITE_FIREBASE_PROJECT_ID = '';
 }
 

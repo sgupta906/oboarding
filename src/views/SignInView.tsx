@@ -1,6 +1,6 @@
 /**
  * SignInView Component - User authentication page
- * Provides email-based sign-in using Firebase email link authentication (mocked)
+ * Provides email-based sign-in using Supabase authentication (mocked)
  *
  * Mock emails for testing:
  * - test-employee@example.com → employee role
@@ -60,7 +60,7 @@ export function SignInView() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEmulatorMode] = useState(
-    import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
+    import.meta.env.VITE_USE_DEV_AUTH === 'true'
   );
   const { isAuthenticated } = useAuth();
 
@@ -79,8 +79,8 @@ export function SignInView() {
 
   /**
    * Handle form submission
-   * Calls signInWithEmailLink which creates/authenticates user in Firebase
-   * and sets their role in Firestore or localStorage (fallback)
+   * Calls signInWithEmailLink which creates/authenticates user in Supabase
+   * and sets their role in the database or localStorage (fallback)
    */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

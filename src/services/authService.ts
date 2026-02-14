@@ -1,21 +1,10 @@
 /**
  * Authentication Service
- * Handles user authentication, role management, and Firestore user operations
+ * Handles user authentication, role management, and Supabase user operations
  */
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-} from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  Timestamp,
-} from 'firebase/firestore';
-import { auth, firestore } from '../config/firebase';
-import type { AuthUser, UserRole, FirestoreUser } from '../config/authTypes';
+import { supabase } from '../config/supabase';
+import type { UserRole } from '../config/authTypes';
 import { getAuthCredential } from './supabase';
 
 /**
@@ -29,14 +18,14 @@ const MOCK_EMAIL_ROLES: Record<string, UserRole> = {
 };
 
 /**
- * Creates or updates a Firestore user document with role information
- * Security: Should be called only from secure backend or Auth.js server action
+ * Creates or updates a user record and their role in Supabase.
+ * Upserts the user row and replaces the role in the user_roles junction table.
  *
- * @param uid - User's unique identifier from Firebase Auth
+ * @param uid - User's unique identifier
  * @param email - User's email address
  * @param role - User's role (employee, manager, or admin)
- * @returns Promise that resolves when user document is saved
- * @throws Error if Firestore operation fails
+ * @returns Promise that resolves when user and role are saved
+ * @throws Error if Supabase operations fail
  */
 export async function setUserRole(
   uid: string,
@@ -44,23 +33,36 @@ export async function setUserRole(
   role: UserRole,
 ): Promise<void> {
   try {
-    const now = Timestamp.now();
-    const userRef = doc(firestore, 'users', uid);
-
-    // Check if user document exists
-    const userDoc = await getDoc(userRef);
-
-    const userData: FirestoreUser = {
-      uid,
+    // Upsert user row
+    const { error: userError } = await supabase.from('users').upsert({
+      id: uid,
       email,
-      role,
-      createdAt: userDoc.exists()
-        ? (userDoc.data() as FirestoreUser).createdAt
-        : now.toMillis(),
-      updatedAt: now.toMillis(),
-    };
+      name: email.split('@')[0],
+      updated_at: new Date().toISOString(),
+    });
 
-    await setDoc(userRef, userData, { merge: true });
+    if (userError) {
+      throw userError;
+    }
+
+    // Delete existing roles
+    const { error: deleteError } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', uid);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    // Insert new role
+    const { error: insertError } = await supabase
+      .from('user_roles')
+      .insert({ user_id: uid, role_name: role });
+
+    if (insertError) {
+      throw insertError;
+    }
   } catch (error) {
     console.error('Error setting user role:', error);
     throw error;
@@ -68,79 +70,49 @@ export async function setUserRole(
 }
 
 /**
- * Retrieves a user's role from Firestore
- * Security: Verify user owns this document via Firestore security rules
+ * Retrieves a user's role from Supabase via the users + user_roles tables.
  *
  * @param uid - User's unique identifier
  * @returns Promise resolving to user's role or null if not found
- * @throws Error if Firestore operation fails
  */
 export async function getUserRole(uid: string): Promise<UserRole | null> {
   try {
-    const userRef = doc(firestore, 'users', uid);
-    const userDoc = await getDoc(userRef);
+    const { data, error } = await supabase
+      .from('users')
+      .select('*, user_roles(role_name)')
+      .eq('id', uid)
+      .single();
 
-    if (!userDoc.exists()) {
-      console.warn(`User document not found for uid: ${uid}`);
+    if (error || !data) {
+      if (error && error.code !== 'PGRST116') {
+        console.warn(`Error fetching role for uid ${uid}:`, error.message);
+      } else {
+        console.warn(`User document not found for uid: ${uid}`);
+      }
       return null;
     }
 
-    const userData = userDoc.data() as FirestoreUser;
-    return userData.role || null;
+    // Extract role from the junction table join
+    const roles = (data as any).user_roles as Array<{ role_name: string }> | undefined;
+    const roleName = roles?.[0]?.role_name ?? null;
+
+    return roleName as UserRole | null;
   } catch (error) {
     console.error('Error getting user role:', error);
-    // Return null on error instead of throwing to handle gracefully
-    return null;
-  }
-}
-
-/**
- * Gets the currently authenticated user with their role
- * Requires user to be authenticated
- *
- * @returns Promise resolving to AuthUser or null if not authenticated
- */
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  try {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser || !currentUser.email) {
-      return null;
-    }
-
-    const role = await getUserRole(currentUser.uid);
-
-    if (!role) {
-      return null;
-    }
-
-    return {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      role,
-    };
-  } catch (error) {
-    console.error('Error getting current user:', error);
     return null;
   }
 }
 
 /**
  * Mock sign-in with email link (stubbed for demo)
- * In production, this would send an actual email link via Firebase
- * For testing, we use predefined test emails with hardcoded roles
+ * In production, this would use Supabase magic link or OAuth.
+ * For testing, we use predefined test emails with hardcoded roles.
  *
  * This implementation uses a hybrid approach:
  * 1. Validates email against test email list
- * 2. Attempts Firebase Auth creation (may fail if emulator not running)
- * 3. Falls back to localStorage mock for development without emulator
- * 4. Stores user role in Firestore or localStorage
- *
- * Security considerations:
- * - Real implementation should use Firebase's email link authentication
- * - Link should be time-limited (typically 24 hours)
- * - Server should verify the email belongs to the user claiming it
- * - Never return sensitive data that reveals system structure
+ * 2. Attempts Supabase Auth sign-up/sign-in
+ * 3. Falls back to localStorage mock for development without live Supabase
+ * 4. Stores user role in Supabase or localStorage
  *
  * @param email - User's email address
  * @returns Promise that resolves when sign-in is processed
@@ -192,63 +164,60 @@ export async function signInWithEmailLink(email: string): Promise<void> {
     // Generate a deterministic UID from email for consistency
     const emailHash = btoa(trimmedEmail).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
     let uid: string;
-    let useFirebaseAuth = true;
+    let useSupabaseAuth = true;
 
     try {
-      // Try to create a new user with the test email
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        trimmedEmail,
-        'mockPassword123!',
-      );
-      uid = userCredential.user.uid;
-    } catch (authError: unknown) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const errorCode = authError instanceof Error ? (authError as any).code : '';
+      // Try to sign up a new user with Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password: 'mockPassword123!',
+      });
 
-      if (errorCode === 'auth/email-already-in-use') {
-        // Existing user: sign in with the known mock password so auth state updates
-        try {
-          const existingCredential = await signInWithEmailAndPassword(
-            auth,
-            trimmedEmail,
-            'mockPassword123!',
-          );
-          uid = existingCredential.user.uid;
-        } catch (signinError) {
-          // Couldn't sign in (emulator offline, etc.) – fall back to local storage
-          useFirebaseAuth = false;
-          uid = emailHash;
-          console.warn('Firebase Auth sign-in unavailable, using localStorage fallback:', signinError);
-        }
-      } else if (
-        errorCode.includes('network-request-failed') ||
-        errorCode.includes('app-not-initialized')
-      ) {
-        // Emulator not running or Firebase not initialized
-        // Use localStorage fallback for development
-        useFirebaseAuth = false;
-        uid = emailHash;
-        console.warn(
-          'Firebase Auth unavailable, using localStorage fallback. Start emulator with: npm run firebase:emulator'
-        );
-      } else {
-        throw authError;
+      if (signUpError) {
+        throw signUpError;
       }
+
+      // Check if user already exists (signUp returns user but identities is empty)
+      if (signUpData?.user && (!signUpData.user.identities || signUpData.user.identities.length === 0)) {
+        // User already exists, try sign in
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password: 'mockPassword123!',
+        });
+
+        if (signInError) {
+          // Could not sign in - fall back to localStorage
+          useSupabaseAuth = false;
+          uid = emailHash;
+          console.warn('Supabase Auth sign-in unavailable, using localStorage fallback:', signInError.message);
+        } else {
+          uid = signInData.user?.id ?? emailHash;
+        }
+      } else {
+        uid = signUpData?.user?.id ?? emailHash;
+      }
+    } catch (authError: unknown) {
+      // Supabase not available or other error - fall back to localStorage
+      useSupabaseAuth = false;
+      uid = emailHash;
+      console.warn(
+        'Supabase Auth unavailable, using localStorage fallback:',
+        authError instanceof Error ? authError.message : authError
+      );
     }
 
-    // Store user in Firestore or localStorage
-    if (useFirebaseAuth) {
+    // Store user role in Supabase or localStorage
+    if (useSupabaseAuth) {
       try {
         await setUserRole(uid, trimmedEmail, mockRole);
-      } catch (firestoreError) {
-        console.warn('Firestore write failed, using localStorage:', firestoreError);
-        useFirebaseAuth = false;
+      } catch (dbError) {
+        console.warn('Supabase DB write failed, using localStorage:', dbError);
+        useSupabaseAuth = false;
       }
     }
 
-    if (!useFirebaseAuth) {
-      // Use localStorage for development without emulator
+    if (!useSupabaseAuth) {
+      // Use localStorage for development without live Supabase
       localStorage.setItem(
         'mockAuthUser',
         JSON.stringify({ uid, email: trimmedEmail, role: mockRole })
@@ -269,10 +238,7 @@ export async function signInWithEmailLink(email: string): Promise<void> {
 
 /**
  * Signs out the currently authenticated user
- * Clears auth state from Firebase and localStorage fallback
- *
- * Security: Does not require additional authorization
- * User can always sign themselves out
+ * Clears auth state from Supabase and localStorage fallback
  *
  * @returns Promise that resolves when sign-out is complete
  * @throws Error if sign-out fails
@@ -289,11 +255,11 @@ export async function signOut(): Promise<void> {
       }),
     );
 
-    // Try to sign out from Firebase (may fail if emulator not running)
+    // Try to sign out from Supabase (may fail if no live instance)
     try {
-      await firebaseSignOut(auth);
-    } catch (firebaseError) {
-      console.warn('Firebase sign-out failed (emulator may not be running):', firebaseError);
+      await supabase.auth.signOut();
+    } catch (supabaseError) {
+      console.warn('Supabase sign-out failed (instance may not be connected):', supabaseError);
       // Continue - localStorage is already cleared
     }
   } catch (error) {

@@ -1,7 +1,7 @@
 /**
  * SignInView Integration Tests
  * Tests the sign-in form UI and error handling
- * Verifies that Firebase auth errors are properly caught and displayed
+ * Verifies that auth errors are properly caught and displayed
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -13,19 +13,16 @@ import * as authService from '../services/authService';
 // Mock the auth service
 vi.mock('../services/authService');
 
-// Mock Firebase Auth
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn((_auth, callback) => {
-    callback(null);
-    return () => {};
-  }),
-}));
-
-// Mock Firebase config
-vi.mock('../config/firebase', () => ({
-  auth: {},
-  firestore: {},
-  storage: {},
+// Mock Supabase client for AuthProvider
+vi.mock('../config/supabase', () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: vi.fn((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      }),
+    },
+  },
 }));
 
 describe('SignInView Integration', () => {
@@ -51,10 +48,10 @@ describe('SignInView Integration', () => {
   }
 
   describe('Form Submission', () => {
-    it('displays error when Firebase auth fails', async () => {
+    it('displays error when auth service fails', async () => {
       const user = userEvent.setup();
       const mockError = new Error(
-        'Firebase: Error (auth/network-request-failed).'
+        'Auth service unavailable. Please try again.'
       );
       vi.mocked(authService.signInWithEmailLink).mockRejectedValueOnce(
         mockError
@@ -73,7 +70,7 @@ describe('SignInView Integration', () => {
       // Error message should be displayed
       expect(
         screen.getByText(
-          /Firebase: Error \(auth\/network-request-failed\)\./
+          /Auth service unavailable\. Please try again\./
         )
       ).toBeInTheDocument();
     });

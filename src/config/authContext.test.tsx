@@ -8,12 +8,19 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from './authContext';
-import { onAuthStateChanged } from 'firebase/auth';
 import * as authService from '../services/authService';
 
-// Mock Firebase Auth
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn(),
+// Mock Supabase client - use vi.hoisted() so mock is available when vi.mock factory runs
+const { mockOnAuthStateChange } = vi.hoisted(() => ({
+  mockOnAuthStateChange: vi.fn(),
+}));
+
+vi.mock('./supabase', () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  },
 }));
 
 // Mock auth service
@@ -22,17 +29,15 @@ vi.mock('../services/authService', () => ({
   signOut: vi.fn(),
 }));
 
-// Mock Firebase config
-vi.mock('./firebase', () => ({
-  auth: {},
-  firestore: {},
-  storage: {},
-}));
-
 describe('AuthContext and useAuth Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+
+    // Default: onAuthStateChange returns subscription with unsubscribe
+    mockOnAuthStateChange.mockImplementation(() => ({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    }));
   });
 
   afterEach(() => {
@@ -55,9 +60,10 @@ describe('AuthContext and useAuth Hook', () => {
 
   describe('AuthProvider - Loading State', () => {
     it('should show loading state initially', () => {
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, _callback) => () => {},
-      );
+      // onAuthStateChange doesn't call back yet
+      mockOnAuthStateChange.mockImplementation(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }));
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -74,12 +80,11 @@ describe('AuthContext and useAuth Hook', () => {
 
   describe('AuthProvider - Unauthenticated State', () => {
     it('should set unauthenticated state when no user is logged in', async () => {
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        // Call back with no session (user signed out)
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -99,19 +104,14 @@ describe('AuthContext and useAuth Hook', () => {
 
   describe('AuthProvider - Authenticated State with Role', () => {
     it('should set authenticated state with user and role when user logs in', async () => {
-      const mockFirebaseUser = {
-        uid: 'test-uid-123',
-        email: 'test@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockResolvedValue('employee');
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'test-uid-123', email: 'test@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -133,19 +133,14 @@ describe('AuthContext and useAuth Hook', () => {
     });
 
     it('should set manager role when user has manager privileges', async () => {
-      const mockFirebaseUser = {
-        uid: 'manager-uid',
-        email: 'manager@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockResolvedValue('manager');
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'manager-uid', email: 'manager@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -162,19 +157,14 @@ describe('AuthContext and useAuth Hook', () => {
     });
 
     it('should set admin role when user has admin privileges', async () => {
-      const mockFirebaseUser = {
-        uid: 'admin-uid',
-        email: 'admin@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockResolvedValue('admin');
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'admin-uid', email: 'admin@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -193,19 +183,14 @@ describe('AuthContext and useAuth Hook', () => {
 
   describe('AuthProvider - Role Fetch Error Handling', () => {
     it('should clear user state when role fetch fails', async () => {
-      const mockFirebaseUser = {
-        uid: 'test-uid-123',
-        email: 'test@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockResolvedValue(null);
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'test-uid-123', email: 'test@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -223,21 +208,16 @@ describe('AuthContext and useAuth Hook', () => {
     });
 
     it('should handle getUserRole exceptions gracefully', async () => {
-      const mockFirebaseUser = {
-        uid: 'test-uid-123',
-        email: 'test@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockRejectedValue(
-        new Error('Firestore error'),
+        new Error('Database error'),
       );
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'test-uid-123', email: 'test@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -256,18 +236,13 @@ describe('AuthContext and useAuth Hook', () => {
   });
 
   describe('AuthProvider - User Without Email', () => {
-    it('should handle Firebase user without email gracefully', async () => {
-      const mockFirebaseUserNoEmail = {
-        uid: 'test-uid-123',
-        email: null,
-      };
-
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUserNoEmail);
-          return () => {};
-        },
-      );
+    it('should handle Supabase user without email gracefully', async () => {
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'test-uid-123', email: null },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -289,7 +264,9 @@ describe('AuthContext and useAuth Hook', () => {
     it('should unsubscribe from auth state changes on unmount', async () => {
       const mockUnsubscribe = vi.fn();
 
-      vi.mocked(onAuthStateChanged).mockReturnValue(mockUnsubscribe);
+      mockOnAuthStateChange.mockReturnValue({
+        data: { subscription: { unsubscribe: mockUnsubscribe } },
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -305,20 +282,15 @@ describe('AuthContext and useAuth Hook', () => {
 
   describe('AuthProvider - Context Value Methods', () => {
     it('should provide signOut function from context', async () => {
-      const mockFirebaseUser = {
-        uid: 'test-uid-123',
-        email: 'test@example.com',
-      };
-
       vi.mocked(authService.getUserRole).mockResolvedValue('employee');
       vi.mocked(authService.signOut).mockResolvedValue(undefined);
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(mockFirebaseUser);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'test-uid-123', email: 'test@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -344,11 +316,6 @@ describe('AuthContext and useAuth Hook', () => {
 
       localStorage.setItem('mockAuthUser', JSON.stringify(mockAuthData));
 
-      // Set Firebase listener to never complete (shouldn't be called)
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, _callback) => () => {},
-      );
-
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
       );
@@ -367,12 +334,10 @@ describe('AuthContext and useAuth Hook', () => {
     it('should handle invalid JSON in localStorage gracefully', async () => {
       localStorage.setItem('mockAuthUser', 'invalid-json-{');
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -399,12 +364,10 @@ describe('AuthContext and useAuth Hook', () => {
 
       localStorage.setItem('mockAuthUser', JSON.stringify(incompleteMockAuth));
 
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -424,12 +387,10 @@ describe('AuthContext and useAuth Hook', () => {
   describe('AuthProvider - Storage Event Listener', () => {
     it('should update auth state when custom authStorageChange event is dispatched', async () => {
       // Start with no auth
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -469,12 +430,10 @@ describe('AuthContext and useAuth Hook', () => {
 
     it('should handle storage events from other tabs', async () => {
       // Start with no auth
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -510,12 +469,10 @@ describe('AuthContext and useAuth Hook', () => {
     });
 
     it('should not update auth if storage event is for different key', async () => {
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <AuthProvider>{children}</AuthProvider>
@@ -540,12 +497,10 @@ describe('AuthContext and useAuth Hook', () => {
     });
 
     it('should clean up event listeners on unmount', async () => {
-      vi.mocked(onAuthStateChanged).mockImplementation(
-        (_auth, callback: any) => {
-          callback(null);
-          return () => {};
-        },
-      );
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_OUT', null);
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
 
       const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
