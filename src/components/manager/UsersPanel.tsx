@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Users, Edit2, Trash2, Plus } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
+import { useRoles } from '../../hooks';
 import { useAuth } from '../../config/authContext';
 import { CreateUserModal, EditUserModal } from '../modals';
 import { DeleteConfirmationDialog } from '../ui';
@@ -23,6 +24,7 @@ export function UsersPanel() {
   const { user } = useAuth();
   const userId = user?.uid ?? 'unknown';
   const { users, isLoading, error: hookError, createNewUser, editUser, removeUser, reset } = useUsers();
+  const { roles, isLoading: rolesLoading } = useRoles();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -367,6 +369,8 @@ export function UsersPanel() {
         onSubmit={handleCreateUser}
         isSubmitting={isSubmitting}
         error={submitError}
+        roles={roles}
+        rolesLoading={rolesLoading}
       />
 
       {/* Edit Modal */}
@@ -377,6 +381,8 @@ export function UsersPanel() {
         onSubmit={handleEditUser}
         isSubmitting={isSubmitting}
         error={submitError}
+        roles={roles}
+        rolesLoading={rolesLoading}
       />
 
       {/* Delete Confirmation Dialog */}

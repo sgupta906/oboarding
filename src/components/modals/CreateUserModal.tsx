@@ -5,8 +5,7 @@
 
 import { useState } from 'react';
 import { ModalWrapper } from '../ui';
-import { useRoles } from '../../hooks';
-import type { UserFormData } from '../../types';
+import type { UserFormData, CustomRole } from '../../types';
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -14,6 +13,8 @@ interface CreateUserModalProps {
   onSubmit: (data: UserFormData) => Promise<void>;
   isSubmitting?: boolean;
   error?: string | null;
+  roles?: CustomRole[];
+  rolesLoading?: boolean;
 }
 
 interface FieldErrors {
@@ -35,8 +36,9 @@ export function CreateUserModal({
   onSubmit,
   isSubmitting = false,
   error = null,
+  roles = [],
+  rolesLoading = false,
 }: CreateUserModalProps) {
-  const { roles, isLoading: rolesLoading } = useRoles();
 
   // Form state
   const [email, setEmail] = useState('');

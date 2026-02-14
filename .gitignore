@@ -115,6 +115,18 @@ coverage/
 *.lcov
 
 # ==========================================
+# Screenshots & Working Files (from agents)
+# ==========================================
+audit-*.png
+test-*.png
+e2e-*.png
+verify-*.png
+verification-*.png
+.claude/screenshots/
+.claude/active-work/
+.playwright-mcp/
+
+# ==========================================
 # Temporary Files
 # ==========================================
 *.tmp

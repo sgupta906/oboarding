@@ -9,6 +9,8 @@ import type { Template, Step } from '../../types';
 import type { TemplateRow, TemplateStepRow, InstanceRow, InstanceStepRow } from './mappers';
 import { toTemplate, toInstance, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
+import { createSharedSubscription } from './subscriptionManager';
 
 type TemplateInsert = Database['public']['Tables']['templates']['Insert'];
 type TemplateStepInsert = Database['public']['Tables']['template_steps']['Insert'];
@@ -19,7 +21,8 @@ type TemplateStepInsert = Database['public']['Tables']['template_steps']['Insert
 export async function listTemplates(): Promise<Template[]> {
   const { data, error } = await supabase
     .from('templates')
-    .select('*, template_steps(*)');
+    .select('*, template_steps(*)')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch templates: ${error.message}`);
@@ -247,36 +250,61 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 /**
- * Subscribes to real-time template updates.
+ * Raw subscription to real-time template updates (used internally).
  * Listens on both templates and template_steps tables.
  */
-export function subscribeToTemplates(
+function _subscribeToTemplatesRaw(
   callback: (templates: Template[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listTemplates().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listTemplates().then(callback).catch(console.error);
 
-  // 2. Listen for changes on both tables
+  // 2. Listen for changes on both tables with debounced handler
   const channel = supabase
     .channel('templates-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'templates' },
       () => {
-        listTemplates().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'template_steps' },
       () => {
-        listTemplates().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
+}
+
+/**
+ * Shared subscription to real-time template updates.
+ * Multiple callers share a single Supabase Realtime channel.
+ */
+const sharedTemplatesSubscription = createSharedSubscription<Template[]>(
+  'templates',
+  _subscribeToTemplatesRaw
+);
+
+/**
+ * Subscribes to real-time template updates via shared subscription.
+ * Multiple callers share one underlying Realtime channel.
+ */
+export function subscribeToTemplates(
+  callback: (templates: Template[]) => void
+): () => void {
+  return sharedTemplatesSubscription.subscribe(callback);
 }

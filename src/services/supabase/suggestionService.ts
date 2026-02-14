@@ -8,6 +8,7 @@ import type { Suggestion } from '../../types';
 import type { SuggestionRow } from './mappers';
 import { toSuggestion, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type SuggestionInsert = Database['public']['Tables']['suggestions']['Insert'];
 
@@ -17,7 +18,8 @@ type SuggestionInsert = Database['public']['Tables']['suggestions']['Insert'];
 export async function listSuggestions(): Promise<Suggestion[]> {
   const { data, error } = await supabase
     .from('suggestions')
-    .select('*');
+    .select('*')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch suggestions: ${error.message}`);
@@ -94,23 +96,29 @@ export async function deleteSuggestion(id: string): Promise<void> {
 export function subscribeToSuggestions(
   callback: (suggestions: Suggestion[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listSuggestions().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listSuggestions().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel('suggestions-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'suggestions' },
       () => {
-        listSuggestions().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

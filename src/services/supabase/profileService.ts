@@ -8,6 +8,7 @@ import type { Profile } from '../../types';
 import type { ProfileRow, ProfileRoleTagRow } from './mappers';
 import { toProfile, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type ProfileRoleTagInsert = Database['public']['Tables']['profile_role_tags']['Insert'];
@@ -18,7 +19,8 @@ type ProfileRoleTagInsert = Database['public']['Tables']['profile_role_tags']['I
 export async function listProfiles(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*, profile_role_tags(*)');
+    .select('*, profile_role_tags(*)')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch profiles: ${error.message}`);
@@ -184,30 +186,36 @@ export async function deleteProfile(profileId: string): Promise<void> {
 export function subscribeToProfiles(
   callback: (profiles: Profile[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listProfiles().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listProfiles().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel('profiles-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profiles' },
       () => {
-        listProfiles().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profile_role_tags' },
       () => {
-        listProfiles().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

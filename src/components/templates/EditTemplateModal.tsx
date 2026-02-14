@@ -8,8 +8,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ModalWrapper } from '../ui';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
-import { useRoles } from '../../hooks';
-import type { Template, Step } from '../../types';
+import type { Template, Step, CustomRole } from '../../types';
 
 interface EditTemplateModalProps {
   isOpen: boolean;
@@ -19,6 +18,8 @@ interface EditTemplateModalProps {
   onDelete: (id: string, templateName: string) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  roles?: CustomRole[];
+  rolesLoading?: boolean;
 }
 
 interface TemplateStep {
@@ -48,8 +49,9 @@ export function EditTemplateModal({
   onDelete,
   isSubmitting = false,
   error = null,
+  roles = [],
+  rolesLoading = false,
 }: EditTemplateModalProps) {
-  const { roles, isLoading: rolesLoading } = useRoles();
 
   const [templateName, setTemplateName] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);

@@ -8,6 +8,7 @@ import type { ProfileTemplate, Step } from '../../types';
 import type { ProfileTemplateRow, ProfileTemplateStepRow } from './mappers';
 import { toProfileTemplate, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type ProfileTemplateInsert = Database['public']['Tables']['profile_templates']['Insert'];
 type ProfileTemplateStepInsert = Database['public']['Tables']['profile_template_steps']['Insert'];
@@ -24,7 +25,7 @@ export async function listProfileTemplates(profileId?: string): Promise<ProfileT
     query = query.eq('profile_id', profileId);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query.limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch profile templates: ${error.message}`);
@@ -230,10 +231,15 @@ export function subscribeToProfileTemplates(
   profileId: string,
   callback: (templates: ProfileTemplate[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listProfileTemplates(profileId).then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listProfileTemplates(profileId).then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel(`profile-templates-${profileId}`)
     .on(
@@ -245,20 +251,21 @@ export function subscribeToProfileTemplates(
         filter: `profile_id=eq.${profileId}`,
       },
       () => {
-        listProfileTemplates(profileId).then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'profile_template_steps' },
       () => {
-        listProfileTemplates(profileId).then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

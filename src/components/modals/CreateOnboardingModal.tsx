@@ -6,7 +6,7 @@
 
 import { useState, useMemo } from 'react';
 import { ModalWrapper } from '../ui';
-import { useTemplates, useRoles } from '../../hooks';
+import type { CustomRole, Template } from '../../types';
 
 interface CreateOnboardingModalProps {
   isOpen: boolean;
@@ -14,6 +14,10 @@ interface CreateOnboardingModalProps {
   onSubmit: (data: OnboardingFormData) => Promise<void>;
   isSubmitting?: boolean;
   error?: string | null;
+  roles?: CustomRole[];
+  rolesLoading?: boolean;
+  templates?: Template[];
+  templatesLoading?: boolean;
 }
 
 export interface OnboardingFormData {
@@ -45,9 +49,11 @@ export function CreateOnboardingModal({
   onSubmit,
   isSubmitting = false,
   error = null,
+  roles = [],
+  rolesLoading = false,
+  templates = [],
+  templatesLoading = false,
 }: CreateOnboardingModalProps) {
-  const { data: templates, isLoading: templatesLoading } = useTemplates();
-  const { roles, isLoading: rolesLoading } = useRoles();
 
   // Form state
   const [employeeName, setEmployeeName] = useState('');

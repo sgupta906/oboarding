@@ -7,12 +7,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateTemplateModal } from './CreateTemplateModal';
-import { useRoles } from '../../hooks';
-
-// Mock useRoles hook
-vi.mock('../../hooks', () => ({
-  useRoles: vi.fn(),
-}));
 
 const mockRoles = [
   {
@@ -51,15 +45,6 @@ describe('CreateTemplateModal Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useRoles as any).mockReturnValue({
-      roles: mockRoles,
-      isLoading: false,
-      error: null,
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      refetch: vi.fn(),
-    });
   });
 
   it('should not render when isOpen is false', () => {
@@ -68,6 +53,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={false}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -82,6 +68,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -94,6 +81,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -106,6 +94,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -120,6 +109,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -134,6 +124,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -154,6 +145,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -179,6 +171,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -207,6 +200,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -241,6 +235,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -257,6 +252,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -278,6 +274,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -291,6 +288,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
         error="Failed to create template"
       />
     );
@@ -304,6 +302,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
         isSubmitting={true}
       />
     );
@@ -321,6 +320,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -340,6 +340,7 @@ describe('CreateTemplateModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 

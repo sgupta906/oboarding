@@ -10,6 +10,7 @@ import type { User, Activity } from '../../types';
 import type { UserRow, UserRoleRow, UserProfileRow } from './mappers';
 import { toUser, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type UserInsert = Database['public']['Tables']['users']['Insert'];
 type UserRoleInsert = Database['public']['Tables']['user_roles']['Insert'];
@@ -156,7 +157,8 @@ export function clearAllUsersForTesting(): void {
 export async function listUsers(): Promise<User[]> {
   const { data, error } = await supabase
     .from('users')
-    .select('*, user_roles(*), user_profiles(*)');
+    .select('*, user_roles(*), user_profiles(*)')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch users: ${error.message}`);
@@ -426,36 +428,42 @@ export async function deleteUser(userId: string): Promise<void> {
 export function subscribeToUsers(
   callback: (users: User[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listUsers().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listUsers().then(callback).catch(console.error);
 
-  // 2. Listen for changes on users and junction tables
+  // 2. Listen for changes on users and junction tables with debounced handler
   const channel = supabase
     .channel('users-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'users' },
       () => {
-        listUsers().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'user_roles' },
       () => {
-        listUsers().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'user_profiles' },
       () => {
-        listUsers().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

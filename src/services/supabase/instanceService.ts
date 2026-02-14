@@ -7,8 +7,9 @@
 import { supabase } from '../../config/supabase';
 import type { OnboardingInstance, Step, StepStatus } from '../../types';
 import type { InstanceRow, InstanceStepRow } from './mappers';
-import { toInstance, toISO } from './mappers';
+import { toInstance, toStep, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type InstanceInsert = Database['public']['Tables']['onboarding_instances']['Insert'];
 type InstanceStepInsert = Database['public']['Tables']['instance_steps']['Insert'];
@@ -49,7 +50,8 @@ export interface CreateOnboardingRunInput {
 export async function listOnboardingInstances(): Promise<OnboardingInstance[]> {
   const { data, error } = await supabase
     .from('onboarding_instances')
-    .select('*, instance_steps(*)');
+    .select('*, instance_steps(*)')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch onboarding instances: ${error.message}`);
@@ -409,10 +411,15 @@ export function subscribeToOnboardingInstance(
   instanceId: string,
   callback: (instance: OnboardingInstance | null) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    getOnboardingInstance(instanceId).then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   getOnboardingInstance(instanceId).then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel(`instance-${instanceId}`)
     .on(
@@ -424,7 +431,7 @@ export function subscribeToOnboardingInstance(
         filter: `id=eq.${instanceId}`,
       },
       () => {
-        getOnboardingInstance(instanceId).then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
@@ -436,12 +443,13 @@ export function subscribeToOnboardingInstance(
         filter: `instance_id=eq.${instanceId}`,
       },
       () => {
-        getOnboardingInstance(instanceId).then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }
@@ -453,16 +461,31 @@ export function subscribeToSteps(
   instanceId: string,
   callback: (steps: Step[]) => void
 ): () => void {
-  // Helper: fetch steps for the instance
-  const fetchSteps = async () => {
-    const instance = await getOnboardingInstance(instanceId);
-    return instance ? instance.steps : [];
+  // Helper: fetch steps directly from instance_steps table (no full instance fetch)
+  const fetchSteps = async (): Promise<Step[]> => {
+    const { data, error } = await supabase
+      .from('instance_steps')
+      .select('*')
+      .eq('instance_id', instanceId)
+      .order('position', { ascending: true });
+
+    if (error) {
+      console.error(`Failed to fetch steps: ${error.message}`);
+      return [];
+    }
+
+    return ((data ?? []) as InstanceStepRow[]).map(toStep);
   };
 
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    fetchSteps().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   fetchSteps().then(callback).catch(console.error);
 
-  // 2. Listen for changes on instance_steps
+  // 2. Listen for changes on instance_steps only (no need for parent table)
   const channel = supabase
     .channel(`instance-steps-${instanceId}`)
     .on(
@@ -474,24 +497,13 @@ export function subscribeToSteps(
         filter: `instance_id=eq.${instanceId}`,
       },
       () => {
-        fetchSteps().then(callback).catch(console.error);
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'onboarding_instances',
-        filter: `id=eq.${instanceId}`,
-      },
-      () => {
-        fetchSteps().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }
@@ -502,29 +514,35 @@ export function subscribeToSteps(
 export function subscribeToOnboardingInstances(
   callback: (instances: OnboardingInstance[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listOnboardingInstances().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listOnboardingInstances().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel('instances-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'onboarding_instances' },
       () => {
-        listOnboardingInstances().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'instance_steps' },
       () => {
-        listOnboardingInstances().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }
@@ -562,29 +580,35 @@ export function subscribeToEmployeeInstance(
     );
   };
 
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    fetchEmployeeInstance().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   fetchEmployeeInstance().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel(`employee-instance-${normalizedEmail}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'onboarding_instances', filter: `employee_email=eq.${normalizedEmail}` },
       () => {
-        fetchEmployeeInstance().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'instance_steps' },
       () => {
-        fetchEmployeeInstance().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

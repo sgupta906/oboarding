@@ -6,8 +6,7 @@
 import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ModalWrapper } from '../ui';
-import { useRoles } from '../../hooks';
-import type { Template, Step } from '../../types';
+import type { Template, Step, CustomRole } from '../../types';
 
 interface CreateTemplateModalProps {
   isOpen: boolean;
@@ -15,6 +14,8 @@ interface CreateTemplateModalProps {
   onSubmit: (template: Omit<Template, 'id' | 'createdAt'>) => void;
   isSubmitting?: boolean;
   error?: string | null;
+  roles?: CustomRole[];
+  rolesLoading?: boolean;
 }
 
 interface TemplateStep {
@@ -39,8 +40,9 @@ export function CreateTemplateModal({
   onSubmit,
   isSubmitting = false,
   error = null,
+  roles = [],
+  rolesLoading = false,
 }: CreateTemplateModalProps) {
-  const { roles, isLoading: rolesLoading } = useRoles();
 
   const [templateName, setTemplateName] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);

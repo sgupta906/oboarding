@@ -6,7 +6,7 @@
 
 import { useState } from 'react';
 import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy } from 'lucide-react';
-import { useTemplates } from '../hooks';
+import { useTemplates, useRoles } from '../hooks';
 import { CreateTemplateModal } from '../components/templates/CreateTemplateModal';
 import { EditTemplateModal } from '../components/templates/EditTemplateModal';
 import { Badge } from '../components/ui';
@@ -19,6 +19,7 @@ import type { Template } from '../types';
  */
 export function TemplatesView() {
   const { data: templates, isLoading, error, refetch, create, update, remove } = useTemplates();
+  const { roles, isLoading: rolesLoading } = useRoles();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -311,6 +312,8 @@ export function TemplatesView() {
         onSubmit={handleCreateTemplate}
         isSubmitting={isCreating}
         error={createError}
+        roles={roles}
+        rolesLoading={rolesLoading}
       />
 
       {/* Edit Template Modal */}
@@ -326,6 +329,8 @@ export function TemplatesView() {
         onDelete={handleDeleteTemplate}
         isSubmitting={isEditing || isDeleting}
         error={editError}
+        roles={roles}
+        rolesLoading={rolesLoading}
       />
     </div>
   );

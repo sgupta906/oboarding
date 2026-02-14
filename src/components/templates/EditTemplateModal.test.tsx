@@ -13,6 +13,25 @@ import type { Template } from '../../types';
 // Test Data Fixtures
 // ============================================================================
 
+const mockRoles = [
+  {
+    id: 'role-1',
+    name: 'Engineering',
+    description: 'Engineering role',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    createdBy: 'admin-user',
+  },
+  {
+    id: 'role-2',
+    name: 'Sales',
+    description: 'Sales role',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    createdBy: 'admin-user',
+  },
+];
+
 const mockTemplate: Template = {
   id: 'template-1',
   name: 'Engineering Onboarding',
@@ -55,6 +74,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -69,6 +89,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -85,6 +106,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -102,6 +124,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -121,6 +144,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -140,6 +164,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -158,6 +183,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -179,6 +205,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -203,6 +230,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -219,6 +247,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -235,6 +264,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -253,6 +283,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 
@@ -270,6 +301,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
         error="Failed to update template"
       />
     );
@@ -285,6 +317,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
         isSubmitting={true}
       />
     );
@@ -304,6 +337,7 @@ describe('EditTemplateModal Component', () => {
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
         onDelete={mockOnDelete}
+        roles={mockRoles}
       />
     );
 

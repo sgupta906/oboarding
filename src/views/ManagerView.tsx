@@ -17,7 +17,7 @@ import {
   UsersPanel,
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
-import { useCreateOnboarding } from '../hooks';
+import { useCreateOnboarding, useRoles, useTemplates } from '../hooks';
 import type { Step, Suggestion, Activity, OnboardingInstance } from '../types';
 
 interface ManagerViewProps {
@@ -60,6 +60,8 @@ export function ManagerView({
 }: ManagerViewProps) {
   const [isCreateOnboardingOpen, setIsCreateOnboardingOpen] = useState(false);
   const { mutate: createOnboarding, isLoading: isCreating, error: creationError, reset: resetError } = useCreateOnboarding();
+  const { roles, isLoading: rolesLoading } = useRoles();
+  const { data: templates, isLoading: templatesLoading } = useTemplates();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'users'>('dashboard');
 
@@ -206,6 +208,10 @@ export function ManagerView({
         onSubmit={handleSubmitOnboarding}
         isSubmitting={isCreating}
         error={creationError}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        templates={templates}
+        templatesLoading={templatesLoading}
       />
     </div>
   );

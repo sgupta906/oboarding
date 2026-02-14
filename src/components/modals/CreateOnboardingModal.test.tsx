@@ -7,13 +7,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CreateOnboardingModal } from './CreateOnboardingModal';
-import { useTemplates, useRoles } from '../../hooks';
-
-// Mock the hooks
-vi.mock('../../hooks', () => ({
-  useTemplates: vi.fn(),
-  useRoles: vi.fn(),
-}));
 
 // ============================================================================
 // Mock Data
@@ -117,21 +110,6 @@ describe('CreateOnboardingModal Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useTemplates as any).mockReturnValue({
-      data: mockTemplates,
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-    (useRoles as any).mockReturnValue({
-      roles: mockRoles,
-      isLoading: false,
-      error: null,
-      createRole: vi.fn(),
-      updateRole: vi.fn(),
-      deleteRole: vi.fn(),
-      refetch: vi.fn(),
-    });
   });
 
   // ============================================================================
@@ -144,6 +122,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={false}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -156,6 +136,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -172,6 +154,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -189,6 +173,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -208,6 +194,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -231,6 +219,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -252,6 +242,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -272,6 +264,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -296,6 +290,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -321,6 +317,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -350,6 +348,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -386,6 +386,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -429,6 +431,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -474,6 +478,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -512,19 +518,14 @@ describe('CreateOnboardingModal Component', () => {
       isActive: true,
     };
 
-    (useTemplates as any).mockReturnValue({
-      data: [largeTemplate],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     const user = userEvent.setup();
     render(
       <CreateOnboardingModal
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={[largeTemplate]}
       />
     );
 
@@ -544,18 +545,14 @@ describe('CreateOnboardingModal Component', () => {
   // ============================================================================
 
   it('should show loading message when templates are loading', () => {
-    (useTemplates as any).mockReturnValue({
-      data: [],
-      isLoading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     render(
       <CreateOnboardingModal
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={[]}
+        templatesLoading={true}
       />
     );
 
@@ -563,18 +560,14 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   it('should show error message when no templates are available', () => {
-    (useTemplates as any).mockReturnValue({
-      data: [],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     render(
       <CreateOnboardingModal
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={[]}
+        templatesLoading={false}
       />
     );
 
@@ -584,18 +577,14 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   it('should disable submit button when templates are loading', () => {
-    (useTemplates as any).mockReturnValue({
-      data: [],
-      isLoading: true,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     render(
       <CreateOnboardingModal
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={[]}
+        templatesLoading={true}
       />
     );
 
@@ -606,18 +595,14 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   it('should disable submit button when no templates available', () => {
-    (useTemplates as any).mockReturnValue({
-      data: [],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    });
-
     render(
       <CreateOnboardingModal
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={[]}
+        templatesLoading={false}
       />
     );
 
@@ -634,6 +619,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
         error={errorMessage}
       />
     );
@@ -660,6 +647,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={slowSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
         isSubmitting={true}
       />
     );
@@ -676,6 +665,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
         isSubmitting={true}
       />
     );
@@ -705,6 +696,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -721,6 +714,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -765,6 +760,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -786,6 +783,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -808,6 +807,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 
@@ -822,6 +823,8 @@ describe('CreateOnboardingModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
       />
     );
 

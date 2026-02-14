@@ -8,6 +8,7 @@ import type { Activity } from '../../types';
 import type { ActivityRow } from './mappers';
 import { toActivity, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { debounce } from '../../utils/debounce';
 
 type ActivityInsert = Database['public']['Tables']['activities']['Insert'];
 
@@ -18,7 +19,8 @@ export async function listActivities(): Promise<Activity[]> {
   const { data, error } = await supabase
     .from('activities')
     .select('*')
-    .order('timestamp', { ascending: false });
+    .order('timestamp', { ascending: false })
+    .limit(50);
 
   if (error) {
     throw new Error(`Failed to fetch activities: ${error.message}`);
@@ -65,23 +67,29 @@ export async function logActivity(
 export function subscribeToActivities(
   callback: (activities: Activity[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listActivities().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listActivities().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel('activities-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'activities' },
       () => {
-        listActivities().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
 }

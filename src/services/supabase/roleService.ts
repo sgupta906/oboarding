@@ -8,6 +8,8 @@ import type { CustomRole } from '../../types';
 import type { RoleRow } from './mappers';
 import { toRole, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
+import { createSharedSubscription } from './subscriptionManager';
+import { debounce } from '../../utils/debounce';
 
 type RoleInsert = Database['public']['Tables']['roles']['Insert'];
 
@@ -26,7 +28,8 @@ function isValidUUID(value: string): boolean {
 export async function listRoles(): Promise<CustomRole[]> {
   const { data, error } = await supabase
     .from('roles')
-    .select('*');
+    .select('*')
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to fetch roles: ${error.message}`);
@@ -191,28 +194,53 @@ export async function deleteRole(roleId: string): Promise<void> {
 }
 
 /**
- * Subscribes to real-time role updates.
+ * Raw subscription to real-time role updates (used internally).
  */
-export function subscribeToRoles(
+function _subscribeToRolesRaw(
   callback: (roles: CustomRole[]) => void
 ): () => void {
-  // 1. Initial fetch
+  // Debounced re-fetch to batch rapid Realtime events
+  const debouncedRefetch = debounce(() => {
+    listRoles().then(callback).catch(console.error);
+  }, 300);
+
+  // 1. Initial fetch (NOT debounced -- immediate)
   listRoles().then(callback).catch(console.error);
 
-  // 2. Listen for changes
+  // 2. Listen for changes with debounced handler
   const channel = supabase
     .channel('roles-all')
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'roles' },
       () => {
-        listRoles().then(callback).catch(console.error);
+        debouncedRefetch();
       }
     )
     .subscribe();
 
   // 3. Return cleanup
   return () => {
+    debouncedRefetch.cancel();
     supabase.removeChannel(channel);
   };
+}
+
+/**
+ * Shared subscription to real-time role updates.
+ * Multiple callers share a single Supabase Realtime channel.
+ */
+const sharedRolesSubscription = createSharedSubscription<CustomRole[]>(
+  'roles',
+  _subscribeToRolesRaw
+);
+
+/**
+ * Subscribes to real-time role updates via shared subscription.
+ * Multiple callers share one underlying Realtime channel.
+ */
+export function subscribeToRoles(
+  callback: (roles: CustomRole[]) => void
+): () => void {
+  return sharedRolesSubscription.subscribe(callback);
 }

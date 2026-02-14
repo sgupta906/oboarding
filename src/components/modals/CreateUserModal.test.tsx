@@ -7,17 +7,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CreateUserModal } from './CreateUserModal';
 
-// Mock useRoles hook
-vi.mock('../../hooks', () => ({
-  useRoles: () => ({
-    roles: [
-      { id: 'role-1', name: 'employee', description: 'Employee' },
-      { id: 'role-2', name: 'manager', description: 'Manager' },
-      { id: 'role-3', name: 'admin', description: 'Admin' },
-    ],
-    isLoading: false,
-  }),
-}));
+const mockRoles = [
+  { id: 'role-1', name: 'employee', description: 'Employee', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+  { id: 'role-2', name: 'manager', description: 'Manager', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+  { id: 'role-3', name: 'admin', description: 'Admin', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+];
 
 describe('CreateUserModal Component', () => {
   const mockOnClose = vi.fn();
@@ -33,6 +27,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -47,6 +42,7 @@ describe('CreateUserModal Component', () => {
         isOpen={false}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -59,6 +55,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -76,6 +73,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -96,6 +94,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -116,6 +115,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -135,6 +135,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -168,6 +169,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -201,6 +203,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -232,6 +235,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
         error="Email already exists"
       />
     );
@@ -245,6 +249,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
         isSubmitting={true}
       />
     );
@@ -259,6 +264,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
@@ -276,6 +282,7 @@ describe('CreateUserModal Component', () => {
         isOpen={true}
         onClose={mockOnClose}
         onSubmit={mockOnSubmit}
+        roles={mockRoles}
       />
     );
 
