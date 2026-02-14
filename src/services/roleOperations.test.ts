@@ -9,7 +9,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   createCustomRole,
   updateCustomRole,
@@ -19,8 +19,62 @@ import {
   seedDefaultRoles,
   hasDefaultRoles,
 } from './roleClient';
-import { listRoles } from './dataClient';
 import type { CustomRole } from '../types';
+
+// Storage key for localStorage-backed mock
+const ROLES_KEY = 'onboardinghub_roles';
+
+// Mock supabase service with localStorage-backed implementations
+// This preserves the integration test semantics from the old Firebase/localStorage era
+vi.mock('./supabase', () => {
+  const getRoles = (): CustomRole[] => {
+    try { return JSON.parse(localStorage.getItem(ROLES_KEY) || '[]'); } catch { return []; }
+  };
+  const saveRoles = (roles: CustomRole[]) => {
+    localStorage.setItem(ROLES_KEY, JSON.stringify(roles));
+  };
+
+  return {
+    listRoles: vi.fn(async () => getRoles()),
+    getRole: vi.fn(async (id: string) => getRoles().find(r => r.id === id) ?? null),
+    roleNameExists: vi.fn(async (name: string) =>
+      getRoles().some(r => r.name.toLowerCase() === name.toLowerCase().trim())
+    ),
+    isRoleInUse: vi.fn(async () => false),
+    createRole: vi.fn(async (name: string, description: string | undefined, createdBy: string) => {
+      const now = Date.now();
+      const role: CustomRole = {
+        id: `role-${now}-${Math.random().toString(36).slice(2, 7)}`,
+        name: name.trim(),
+        description: description !== undefined ? description : undefined,
+        createdAt: now,
+        updatedAt: now,
+        createdBy,
+      };
+      const roles = getRoles();
+      roles.push(role);
+      saveRoles(roles);
+      return role;
+    }),
+    updateRole: vi.fn(async (roleId: string, updates: { name?: string; description?: string }) => {
+      const roles = getRoles();
+      const idx = roles.findIndex(r => r.id === roleId);
+      if (idx >= 0) {
+        if (updates.name) roles[idx].name = updates.name.trim();
+        if (updates.description !== undefined) roles[idx].description = updates.description;
+        roles[idx].updatedAt = Date.now();
+        saveRoles(roles);
+      }
+    }),
+    deleteRole: vi.fn(async (roleId: string) => {
+      const roles = getRoles().filter(r => r.id !== roleId);
+      saveRoles(roles);
+    }),
+    subscribeToRoles: vi.fn(),
+  };
+});
+
+import { listRoles } from './supabase';
 
 // ============================================================================
 // Test Data Fixtures

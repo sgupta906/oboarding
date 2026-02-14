@@ -8,8 +8,8 @@ import { useState, useCallback } from 'react';
 import {
   createOnboardingRunFromTemplate,
   OnboardingValidationError,
-  CreateOnboardingRunInput,
-} from '../services/dataClient';
+} from '../services/supabase';
+import type { CreateOnboardingRunInput } from '../services/supabase';
 import type { OnboardingInstance } from '../types';
 
 interface UseCreateOnboardingReturn {

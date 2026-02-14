@@ -6,11 +6,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useSteps } from './useSteps';
-import { subscribeToSteps } from '../services/dataClient';
+import { subscribeToSteps } from '../services/supabase';
 import type { Step } from '../types';
 
-// Mock dataClient
-vi.mock('../services/dataClient', () => ({
+// Mock supabase service
+vi.mock('../services/supabase', () => ({
   subscribeToSteps: vi.fn(),
 }));
 

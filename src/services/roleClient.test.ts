@@ -24,11 +24,11 @@ import {
   deleteRole as firestoreDeleteRole,
   roleNameExists,
   isRoleInUse,
-} from './dataClient';
+} from './supabase';
 import type { CustomRole } from '../types';
 
-// Mock the dataClient module
-vi.mock('./dataClient', () => ({
+// Mock the supabase service module
+vi.mock('./supabase', () => ({
   listRoles: vi.fn(),
   getRole: vi.fn(),
   createRole: vi.fn(),

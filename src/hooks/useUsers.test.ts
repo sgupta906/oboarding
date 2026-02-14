@@ -6,11 +6,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useUsers } from './useUsers';
-import * as userOps from '../services/userOperations';
+import * as userOps from '../services/supabase';
 import type { User, UserFormData } from '../types';
 
-// Mock the userOperations module
-vi.mock('../services/userOperations');
+// Mock the supabase service module
+vi.mock('../services/supabase', () => ({
+  subscribeToUsers: vi.fn(),
+  createUser: vi.fn(),
+  updateUser: vi.fn(),
+  deleteUser: vi.fn(),
+  getUser: vi.fn(),
+}));
 
 describe('useUsers Hook', () => {
   const mockUser: User = {

@@ -6,8 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Unsubscribe } from 'firebase/firestore';
-import { subscribeToActivities } from '../services/dataClient';
+import { subscribeToActivities } from '../services/supabase';
 import { Activity } from '../types';
 
 interface UseActivitiesReturn {
@@ -39,7 +38,7 @@ export function useActivities(enabled: boolean = true): UseActivitiesReturn {
     setIsLoading(true);
     setError(null);
 
-    let unsubscribe: Unsubscribe | null = null;
+    let unsubscribe: (() => void) | null = null;
 
     try {
       unsubscribe = subscribeToActivities((activities: Activity[]) => {

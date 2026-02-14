@@ -12,7 +12,7 @@ import {
   deleteRole as firestoreDeleteRole,
   roleNameExists,
   isRoleInUse,
-} from './dataClient';
+} from './supabase';
 import {
   CustomRole,
   RoleNameValidationResult,

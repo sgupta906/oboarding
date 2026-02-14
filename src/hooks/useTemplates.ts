@@ -7,8 +7,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Unsubscribe } from 'firebase/firestore';
-import { subscribeToTemplates } from '../services/dataClient';
+import { subscribeToTemplates } from '../services/supabase';
 import type { Template } from '../types';
 
 interface UseTemplatesReturn {
@@ -42,7 +41,7 @@ export function useTemplates(): UseTemplatesReturn {
     setError(null);
     setTimedOut(false);
 
-    let unsubscribe: Unsubscribe | null = null;
+    let unsubscribe: (() => void) | null = null;
     let hasReceivedData = false;
 
     // Timeout fallback to prevent infinite loading (3 seconds)

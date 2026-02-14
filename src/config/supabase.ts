@@ -12,19 +12,38 @@
  *   VITE_SUPABASE_URL      - The Supabase project URL (e.g. http://127.0.0.1:54321)
  *   VITE_SUPABASE_ANON_KEY - The Supabase anonymous/public API key
  */
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database.types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+let _supabase: SupabaseClient<Database> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Missing Supabase environment variables. ' +
-    'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env.local file. ' +
-    'See .env.template for reference values.'
-  );
+/**
+ * Returns the typed Supabase client, creating it on first access.
+ * Throws if VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY are not set.
+ * Lazy initialization prevents the error from firing at import time,
+ * which is critical for test files that mock the supabase service layer.
+ */
+function getSupabaseClient(): SupabaseClient<Database> {
+  if (!_supabase) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error(
+        'Missing Supabase environment variables. ' +
+        'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env.local file. ' +
+        'See .env.template for reference values.'
+      );
+    }
+
+    _supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+  }
+  return _supabase;
 }
 
 /** Typed Supabase client instance for the OnboardingHub database. */
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+export const supabase = new Proxy({} as SupabaseClient<Database>, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getSupabaseClient(), prop, receiver);
+  },
+});

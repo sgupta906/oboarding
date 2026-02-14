@@ -5,7 +5,6 @@
 
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, vi } from 'vitest';
-import { setDisableDefaultUserSeeding } from '../services/userOperations';
 
 /**
  * Mock window.matchMedia for dark mode context tests

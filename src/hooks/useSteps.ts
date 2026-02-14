@@ -4,8 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Unsubscribe } from 'firebase/firestore';
-import { subscribeToSteps } from '../services/dataClient';
+import { subscribeToSteps } from '../services/supabase';
 import { Step } from '../types';
 
 interface UseStepsReturn {
@@ -36,7 +35,7 @@ export function useSteps(instanceId: string): UseStepsReturn {
       return () => {};
     }
 
-    let unsubscribe: Unsubscribe | null = null;
+    let unsubscribe: (() => void) | null = null;
 
     try {
       unsubscribe = subscribeToSteps(instanceId, (steps: Step[]) => {

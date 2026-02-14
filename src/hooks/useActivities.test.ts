@@ -8,11 +8,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useActivities } from './useActivities';
-import { subscribeToActivities } from '../services/dataClient';
+import { subscribeToActivities } from '../services/supabase';
 import type { Activity } from '../types';
 
-// Mock dataClient
-vi.mock('../services/dataClient', () => ({
+// Mock supabase service
+vi.mock('../services/supabase', () => ({
   subscribeToActivities: vi.fn(),
 }));
 

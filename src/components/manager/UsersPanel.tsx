@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Users, Edit2, Trash2, Plus } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
 import { CreateUserModal, EditUserModal } from '../modals';
-import { logActivity } from '../../services/userOperations';
+import { logActivity } from '../../services/supabase';
 import type { User, UserFormData } from '../../types';
 
 interface UsersPanelProps {

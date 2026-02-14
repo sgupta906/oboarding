@@ -10,7 +10,7 @@ import {
   updateUser,
   deleteUser,
   subscribeToUsers,
-} from '../services/userOperations';
+} from '../services/supabase';
 import type { User, UserFormData } from '../types';
 
 interface UseUsersReturn {

@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy } from 'lucide-react';
 import { useTemplates } from '../hooks';
-import { createTemplate, updateTemplate, deleteTemplate } from '../services/dataClient';
+import { createTemplate, updateTemplate, deleteTemplate } from '../services/supabase';
 import { CreateTemplateModal } from '../components/templates/CreateTemplateModal';
 import { EditTemplateModal } from '../components/templates/EditTemplateModal';
 import { Badge } from '../components/ui';

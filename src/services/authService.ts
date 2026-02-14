@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { auth, firestore } from '../config/firebase';
 import type { AuthUser, UserRole, FirestoreUser } from '../config/authTypes';
-import { getAuthCredential } from './userOperations';
+import { getAuthCredential } from './supabase';
 
 /**
  * Maps test emails to their predefined roles for mock sign-in

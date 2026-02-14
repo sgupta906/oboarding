@@ -61,6 +61,7 @@ export interface Database {
           updated_at?: string;
           created_by?: string | null;
         };
+        Relationships: [];
       };
 
       /** Custom role definitions. Firestore equivalent: 'roles' collection. */
@@ -89,6 +90,7 @@ export interface Database {
           updated_at?: string;
           created_by?: string | null;
         };
+        Relationships: [];
       };
 
       /** Department/role profiles. Firestore equivalent: 'profiles' collection. */
@@ -114,6 +116,7 @@ export interface Database {
           created_at?: string;
           created_by?: string | null;
         };
+        Relationships: [];
       };
 
       /** Onboarding templates. Firestore equivalent: 'templates' collection. */
@@ -145,6 +148,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string | null;
         };
+        Relationships: [];
       };
 
       /** Profile-specific templates. Firestore equivalent: 'profileTemplates' collection. */
@@ -182,6 +186,7 @@ export interface Database {
           updated_at?: string | null;
           created_by?: string | null;
         };
+        Relationships: [];
       };
 
       /** Active onboarding runs. Firestore equivalent: 'onboarding_instances' collection. */
@@ -228,6 +233,7 @@ export interface Database {
           completed_at?: string | null;
           template_snapshots?: Json | null;
         };
+        Relationships: [];
       };
 
       /** Step feedback/suggestions. Firestore equivalent: 'suggestions' collection. */
@@ -259,6 +265,7 @@ export interface Database {
           created_at?: string | null;
           instance_id?: string | null;
         };
+        Relationships: [];
       };
 
       /** Audit trail. Firestore equivalent: 'activities' collection. */
@@ -293,6 +300,7 @@ export interface Database {
           resource_type?: string | null;
           resource_id?: string | null;
         };
+        Relationships: [];
       };
 
       // ================================================================
@@ -337,6 +345,7 @@ export interface Database {
           status?: string;
           link?: string | null;
         };
+        Relationships: [];
       };
 
       /** Steps belonging to an onboarding instance. Firestore equivalent: OnboardingInstance.steps[] embedded array. */
@@ -377,6 +386,7 @@ export interface Database {
           status?: string;
           link?: string | null;
         };
+        Relationships: [];
       };
 
       /** Steps belonging to a profile template. Firestore equivalent: ProfileTemplate.steps[] embedded array. */
@@ -417,6 +427,7 @@ export interface Database {
           status?: string;
           link?: string | null;
         };
+        Relationships: [];
       };
 
       // ================================================================
@@ -437,6 +448,7 @@ export interface Database {
           user_id?: string;
           role_name?: string;
         };
+        Relationships: [];
       };
 
       /** User profile assignments. Firestore equivalent: User.profiles[] embedded array. */
@@ -453,6 +465,7 @@ export interface Database {
           user_id?: string;
           profile_name?: string;
         };
+        Relationships: [];
       };
 
       /** Profile role tag assignments. Firestore equivalent: Profile.roleTags[] embedded array. */
@@ -469,6 +482,7 @@ export interface Database {
           profile_id?: string;
           role_tag?: string;
         };
+        Relationships: [];
       };
 
       /** Instance profile assignments. Firestore equivalent: OnboardingInstance.profileIds[] embedded array. */
@@ -485,6 +499,7 @@ export interface Database {
           instance_id?: string;
           profile_id?: string;
         };
+        Relationships: [];
       };
 
       /** Instance template references. Firestore equivalent: OnboardingInstance.templateIds[] embedded array. */
@@ -501,6 +516,7 @@ export interface Database {
           instance_id?: string;
           template_id?: string;
         };
+        Relationships: [];
       };
     };
     Views: {

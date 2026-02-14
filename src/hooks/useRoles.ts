@@ -8,8 +8,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Unsubscribe } from 'firebase/firestore';
-import { subscribeToRoles } from '../services/dataClient';
+import { subscribeToRoles } from '../services/supabase';
 import {
   createCustomRole,
   updateCustomRole,
@@ -59,7 +58,7 @@ export function useRoles(userId: string = 'system'): UseRolesReturn {
     setIsLoading(true);
     setError(null);
 
-    let unsubscribe: Unsubscribe | null = null;
+    let unsubscribe: (() => void) | null = null;
 
     try {
       unsubscribe = subscribeToRoles((updatedRoles: CustomRole[]) => {

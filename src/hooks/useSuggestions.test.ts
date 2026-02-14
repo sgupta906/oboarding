@@ -6,11 +6,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useSuggestions } from './useSuggestions';
-import { listSuggestions } from '../services/dataClient';
+import { listSuggestions } from '../services/supabase';
 import type { Suggestion } from '../types';
 
-// Mock dataClient
-vi.mock('../services/dataClient', () => ({
+// Mock supabase service
+vi.mock('../services/supabase', () => ({
   listSuggestions: vi.fn(),
 }));
 

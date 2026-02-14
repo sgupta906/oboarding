@@ -34,6 +34,7 @@ describe('Supabase Configuration', () => {
       const config = await import('./supabase');
       const { supabase } = config;
 
+      // Accessing properties triggers the lazy-init proxy
       expect(typeof supabase.from).toBe('function');
       expect(typeof supabase.auth).toBe('object');
       expect(typeof supabase.storage).toBe('object');
@@ -42,20 +43,24 @@ describe('Supabase Configuration', () => {
   });
 
   describe('Environment Variable Validation', () => {
-    it('should throw an error when VITE_SUPABASE_URL is missing', async () => {
+    it('should throw an error when VITE_SUPABASE_URL is missing on first use', async () => {
       (import.meta.env as any).VITE_SUPABASE_URL = '';
       (import.meta.env as any).VITE_SUPABASE_ANON_KEY = 'test-key';
 
-      await expect(import('./supabase')).rejects.toThrow(
+      const config = await import('./supabase');
+      // Lazy-init: error only fires when client is actually used
+      expect(() => config.supabase.from('users')).toThrow(
         /Missing Supabase environment variables/
       );
     });
 
-    it('should throw an error when VITE_SUPABASE_ANON_KEY is missing', async () => {
+    it('should throw an error when VITE_SUPABASE_ANON_KEY is missing on first use', async () => {
       (import.meta.env as any).VITE_SUPABASE_URL = 'http://127.0.0.1:54321';
       (import.meta.env as any).VITE_SUPABASE_ANON_KEY = '';
 
-      await expect(import('./supabase')).rejects.toThrow(
+      const config = await import('./supabase');
+      // Lazy-init: error only fires when client is actually used
+      expect(() => config.supabase.from('users')).toThrow(
         /Missing Supabase environment variables/
       );
     });
@@ -68,12 +73,7 @@ describe('Supabase Configuration', () => {
     });
 
     it('should export a Database type with expected table structure', async () => {
-      // Verify the module exports exist - the Database type is a TypeScript type
-      // so we verify the module itself is importable and well-formed.
-      // We also verify that the type helper exports work at runtime.
       const types = await import('../types/database.types');
-      // The module should at minimum be importable without errors.
-      // TypeScript compiler validates the Database type at build time.
       expect(types).toBeDefined();
     });
   });

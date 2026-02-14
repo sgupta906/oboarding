@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { subscribeToOnboardingInstances } from '../services/dataClient';
+import { subscribeToOnboardingInstances } from '../services/supabase';
 import type { OnboardingInstance } from '../types';
 
 interface UseOnboardingInstancesReturn {

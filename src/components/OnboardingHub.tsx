@@ -24,7 +24,7 @@ import {
   logActivity,
   updateStepStatus,
   updateSuggestionStatus,
-} from '../services/dataClient';
+} from '../services/supabase';
 import type { Step, StepStatus, ModalState } from '../types';
 
 interface OnboardingHubProps {

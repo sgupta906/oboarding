@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { listSuggestions } from '../services/dataClient';
+import { listSuggestions } from '../services/supabase';
 import { Suggestion } from '../types';
 
 interface UseSuggestionsReturn {

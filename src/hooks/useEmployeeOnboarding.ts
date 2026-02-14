@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { subscribeToEmployeeInstance } from '../services/dataClient';
+import { subscribeToEmployeeInstance } from '../services/supabase';
 import type { OnboardingInstance } from '../types';
 
 interface UseEmployeeOnboardingReturn {

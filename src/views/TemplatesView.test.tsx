@@ -9,7 +9,7 @@ import { TemplatesView } from './TemplatesView';
 import type { Template } from '../types';
 
 // Mock dataClient
-vi.mock('../services/dataClient', () => ({
+vi.mock('../services/supabase', () => ({
   createTemplate: vi.fn(),
   updateTemplate: vi.fn(),
   deleteTemplate: vi.fn(),

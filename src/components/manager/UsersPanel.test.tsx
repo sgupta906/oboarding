@@ -7,12 +7,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { UsersPanel } from './UsersPanel';
 import * as userHook from '../../hooks/useUsers';
-import * as userOps from '../../services/userOperations';
+import * as userOps from '../../services/supabase';
 import type { User } from '../../types';
 
 // Mock modules
 vi.mock('../../hooks/useUsers');
-vi.mock('../../services/userOperations');
+vi.mock('../../services/supabase', () => ({
+  logActivity: vi.fn(),
+}));
 vi.mock('../../hooks', () => ({
   useRoles: () => ({
     roles: [
