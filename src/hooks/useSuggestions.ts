@@ -1,12 +1,12 @@
 /**
- * useSuggestions Hook - Subscribes to suggestions with polling interval
- * Fetches all suggestions and automatically refetches at regular intervals
+ * useSuggestions Hook - Subscribes to real-time suggestion updates
+ * Manages subscription lifecycle and provides loading/error states
  *
  * Performance: Accepts enabled parameter to conditionally enable the subscription
  */
 
 import { useEffect, useState } from 'react';
-import { listSuggestions } from '../services/supabase';
+import { subscribeToSuggestions } from '../services/supabase';
 import { Suggestion } from '../types';
 
 interface UseSuggestionsReturn {
@@ -16,9 +16,8 @@ interface UseSuggestionsReturn {
 }
 
 /**
- * Custom hook for fetching and polling suggestions
- * Refetches suggestions every 5 seconds to keep data fresh
- * Automatically cleans up polling interval on unmount
+ * Custom hook for subscribing to all suggestions
+ * Automatically manages subscription and cleanup on unmount
  * @param enabled - Whether to enable the subscription (default: true)
  * @returns Object with suggestions data, loading state, and error state
  */
@@ -36,41 +35,27 @@ export function useSuggestions(enabled: boolean = true): UseSuggestionsReturn {
       return;
     }
 
-    // Set initial loading state
     setIsLoading(true);
     setError(null);
 
-    // Track whether component is still mounted
-    let isMounted = true;
+    let unsubscribe: (() => void) | null = null;
 
-    // Function to fetch suggestions
-    const fetchSuggestions = async () => {
-      try {
-        const suggestions = await listSuggestions();
-        if (isMounted) {
-          setData(suggestions);
-          setIsLoading(false);
-          setError(null);
-        }
-      } catch (err) {
-        if (isMounted) {
-          const error = err instanceof Error ? err : new Error(String(err));
-          setError(error);
-          setIsLoading(false);
-        }
-      }
-    };
+    try {
+      unsubscribe = subscribeToSuggestions((suggestions: Suggestion[]) => {
+        setData(suggestions);
+        setIsLoading(false);
+      });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      setError(error);
+      setIsLoading(false);
+    }
 
-    // Fetch immediately on mount
-    fetchSuggestions();
-
-    // Set up polling interval (5 seconds)
-    const intervalId = setInterval(fetchSuggestions, 5000);
-
-    // Cleanup interval on unmount
+    // Cleanup subscription on unmount
     return () => {
-      isMounted = false;
-      clearInterval(intervalId);
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [enabled]);
 

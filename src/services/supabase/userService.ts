@@ -1,7 +1,7 @@
 /**
  * User Service - Supabase implementation
  * Handles user CRUD with junction tables (user_roles, user_profiles),
- * auth credential helpers (localStorage, preserved until supabase-auth step),
+ * auth credential helpers (localStorage for dev mode),
  * and real-time subscriptions.
  */
 
@@ -16,7 +16,7 @@ type UserRoleInsert = Database['public']['Tables']['user_roles']['Insert'];
 type UserProfileInsert = Database['public']['Tables']['user_profiles']['Insert'];
 
 // ============================================================================
-// Auth Credential Helpers (localStorage - preserved until supabase-auth step 3)
+// Auth Credential Helpers (localStorage - dev mode only)
 // ============================================================================
 
 const AUTH_CREDENTIALS_KEY = 'onboardinghub_auth_credentials';

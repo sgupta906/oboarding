@@ -1,6 +1,6 @@
 /**
  * useCreateOnboarding Hook - Custom hook for creating onboarding instances
- * Wraps createOnboardingRunFromTemplate from dataClient
+ * Wraps createOnboardingRunFromTemplate from Supabase service layer
  * Handles loading states, errors, and conversion to user-friendly messages
  */
 
@@ -106,7 +106,7 @@ function convertErrorToUserMessage(err: unknown): string {
     }
 
     // Handle database/server errors
-    if (message.includes('Firestore') || message.includes('Firebase')) {
+    if (message.includes('database') || message.includes('Database')) {
       return 'Server error. Please try again in a few moments.';
     }
 

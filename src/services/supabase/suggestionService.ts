@@ -1,6 +1,6 @@
 /**
  * Suggestion Service - Supabase implementation
- * Handles suggestion CRUD operations.
+ * Handles suggestion CRUD operations and real-time subscriptions.
  */
 
 import { supabase } from '../../config/supabase';
@@ -84,4 +84,33 @@ export async function deleteSuggestion(id: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to delete suggestion ${id}: ${error.message}`);
   }
+}
+
+/**
+ * Subscribes to real-time suggestion updates.
+ * Fetches initial data then re-fetches on every change.
+ * @returns Cleanup function to remove the channel.
+ */
+export function subscribeToSuggestions(
+  callback: (suggestions: Suggestion[]) => void
+): () => void {
+  // 1. Initial fetch
+  listSuggestions().then(callback).catch(console.error);
+
+  // 2. Listen for changes
+  const channel = supabase
+    .channel('suggestions-all')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'suggestions' },
+      () => {
+        listSuggestions().then(callback).catch(console.error);
+      }
+    )
+    .subscribe();
+
+  // 3. Return cleanup
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

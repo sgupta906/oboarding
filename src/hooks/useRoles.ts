@@ -3,8 +3,7 @@
  * Subscribes to real-time role updates and provides CRUD operations
  * Handles errors gracefully with user-friendly messages
  *
- * Note: The dataClient now handles localStorage fallback with pre-seeded default roles,
- * so this hook no longer needs to manually seed roles on initialization.
+ * Note: Uses Supabase Realtime subscription for automatic updates.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -36,7 +35,7 @@ interface UseRolesReturn {
 /**
  * Custom hook for managing custom roles
  * Subscribes to real-time updates and provides CRUD operations
- * Default roles are now auto-initialized by the dataClient's localStorage fallback
+ * Subscribes to Supabase Realtime for automatic role updates
  * Handles all errors with user-friendly messages
  *
  * @param userId - Current user ID for role creation operations (defaults to 'system')
@@ -52,7 +51,7 @@ export function useRoles(userId: string = 'system'): UseRolesReturn {
     setRefetchCount((prev) => prev + 1);
   }, []);
 
-  // Subscribe to real-time updates (dataClient handles localStorage fallback with defaults)
+  // Subscribe to real-time role updates via Supabase Realtime
   useEffect(() => {
     // Reset loading state when refetch is triggered
     setIsLoading(true);

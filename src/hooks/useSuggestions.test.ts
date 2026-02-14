@@ -1,17 +1,19 @@
 /**
  * Unit tests for useSuggestions hook
- * Tests polling interval, loading states, and error handling
+ * Tests subscription lifecycle, loading states, and error handling
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useSuggestions } from './useSuggestions';
-import { listSuggestions } from '../services/supabase';
+import { subscribeToSuggestions } from '../services/supabase';
 import type { Suggestion } from '../types';
 
 // Mock supabase service
 vi.mock('../services/supabase', () => ({
-  listSuggestions: vi.fn(),
+  subscribeToSuggestions: vi.fn(),
 }));
 
 // ============================================================================
@@ -53,7 +55,8 @@ describe('useSuggestions Hook', () => {
   });
 
   it('should initialize with loading state and empty data', () => {
-    vi.mocked(listSuggestions).mockResolvedValue([]);
+    const mockUnsubscribe = vi.fn();
+    vi.mocked(subscribeToSuggestions).mockReturnValue(mockUnsubscribe);
 
     const { result } = renderHook(() => useSuggestions());
 
@@ -62,8 +65,14 @@ describe('useSuggestions Hook', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should fetch and display suggestions on mount', async () => {
-    vi.mocked(listSuggestions).mockResolvedValue(mockSuggestions);
+  it('should update data when subscription receives suggestions', async () => {
+    const mockUnsubscribe = vi.fn();
+
+    vi.mocked(subscribeToSuggestions).mockImplementation((callback) => {
+      // Simulate receiving suggestions immediately
+      callback(mockSuggestions);
+      return mockUnsubscribe;
+    });
 
     const { result } = renderHook(() => useSuggestions());
 
@@ -75,9 +84,11 @@ describe('useSuggestions Hook', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should set error state on fetch failure', async () => {
-    const mockError = new Error('Failed to fetch');
-    vi.mocked(listSuggestions).mockRejectedValue(mockError);
+  it('should handle error gracefully during subscription', async () => {
+    const mockError = new Error('Subscription failed');
+    vi.mocked(subscribeToSuggestions).mockImplementation(() => {
+      throw mockError;
+    });
 
     const { result } = renderHook(() => useSuggestions());
 
@@ -89,34 +100,35 @@ describe('useSuggestions Hook', () => {
     expect(result.current.error).toEqual(mockError);
   });
 
-  it('should call listSuggestions on mount', async () => {
-    vi.mocked(listSuggestions).mockResolvedValue(mockSuggestions);
-
-    renderHook(() => useSuggestions());
-
-    await waitFor(() => {
-      expect(vi.mocked(listSuggestions)).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('should clear polling interval on unmount', async () => {
-    vi.mocked(listSuggestions).mockResolvedValue(mockSuggestions);
+  it('should unsubscribe on unmount', () => {
+    const mockUnsubscribe = vi.fn();
+    vi.mocked(subscribeToSuggestions).mockReturnValue(mockUnsubscribe);
 
     const { unmount } = renderHook(() => useSuggestions());
 
-    await waitFor(() => {
-      expect(vi.mocked(listSuggestions)).toHaveBeenCalledTimes(1);
-    });
-
     unmount();
 
-    // Verify the cleanup function was registered by checking the mock call count
-    // doesn't increase after unmount (cleanup would prevent further calls)
-    expect(vi.mocked(listSuggestions)).toHaveBeenCalledTimes(1);
+    expect(mockUnsubscribe).toHaveBeenCalledOnce();
   });
 
-  it('should handle empty suggestions array', async () => {
-    vi.mocked(listSuggestions).mockResolvedValue([]);
+  it('should return empty array while loading', () => {
+    const mockUnsubscribe = vi.fn();
+    // Don't call the callback to keep loading state
+    vi.mocked(subscribeToSuggestions).mockReturnValue(mockUnsubscribe);
+
+    const { result } = renderHook(() => useSuggestions());
+
+    expect(result.current.isLoading).toBe(true);
+    expect(result.current.data).toEqual([]);
+  });
+
+  it('should handle empty suggestions array from subscription', async () => {
+    const mockUnsubscribe = vi.fn();
+
+    vi.mocked(subscribeToSuggestions).mockImplementation((callback) => {
+      callback([]);
+      return mockUnsubscribe;
+    });
 
     const { result } = renderHook(() => useSuggestions());
 
@@ -128,32 +140,29 @@ describe('useSuggestions Hook', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('should update data when new suggestions are available', async () => {
-    const initialSuggestions = [mockSuggestions[0]];
+  it('should handle multiple suggestion updates', async () => {
+    const mockUnsubscribe = vi.fn();
+    let callbackRef: any = null;
 
-    vi.mocked(listSuggestions).mockResolvedValue(initialSuggestions);
+    vi.mocked(subscribeToSuggestions).mockImplementation((callback: any) => {
+      callbackRef = callback;
+      callback([mockSuggestions[0]]);
+      return mockUnsubscribe;
+    });
 
     const { result } = renderHook(() => useSuggestions());
 
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.data).toHaveLength(1);
     });
 
-    expect(result.current.data).toEqual(initialSuggestions);
-    expect(result.current.error).toBeNull();
-  });
-
-  it('should handle fetch errors gracefully without throwing', async () => {
-    const mockError = new Error('Network error');
-    vi.mocked(listSuggestions).mockRejectedValue(mockError);
-
-    const { result } = renderHook(() => useSuggestions());
+    // Simulate receiving an update
+    if (callbackRef !== null) {
+      callbackRef(mockSuggestions);
+    }
 
     await waitFor(() => {
-      expect(result.current.error).not.toBeNull();
+      expect(result.current.data).toEqual(mockSuggestions);
     });
-
-    expect(result.current.data).toEqual([]);
-    expect(result.current.isLoading).toBe(false);
   });
 });

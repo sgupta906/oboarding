@@ -5,7 +5,7 @@
  * dataClient.ts and userOperations.ts exports. This enables hooks and
  * components to switch import paths without any logic changes.
  *
- * Migration Step: 2 of 5 (Firebase -> Supabase)
+ * Supabase Data Layer - Service Exports
  */
 
 // -- Activity Service --
@@ -21,6 +21,7 @@ export {
   createSuggestion,
   updateSuggestionStatus,
   deleteSuggestion,
+  subscribeToSuggestions,
 } from './suggestionService';
 
 // -- Role Service --

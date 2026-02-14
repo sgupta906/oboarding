@@ -1,5 +1,5 @@
 /**
- * useManagerData Hook - Centralizes manager-only Firestore subscriptions
+ * useManagerData Hook - Centralizes manager-only Supabase Realtime subscriptions
  * Handles conditional loading for dashboard metrics vs. employee instance lists.
  */
 
