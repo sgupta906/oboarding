@@ -6,15 +6,15 @@
 
 ## Current State
 
-**Current Feature:** user-management
-**Current Phase:** Tests passed
-**Next Command:** `/finalize user-management`
+**Current Feature:** (none - awaiting next feature)
+**Current Phase:** Idle
+**Next Command:** `/research <next-feature>`
 
 ### Pipeline Progress
-- [x] /research
-- [x] /plan
-- [x] /implement
-- [x] /test
+- [ ] /research
+- [ ] /plan
+- [ ] /implement
+- [ ] /test
 - [ ] /finalize
 
 ---
@@ -58,6 +58,7 @@ The codebase has ~13,000 lines of source + ~12,500 lines of tests for what is es
 | 10 | `slim-services` | 2026-02-15 | f511dbb | Generic CRUD factory, refactored 8 services, -266 lines (11.3%), +22 tests |
 | 11 | `slim-tests` | 2026-02-15 | 15b86c5 | Removed low-value mocked tests, trimmed suite by 56.9%, 297 tests passing across 17 files |
 | 12 | `responsive-ux` | 2026-02-14 | 6c90585 | Optimistic updates, fire-and-forget logging, loading states, toast notifications, instance status revert fix |
+| 13 | `user-management` | 2026-02-15 | 4a8235e | Onboarding status columns, filter toggle, cascade delete with instance cleanup, +12 tests (332 total) |
 
 ---
 
