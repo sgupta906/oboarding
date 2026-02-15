@@ -7,8 +7,7 @@
 import { useState } from 'react';
 import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy } from 'lucide-react';
 import { useTemplates, useRoles } from '../hooks';
-import { CreateTemplateModal } from '../components/templates/CreateTemplateModal';
-import { EditTemplateModal } from '../components/templates/EditTemplateModal';
+import { TemplateModal } from '../components/templates/TemplateModal';
 import { Badge } from '../components/ui';
 import type { Template } from '../types';
 
@@ -55,14 +54,15 @@ export function TemplatesView() {
   };
 
   const handleEditTemplate = async (
-    id: string,
-    updates: Partial<Template>
+    templateData: Omit<Template, 'id' | 'createdAt'>,
+    id?: string
   ) => {
+    if (!id) return;
     setIsEditing(true);
     setEditError(null);
 
     try {
-      await update(id, updates);
+      await update(id, templateData);
       setEditModalOpen(false);
       setSelectedTemplate(null);
       showSuccessMessage('Template updated successfully');
@@ -303,7 +303,8 @@ export function TemplatesView() {
       </div>
 
       {/* Create Template Modal */}
-      <CreateTemplateModal
+      <TemplateModal
+        mode="create"
         isOpen={createModalOpen}
         onClose={() => {
           setCreateModalOpen(false);
@@ -317,7 +318,8 @@ export function TemplatesView() {
       />
 
       {/* Edit Template Modal */}
-      <EditTemplateModal
+      <TemplateModal
+        mode="edit"
         isOpen={editModalOpen}
         template={selectedTemplate}
         onClose={() => {

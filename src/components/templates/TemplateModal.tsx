@@ -1,24 +1,30 @@
 /**
- * CreateTemplateModal Component - Form for creating new onboarding templates
- * Handles template name, role tags, status, and steps configuration
+ * TemplateModal Component - Unified create/edit modal for onboarding templates
+ * Features: Template name, role tags, status, dynamic steps editor,
+ * delete functionality (edit), validation, and full a11y support
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ModalWrapper } from '../ui';
+import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import type { Template, Step, CustomRole } from '../../types';
 
-interface CreateTemplateModalProps {
+interface TemplateModalProps {
+  mode: 'create' | 'edit';
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (template: Omit<Template, 'id' | 'createdAt'>) => void;
+  onSubmit: (template: Omit<Template, 'id' | 'createdAt'>, id?: string) => void;
+  onDelete?: (id: string, templateName: string) => void;
   isSubmitting?: boolean;
   error?: string | null;
   roles?: CustomRole[];
   rolesLoading?: boolean;
+  template?: Template | null;
 }
 
 interface TemplateStep {
+  id?: number;
   title: string;
   description: string;
   owner: string;
@@ -26,23 +32,23 @@ interface TemplateStep {
 }
 
 /**
- * Renders a modal form for creating new templates
- * Validates required fields and step configuration
- * @param isOpen - Whether modal is open
- * @param onClose - Callback to close modal
- * @param onSubmit - Callback with template data
- * @param isSubmitting - Whether submission is in progress
- * @param error - Error message to display
+ * Renders a modal form for creating or editing onboarding templates
+ * In create mode: empty form with 1 initial step
+ * In edit mode: pre-filled from template prop, includes delete functionality
  */
-export function CreateTemplateModal({
+export function TemplateModal({
+  mode,
   isOpen,
   onClose,
   onSubmit,
+  onDelete,
   isSubmitting = false,
   error = null,
   roles = [],
   rolesLoading = false,
-}: CreateTemplateModalProps) {
+  template,
+}: TemplateModalProps) {
+  const isEdit = mode === 'edit';
 
   const [templateName, setTemplateName] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -51,12 +57,35 @@ export function CreateTemplateModal({
     { title: '', description: '', owner: '', expert: '' },
   ]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Pre-fill form when template data changes (edit mode)
+  useEffect(() => {
+    if (isEdit && template && isOpen) {
+      setTemplateName(template.name);
+      setSelectedRoles([template.role]);
+      setStatus(template.isActive ? 'Published' : 'Draft');
+      setSteps(
+        template.steps.map((s) => ({
+          id: s.id,
+          title: s.title,
+          description: s.description,
+          owner: s.owner,
+          expert: s.expert,
+        }))
+      );
+      setValidationErrors([]);
+    }
+  }, [template, isOpen, isEdit]);
 
   const resetForm = () => {
     setTemplateName('');
     setSelectedRoles([]);
     setStatus('Draft');
-    setSteps([{ title: '', description: '', owner: '', expert: '' }]);
+    setSteps(
+      isEdit ? [] : [{ title: '', description: '', owner: '', expert: '' }]
+    );
     setValidationErrors([]);
   };
 
@@ -76,17 +105,32 @@ export function CreateTemplateModal({
       errors.push('At least one role must be selected');
     }
 
-    const validSteps = steps.filter((s) => s.title.trim() || s.description.trim());
-    if (validSteps.length === 0) {
-      errors.push('At least one step with title and description is required');
-    }
-
-    for (const step of validSteps) {
-      if (!step.title.trim()) {
-        errors.push('All steps must have a title');
+    if (isEdit) {
+      if (steps.length === 0) {
+        errors.push('At least one step is required');
       }
-      if (!step.description.trim()) {
-        errors.push('All steps must have a description');
+
+      for (const step of steps) {
+        if (!step.title.trim()) {
+          errors.push('All steps must have a title');
+        }
+        if (!step.description.trim()) {
+          errors.push('All steps must have a description');
+        }
+      }
+    } else {
+      const validSteps = steps.filter((s) => s.title.trim() || s.description.trim());
+      if (validSteps.length === 0) {
+        errors.push('At least one step with title and description is required');
+      }
+
+      for (const step of validSteps) {
+        if (!step.title.trim()) {
+          errors.push('All steps must have a title');
+        }
+        if (!step.description.trim()) {
+          errors.push('All steps must have a description');
+        }
       }
     }
 
@@ -104,7 +148,7 @@ export function CreateTemplateModal({
 
   const handleStepChange = (
     index: number,
-    field: keyof TemplateStep,
+    field: keyof Omit<TemplateStep, 'id'>,
     value: string
   ) => {
     const newSteps = [...steps];
@@ -125,19 +169,22 @@ export function CreateTemplateModal({
       return;
     }
 
-    const validSteps = steps.filter((s) => s.title.trim() || s.description.trim());
-    const templateSteps: Step[] = validSteps.map((s, index) => ({
-      id: index + 1,
+    const stepsToProcess = isEdit
+      ? steps
+      : steps.filter((s) => s.title.trim() || s.description.trim());
+
+    const templateSteps: Step[] = stepsToProcess.map((s, index) => ({
+      id: s.id || index + 1,
       title: s.title,
       description: s.description,
-      role: selectedRoles.join(', '),
+      role: selectedRoles[0] || selectedRoles.join(', '),
       owner: s.owner,
       expert: s.expert,
       status: 'pending' as const,
       link: '',
     }));
 
-    const template: Omit<Template, 'id' | 'createdAt'> = {
+    const templateData: Omit<Template, 'id' | 'createdAt'> = {
       name: templateName,
       description: `Template for ${selectedRoles.join(', ')}`,
       role: selectedRoles.join(', '),
@@ -146,43 +193,103 @@ export function CreateTemplateModal({
       updatedAt: Date.now(),
     };
 
-    await onSubmit(template);
+    if (isEdit && template) {
+      await onSubmit(templateData, template.id);
+    } else {
+      await onSubmit(templateData);
+    }
     resetForm();
   };
 
-  return (
+  const handleDeleteConfirm = async () => {
+    if (!template || !onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(template.id, template.name);
+      setDeleteDialogOpen(false);
+      resetForm();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Edit mode guard
+  if (isEdit && !template) return null;
+
+  const title = isEdit ? `Edit Template: ${template!.name}` : 'Create New Template';
+
+  const footer = isEdit ? (
+    <div className="flex gap-3 justify-between">
+      <button
+        type="button"
+        onClick={() => setDeleteDialogOpen(true)}
+        disabled={isSubmitting}
+        className="px-4 py-2 text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        aria-label="Delete this template"
+      >
+        Delete Template
+      </button>
+      <div className="flex gap-3">
+        <button
+          onClick={handleClose}
+          disabled={isSubmitting}
+          className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          aria-label="Cancel editing template"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+          className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          aria-label="Save template changes"
+        >
+          {isSubmitting ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Saving...
+            </>
+          ) : (
+            'Save Changes'
+          )}
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex gap-3 justify-end">
+      <button
+        onClick={handleClose}
+        disabled={isSubmitting}
+        className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        aria-label="Cancel creating template"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleSubmit}
+        disabled={isSubmitting}
+        className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+        aria-label="Save template"
+      >
+        {isSubmitting ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Saving...
+          </>
+        ) : (
+          'Save Template'
+        )}
+      </button>
+    </div>
+  );
+
+  const modalContent = (
     <ModalWrapper
       isOpen={isOpen}
-      title="Create New Template"
+      title={title}
       onClose={handleClose}
       size="lg"
-      footer={
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Cancel creating template"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            aria-label="Save template"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Save Template'
-            )}
-          </button>
-        </div>
-      }
+      footer={footer}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Error Messages */}
@@ -296,7 +403,7 @@ export function CreateTemplateModal({
             </button>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-96 overflow-y-auto">
             {steps.map((step, index) => (
               <div
                 key={index}
@@ -321,7 +428,7 @@ export function CreateTemplateModal({
                     value={step.title}
                     onChange={(e) => handleStepChange(index, 'title', e.target.value)}
                     placeholder="Step title"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                     aria-label={`Step ${index + 1} title`}
                   />
                 </div>
@@ -342,7 +449,7 @@ export function CreateTemplateModal({
                     }
                     placeholder="Step description"
                     rows={2}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
                     aria-label={`Step ${index + 1} description`}
                   />
                 </div>
@@ -364,7 +471,7 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'owner', e.target.value)
                       }
                       placeholder="e.g., IT Support"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} owner`}
                     />
                   </div>
@@ -383,7 +490,7 @@ export function CreateTemplateModal({
                         handleStepChange(index, 'expert', e.target.value)
                       }
                       placeholder="e.g., John Doe"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-600 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} expert`}
                     />
                   </div>
@@ -407,4 +514,22 @@ export function CreateTemplateModal({
       </form>
     </ModalWrapper>
   );
+
+  // Edit mode wraps with Fragment for DeleteConfirmDialog sibling
+  if (isEdit && template) {
+    return (
+      <>
+        {modalContent}
+        <DeleteConfirmDialog
+          isOpen={deleteDialogOpen}
+          templateName={template.name}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteDialogOpen(false)}
+          isDeleting={isDeleting}
+        />
+      </>
+    );
+  }
+
+  return modalContent;
 }

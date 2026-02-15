@@ -10,8 +10,7 @@ import { Trash2, Edit2, Plus, Search, RefreshCw, AlertCircle } from 'lucide-reac
 import { useRoles } from '../../hooks';
 import { useAuth } from '../../config/authContext';
 import type { CustomRole } from '../../types';
-import { CreateRoleModal } from '../modals/CreateRoleModal';
-import { EditRoleModal } from '../modals/EditRoleModal';
+import { RoleModal } from '../modals/RoleModal';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
 
 interface RoleManagementPanelProps {
@@ -87,8 +86,8 @@ export function RoleManagementPanel({
     }
   };
 
-  // Handle edit role submission
-  const handleEditRoleSubmit = async (description?: string) => {
+  // Handle edit role submission (name is ignored, comes from unified modal signature)
+  const handleEditRoleSubmit = async (_name: string, description?: string) => {
     if (!selectedRoleForEdit) return;
     try {
       setModalError(null);
@@ -356,7 +355,8 @@ export function RoleManagementPanel({
       )}
 
       {/* Create Role Modal */}
-      <CreateRoleModal
+      <RoleModal
+        mode="create"
         isOpen={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
@@ -369,7 +369,8 @@ export function RoleManagementPanel({
 
       {/* Edit Role Modal */}
       {selectedRoleForEdit && (
-        <EditRoleModal
+        <RoleModal
+          mode="edit"
           isOpen={isEditModalOpen}
           onClose={() => {
             setIsEditModalOpen(false);

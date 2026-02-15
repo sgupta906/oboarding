@@ -1,21 +1,23 @@
 /**
- * EditUserModal Component - Form for editing existing users
- * Allows managers to update user details, roles, and profiles
+ * UserModal Component - Unified create/edit modal for system users
+ * Features: Email/name/roles/profiles form, validation, error handling,
+ * loading state, pre-fill (edit), and full a11y support
  */
 
 import { useState, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import type { User, UserFormData, CustomRole } from '../../types';
 
-interface EditUserModalProps {
+interface UserModalProps {
+  mode: 'create' | 'edit';
   isOpen: boolean;
-  user: User | null;
   onClose: () => void;
-  onSubmit: (data: Partial<UserFormData>) => Promise<void>;
+  onSubmit: (data: UserFormData) => Promise<void>;
   isSubmitting?: boolean;
   error?: string | null;
   roles?: CustomRole[];
   rolesLoading?: boolean;
+  user?: User | null;
 }
 
 interface FieldErrors {
@@ -23,25 +25,22 @@ interface FieldErrors {
 }
 
 /**
- * Renders a modal form for editing existing users
- * Pre-populates form with current user data
- * @param isOpen - Whether modal is open
- * @param user - User to edit (or null if closed)
- * @param onClose - Callback to close modal
- * @param onSubmit - Callback with updated user data
- * @param isSubmitting - Whether submission is in progress
- * @param error - Server-side error message to display
+ * Renders a modal form for creating or editing system users
+ * In create mode: empty form with intro section
+ * In edit mode: pre-filled from user prop, no intro section
  */
-export function EditUserModal({
+export function UserModal({
+  mode,
   isOpen,
-  user,
   onClose,
   onSubmit,
   isSubmitting = false,
   error = null,
   roles = [],
   rolesLoading = false,
-}: EditUserModalProps) {
+  user,
+}: UserModalProps) {
+  const isEdit = mode === 'edit';
 
   // Form state
   const [email, setEmail] = useState('');
@@ -53,9 +52,9 @@ export function EditUserModal({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
-  // Pre-fill form when user data changes
+  // Pre-fill form when user data changes (edit mode)
   useEffect(() => {
-    if (user && isOpen) {
+    if (isEdit && user && isOpen) {
       setEmail(user.email);
       setName(user.name);
       setSelectedRoles(user.roles);
@@ -63,7 +62,7 @@ export function EditUserModal({
       setFieldErrors({});
       setHasAttemptedSubmit(false);
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, isEdit]);
 
   // Validation logic
   const validateForm = (): boolean => {
@@ -93,11 +92,16 @@ export function EditUserModal({
   };
 
   const resetForm = () => {
-    if (user) {
+    if (isEdit && user) {
       setEmail(user.email);
       setName(user.name);
       setSelectedRoles(user.roles);
       setSelectedProfiles(user.profiles || []);
+    } else {
+      setEmail('');
+      setName('');
+      setSelectedRoles([]);
+      setSelectedProfiles([]);
     }
     setFieldErrors({});
     setHasAttemptedSubmit(false);
@@ -131,7 +135,7 @@ export function EditUserModal({
     }
 
     try {
-      const formData: Partial<UserFormData> = {
+      const formData: UserFormData = {
         email: email.trim(),
         name: name.trim(),
         roles: selectedRoles,
@@ -140,19 +144,26 @@ export function EditUserModal({
 
       await onSubmit(formData);
       resetForm();
-    } catch (err) {
+    } catch {
       // Error handling is done by parent component
     }
   };
 
-  if (!user) {
+  // Edit mode guard
+  if (isEdit && !user) {
     return null;
   }
+
+  const title = isEdit ? `Edit User: ${user!.name}` : 'Add System User';
+  const submitLabel = isEdit ? 'Save Changes' : 'Create User';
+  const loadingLabel = isEdit ? 'Saving...' : 'Creating...';
+  const cancelAriaLabel = isEdit ? 'Cancel editing user' : 'Cancel creating user';
+  const submitAriaLabel = isEdit ? 'Save user changes' : 'Create user';
 
   return (
     <ModalWrapper
       isOpen={isOpen}
-      title={`Edit User: ${user.name}`}
+      title={title}
       onClose={handleClose}
       size="lg"
       footer={
@@ -160,8 +171,8 @@ export function EditUserModal({
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Cancel editing user"
+            className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            aria-label={cancelAriaLabel}
           >
             Cancel
           </button>
@@ -169,31 +180,44 @@ export function EditUserModal({
             onClick={handleSubmit}
             disabled={isSubmitting || rolesLoading}
             className="px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            aria-label="Save user changes"
+            aria-label={submitAriaLabel}
           >
             {isSubmitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Saving...
+                {loadingLabel}
               </>
             ) : (
-              'Save Changes'
+              submitLabel
             )}
           </button>
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Intro Section (create mode only) */}
+        {!isEdit && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg space-y-2">
+            <p className="text-sm text-amber-900 dark:text-amber-200 font-medium">
+              Add a manager, admin, or contractor to the system.
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              This does NOT create an onboarding journey. If you're onboarding a new employee,
+              go back to the Dashboard and click "New Hire" instead.
+            </p>
+          </div>
+        )}
+
         {/* Server Error Messages */}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm font-medium text-red-800">{error}</p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
           </div>
         )}
 
         {/* Email */}
         <div>
-          <label htmlFor="user-email" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="user-email" className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
             Email <span className="text-red-500">*</span>
           </label>
           <input
@@ -201,10 +225,11 @@ export function EditUserModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            placeholder="e.g., john.doe@company.com"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.email
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -215,7 +240,7 @@ export function EditUserModal({
             disabled={isSubmitting}
           />
           {hasAttemptedSubmit && fieldErrors.email && (
-            <p id="email-error" className="mt-1 text-sm text-red-600" role="alert">
+            <p id="email-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
               {fieldErrors.email}
             </p>
           )}
@@ -223,7 +248,7 @@ export function EditUserModal({
 
         {/* Name */}
         <div>
-          <label htmlFor="user-name" className="block text-sm font-medium text-slate-700 mb-2">
+          <label htmlFor="user-name" className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
             Full Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -231,10 +256,11 @@ export function EditUserModal({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., John Doe"
             className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-brand-500 outline-none transition-colors ${
               hasAttemptedSubmit && fieldErrors.name
-                ? 'border-red-300 bg-red-50 focus:ring-red-500'
-                : 'border-slate-300 focus:ring-brand-500'
+                ? 'border-red-300 bg-red-50 dark:bg-red-900/20 dark:border-red-600 focus:ring-red-500'
+                : 'border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:ring-brand-500'
             }`}
             required
             aria-required="true"
@@ -245,7 +271,7 @@ export function EditUserModal({
             disabled={isSubmitting}
           />
           {hasAttemptedSubmit && fieldErrors.name && (
-            <p id="name-error" className="mt-1 text-sm text-red-600" role="alert">
+            <p id="name-error" className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
               {fieldErrors.name}
             </p>
           )}
@@ -253,11 +279,17 @@ export function EditUserModal({
 
         {/* Roles */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
-            Roles <span className="text-red-500">*</span>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+            {isEdit ? 'Roles' : 'System Roles'} <span className="text-red-500">*</span>
           </label>
+          {!isEdit && (
+            <p className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+              Select which features and dashboards this user can access (e.g., Manager to see team dashboard).
+              This is different from employee onboarding roles.
+            </p>
+          )}
           {rolesLoading ? (
-            <div className="text-slate-500 text-sm">Loading roles...</div>
+            <div className="text-slate-500 dark:text-slate-400 text-sm">Loading roles...</div>
           ) : roles.length > 0 ? (
             <div className="space-y-2">
               {roles.map((role) => (
@@ -270,17 +302,17 @@ export function EditUserModal({
                     aria-label={`Select role: ${role.name}`}
                     disabled={isSubmitting}
                   />
-                  <span className="text-sm text-slate-700">{role.name}</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-300">{role.name}</span>
                 </label>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-amber-700 bg-amber-50 p-2 rounded">
-              No roles available.
+            <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-2 rounded">
+              No roles available. Please create a role first.
             </p>
           )}
           {hasAttemptedSubmit && fieldErrors.roles && (
-            <p className="mt-1 text-sm text-red-600" role="alert">
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400" role="alert">
               {fieldErrors.roles}
             </p>
           )}
@@ -288,8 +320,8 @@ export function EditUserModal({
 
         {/* Profiles (Optional) */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-3">
-            Profiles <span className="text-slate-500">(Optional)</span>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-3">
+            Profiles <span className="text-slate-500 dark:text-slate-400">(Optional)</span>
           </label>
           <div className="space-y-2">
             {['Engineering', 'Sales', 'Product', 'HR', 'All'].map((profile) => (
@@ -302,11 +334,11 @@ export function EditUserModal({
                   aria-label={`Select profile: ${profile}`}
                   disabled={isSubmitting}
                 />
-                <span className="text-sm text-slate-700">{profile}</span>
+                <span className="text-sm text-slate-700 dark:text-slate-300">{profile}</span>
               </label>
             ))}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
             Select which departments or teams this user should have access to.
           </p>
         </div>

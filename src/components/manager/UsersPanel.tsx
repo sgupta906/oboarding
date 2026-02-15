@@ -9,7 +9,7 @@ import { Users, Edit2, Trash2, Plus } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
 import { useRoles } from '../../hooks';
 import { useAuth } from '../../config/authContext';
-import { CreateUserModal, EditUserModal } from '../modals';
+import { UserModal } from '../modals';
 import { DeleteConfirmationDialog } from '../ui';
 import { logActivity } from '../../services/supabase';
 import type { User, UserFormData } from '../../types';
@@ -93,7 +93,7 @@ export function UsersPanel() {
     }
   };
 
-  const handleEditUser = async (data: Partial<UserFormData>) => {
+  const handleEditUser = async (data: UserFormData) => {
     if (!editingUser) return;
 
     setIsSubmitting(true);
@@ -363,7 +363,8 @@ export function UsersPanel() {
       )}
 
       {/* Create Modal */}
-      <CreateUserModal
+      <UserModal
+        mode="create"
         isOpen={showCreateModal}
         onClose={handleCloseCreateModal}
         onSubmit={handleCreateUser}
@@ -374,7 +375,8 @@ export function UsersPanel() {
       />
 
       {/* Edit Modal */}
-      <EditUserModal
+      <UserModal
+        mode="edit"
         isOpen={showEditModal}
         user={editingUser}
         onClose={handleCloseEditModal}

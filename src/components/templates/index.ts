@@ -3,6 +3,5 @@
  * Central location for importing template-related components
  */
 
-export { CreateTemplateModal } from './CreateTemplateModal';
-export { EditTemplateModal } from './EditTemplateModal';
+export { TemplateModal } from './TemplateModal';
 export { DeleteConfirmDialog } from './DeleteConfirmDialog';

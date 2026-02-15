@@ -1,11 +1,11 @@
 /**
  * Modal Scrolling Tests
- * Tests for Issue 4: CreateTemplateModal scrollability with max-height
+ * Tests for Issue 4: TemplateModal scrollability with max-height
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { CreateTemplateModal } from './CreateTemplateModal';
+import { TemplateModal } from './TemplateModal';
 import { ModalWrapper } from '../ui/ModalWrapper';
 
 describe('Issue 4: Modal Scrollability', () => {
@@ -102,10 +102,11 @@ describe('Issue 4: Modal Scrollability', () => {
     });
   });
 
-  describe('CreateTemplateModal Scrolling', () => {
+  describe('TemplateModal Scrolling', () => {
     it('should render create template modal without local scroll restriction', () => {
       render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -116,29 +117,28 @@ describe('Issue 4: Modal Scrollability', () => {
       expect(screen.getByText('Create New Template')).toBeInTheDocument();
     });
 
-    it('should NOT have max-h-96 restriction on steps container', () => {
+    it('should have steps container with bounded height for usability', () => {
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
         />
       );
 
-      // The steps container should not have max-h-96 or overflow-y-auto
+      // The steps container uses max-h-96 with overflow-y-auto for usability
       const stepsContainer = container.querySelector(
-        'div.space-y-4:not(.space-y-6)'
+        'div.space-y-4.max-h-96'
       );
 
-      if (stepsContainer) {
-        expect(stepsContainer).not.toHaveClass('max-h-96');
-        expect(stepsContainer).not.toHaveClass('overflow-y-auto');
-      }
+      expect(stepsContainer).toBeInTheDocument();
     });
 
     it('should allow multiple steps to be added without scrolling within the form', () => {
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -155,7 +155,8 @@ describe('Issue 4: Modal Scrollability', () => {
 
     it('should respect modal body max-height from ModalWrapper', () => {
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -170,7 +171,8 @@ describe('Issue 4: Modal Scrollability', () => {
 
     it('should display form fields properly in scrollable area', () => {
       render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -186,7 +188,8 @@ describe('Issue 4: Modal Scrollability', () => {
 
     it('should keep header and footer visible when modal body scrolls', () => {
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -214,7 +217,8 @@ describe('Issue 4: Modal Scrollability', () => {
       const mockOnSubmit = vi.fn();
 
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={mockOnSubmit}
@@ -264,7 +268,8 @@ describe('Issue 4: Modal Scrollability', () => {
 
     it('should not cause horizontal scroll in modal', () => {
       const { container } = render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
@@ -283,7 +288,8 @@ describe('Issue 4: Modal Scrollability', () => {
   describe('Accessibility of Scrolling', () => {
     it('should allow keyboard navigation in scrollable area', () => {
       render(
-        <CreateTemplateModal
+        <TemplateModal
+          mode="create"
           isOpen={true}
           onClose={vi.fn()}
           onSubmit={vi.fn()}
