@@ -9,12 +9,32 @@ import type { ProfileTemplateRow, ProfileTemplateStepRow } from './mappers';
 import { toProfileTemplate, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type ProfileTemplateInsert = Database['public']['Tables']['profile_templates']['Insert'];
 type ProfileTemplateStepInsert = Database['public']['Tables']['profile_template_steps']['Insert'];
 
+// -- Factory-generated operations (partial -- no subscription) -------------
+
+const crud = createCrudService<ProfileTemplate>({
+  table: 'profile_templates',
+  selectClause: '*, profile_template_steps(*)',
+  mapRow: (row: any) =>
+    toProfileTemplate(
+      row as ProfileTemplateRow,
+      ((row as any).profile_template_steps ?? []) as ProfileTemplateStepRow[]
+    ),
+  entityName: 'profile template',
+});
+
+export const getProfileTemplate = crud.get;
+export const deleteProfileTemplate = crud.remove;
+
+// -- Custom operations -----------------------------------------------------
+
 /**
  * Fetches all profile templates, optionally filtered by profileId.
+ * Custom because of the optional profileId filter parameter.
  */
 export async function listProfileTemplates(profileId?: string): Promise<ProfileTemplate[]> {
   let query = supabase
@@ -37,29 +57,6 @@ export async function listProfileTemplates(profileId?: string): Promise<ProfileT
       ((row as any).profile_template_steps ?? []) as ProfileTemplateStepRow[]
     )
   );
-}
-
-/**
- * Fetches a single profile template by ID with its steps.
- */
-export async function getProfileTemplate(id: string): Promise<ProfileTemplate | null> {
-  const { data, error } = await supabase
-    .from('profile_templates')
-    .select('*, profile_template_steps(*)')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch profile template ${id}: ${error.message}`);
-  }
-
-  return data
-    ? toProfileTemplate(
-        data as unknown as ProfileTemplateRow,
-        ((data as any).profile_template_steps ?? []) as ProfileTemplateStepRow[]
-      )
-    : null;
 }
 
 /**
@@ -211,21 +208,8 @@ export async function updateProfileTemplate(
 }
 
 /**
- * Deletes a profile template. CASCADE in the database handles step deletion.
- */
-export async function deleteProfileTemplate(templateId: string): Promise<void> {
-  const { error } = await supabase
-    .from('profile_templates')
-    .delete()
-    .eq('id', templateId);
-
-  if (error) {
-    throw new Error(`Failed to delete profile template ${templateId}: ${error.message}`);
-  }
-}
-
-/**
  * Subscribes to real-time profile template updates for a specific profile.
+ * Custom because of dynamic channel name and profileId filter.
  */
 export function subscribeToProfileTemplates(
   profileId: string,

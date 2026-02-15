@@ -10,6 +10,7 @@ import type { InstanceRow, InstanceStepRow } from './mappers';
 import { toInstance, toStep, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type InstanceInsert = Database['public']['Tables']['onboarding_instances']['Insert'];
 type InstanceStepInsert = Database['public']['Tables']['instance_steps']['Insert'];
@@ -41,51 +42,28 @@ export interface CreateOnboardingRunInput {
 }
 
 // ============================================================================
-// CRUD Operations
+// Factory-generated operations
 // ============================================================================
 
-/**
- * Fetches all onboarding instances with their steps.
- */
-export async function listOnboardingInstances(): Promise<OnboardingInstance[]> {
-  const { data, error } = await supabase
-    .from('onboarding_instances')
-    .select('*, instance_steps(*)')
-    .limit(200);
+const crud = createCrudService<OnboardingInstance>({
+  table: 'onboarding_instances',
+  selectClause: '*, instance_steps(*)',
+  mapRow: (row: any) =>
+    toInstance(row as InstanceRow, ((row as any).instance_steps ?? []) as InstanceStepRow[]),
+  entityName: 'onboarding instance',
+  subscription: {
+    channelName: 'instances-all',
+    tables: [{ table: 'onboarding_instances' }, { table: 'instance_steps' }],
+  },
+});
 
-  if (error) {
-    throw new Error(`Failed to fetch onboarding instances: ${error.message}`);
-  }
+export const listOnboardingInstances = crud.list;
+export const getOnboardingInstance = crud.get;
+export const subscribeToOnboardingInstances = crud.subscribe;
 
-  return (data ?? []).map((row: any) =>
-    toInstance(row as InstanceRow, ((row as any).instance_steps ?? []) as InstanceStepRow[])
-  );
-}
-
-/**
- * Fetches a single onboarding instance by ID with its steps.
- */
-export async function getOnboardingInstance(
-  id: string
-): Promise<OnboardingInstance | null> {
-  const { data, error } = await supabase
-    .from('onboarding_instances')
-    .select('*, instance_steps(*)')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch onboarding instance ${id}: ${error.message}`);
-  }
-
-  return data
-    ? toInstance(
-        data as unknown as InstanceRow,
-        ((data as any).instance_steps ?? []) as InstanceStepRow[]
-      )
-    : null;
-}
+// ============================================================================
+// CRUD Operations (Custom)
+// ============================================================================
 
 /**
  * Creates a new onboarding instance with steps.
@@ -401,7 +379,7 @@ export async function createOnboardingRunFromTemplate(
 }
 
 // ============================================================================
-// Subscriptions
+// Subscriptions (Custom -- filtered by ID/email)
 // ============================================================================
 
 /**
@@ -496,45 +474,6 @@ export function subscribeToSteps(
         table: 'instance_steps',
         filter: `instance_id=eq.${instanceId}`,
       },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
-}
-
-/**
- * Subscribes to all onboarding instances.
- */
-export function subscribeToOnboardingInstances(
-  callback: (instances: OnboardingInstance[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listOnboardingInstances().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listOnboardingInstances().then(callback).catch(console.error);
-
-  // 2. Listen for changes with debounced handler
-  const channel = supabase
-    .channel('instances-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'onboarding_instances' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'instance_steps' },
       () => {
         debouncedRefetch();
       }

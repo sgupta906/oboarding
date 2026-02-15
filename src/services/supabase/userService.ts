@@ -10,7 +10,7 @@ import type { User, Activity } from '../../types';
 import type { UserRow, UserRoleRow, UserProfileRow } from './mappers';
 import { toUser, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
-import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type UserInsert = Database['public']['Tables']['users']['Insert'];
 type UserRoleInsert = Database['public']['Tables']['user_roles']['Insert'];
@@ -148,54 +148,32 @@ export function clearAllUsersForTesting(): void {
 }
 
 // ============================================================================
-// CRUD Operations
+// Factory-generated operations
 // ============================================================================
 
-/**
- * Fetches all users with their roles and profiles.
- */
-export async function listUsers(): Promise<User[]> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*, user_roles(*), user_profiles(*)')
-    .limit(200);
-
-  if (error) {
-    throw new Error(`Failed to fetch users: ${error.message}`);
-  }
-
-  return (data ?? []).map((row: any) =>
+const crud = createCrudService<User>({
+  table: 'users',
+  selectClause: '*, user_roles(*), user_profiles(*)',
+  mapRow: (row: any) =>
     toUser(
       row as UserRow,
       ((row as any).user_roles ?? []) as UserRoleRow[],
       ((row as any).user_profiles ?? []) as UserProfileRow[]
-    )
-  );
-}
+    ),
+  entityName: 'user',
+  subscription: {
+    channelName: 'users-all',
+    tables: [{ table: 'users' }, { table: 'user_roles' }, { table: 'user_profiles' }],
+  },
+});
 
-/**
- * Fetches a single user by ID with junction data.
- */
-export async function getUser(id: string): Promise<User | null> {
-  const { data, error } = await supabase
-    .from('users')
-    .select('*, user_roles(*), user_profiles(*)')
-    .eq('id', id)
-    .single();
+export const listUsers = crud.list;
+export const getUser = crud.get;
+export const subscribeToUsers = crud.subscribe;
 
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch user ${id}: ${error.message}`);
-  }
-
-  return data
-    ? toUser(
-        data as unknown as UserRow,
-        ((data as any).user_roles ?? []) as UserRoleRow[],
-        ((data as any).user_profiles ?? []) as UserProfileRow[]
-      )
-    : null;
-}
+// ============================================================================
+// CRUD Operations (Custom)
+// ============================================================================
 
 /**
  * Checks if a user email already exists (case-insensitive).
@@ -420,52 +398,6 @@ export async function deleteUser(userId: string): Promise<void> {
 
   // Clean up auth credentials
   removeUserFromAuthCredentials(user.email);
-}
-
-/**
- * Subscribes to real-time user updates.
- */
-export function subscribeToUsers(
-  callback: (users: User[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listUsers().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listUsers().then(callback).catch(console.error);
-
-  // 2. Listen for changes on users and junction tables with debounced handler
-  const channel = supabase
-    .channel('users-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'users' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'user_roles' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'user_profiles' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
 }
 
 /**

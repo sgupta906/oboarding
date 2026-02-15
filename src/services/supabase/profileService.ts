@@ -8,48 +8,31 @@ import type { Profile } from '../../types';
 import type { ProfileRow, ProfileRoleTagRow } from './mappers';
 import { toProfile, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
-import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type ProfileRoleTagInsert = Database['public']['Tables']['profile_role_tags']['Insert'];
 
-/**
- * Fetches all profiles with their role tags.
- */
-export async function listProfiles(): Promise<Profile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*, profile_role_tags(*)')
-    .limit(200);
+// -- Factory-generated operations ------------------------------------------
 
-  if (error) {
-    throw new Error(`Failed to fetch profiles: ${error.message}`);
-  }
+const crud = createCrudService<Profile>({
+  table: 'profiles',
+  selectClause: '*, profile_role_tags(*)',
+  mapRow: (row: any) =>
+    toProfile(row as ProfileRow, ((row as any).profile_role_tags ?? []) as ProfileRoleTagRow[]),
+  entityName: 'profile',
+  subscription: {
+    channelName: 'profiles-all',
+    tables: [{ table: 'profiles' }, { table: 'profile_role_tags' }],
+  },
+});
 
-  return (data ?? []).map((row: any) =>
-    toProfile(row as ProfileRow, ((row as any).profile_role_tags ?? []) as ProfileRoleTagRow[])
-  );
-}
+export const listProfiles = crud.list;
+export const getProfile = crud.get;
+export const deleteProfile = crud.remove;
+export const subscribeToProfiles = crud.subscribe;
 
-/**
- * Fetches a single profile by ID with its role tags.
- */
-export async function getProfile(id: string): Promise<Profile | null> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*, profile_role_tags(*)')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch profile ${id}: ${error.message}`);
-  }
-
-  return data
-    ? toProfile(data as unknown as ProfileRow, ((data as any).profile_role_tags ?? []) as ProfileRoleTagRow[])
-    : null;
-}
+// -- Custom operations -----------------------------------------------------
 
 /**
  * Creates a new profile with role tags.
@@ -164,58 +147,4 @@ export async function updateProfile(
       }
     }
   }
-}
-
-/**
- * Deletes a profile. CASCADE in the database handles role_tags deletion.
- */
-export async function deleteProfile(profileId: string): Promise<void> {
-  const { error } = await supabase
-    .from('profiles')
-    .delete()
-    .eq('id', profileId);
-
-  if (error) {
-    throw new Error(`Failed to delete profile ${profileId}: ${error.message}`);
-  }
-}
-
-/**
- * Subscribes to real-time profile updates.
- */
-export function subscribeToProfiles(
-  callback: (profiles: Profile[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listProfiles().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listProfiles().then(callback).catch(console.error);
-
-  // 2. Listen for changes with debounced handler
-  const channel = supabase
-    .channel('profiles-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'profiles' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'profile_role_tags' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  // 3. Return cleanup
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
 }

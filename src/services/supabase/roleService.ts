@@ -8,8 +8,7 @@ import type { CustomRole } from '../../types';
 import type { RoleRow } from './mappers';
 import { toRole, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
-import { createSharedSubscription } from './subscriptionManager';
-import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type RoleInsert = Database['public']['Tables']['roles']['Insert'];
 
@@ -22,39 +21,25 @@ function isValidUUID(value: string): boolean {
   return UUID_REGEX.test(value);
 }
 
-/**
- * Fetches all custom roles.
- */
-export async function listRoles(): Promise<CustomRole[]> {
-  const { data, error } = await supabase
-    .from('roles')
-    .select('*')
-    .limit(200);
+// -- Factory-generated operations ------------------------------------------
 
-  if (error) {
-    throw new Error(`Failed to fetch roles: ${error.message}`);
-  }
+const crud = createCrudService<CustomRole>({
+  table: 'roles',
+  selectClause: '*',
+  mapRow: (row) => toRole(row as RoleRow),
+  entityName: 'role',
+  subscription: {
+    channelName: 'roles-all',
+    tables: [{ table: 'roles' }],
+    shared: true,
+  },
+});
 
-  return ((data ?? []) as RoleRow[]).map(toRole);
-}
+export const listRoles = crud.list;
+export const getRole = crud.get;
+export const subscribeToRoles = crud.subscribe;
 
-/**
- * Fetches a single role by ID.
- */
-export async function getRole(id: string): Promise<CustomRole | null> {
-  const { data, error } = await supabase
-    .from('roles')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch role ${id}: ${error.message}`);
-  }
-
-  return data ? toRole(data as RoleRow) : null;
-}
+// -- Custom operations -----------------------------------------------------
 
 /**
  * Checks if a role name already exists (case-insensitive).
@@ -191,56 +176,4 @@ export async function deleteRole(roleId: string): Promise<void> {
   if (error) {
     throw new Error(`Failed to delete role ${roleId}: ${error.message}`);
   }
-}
-
-/**
- * Raw subscription to real-time role updates (used internally).
- */
-function _subscribeToRolesRaw(
-  callback: (roles: CustomRole[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listRoles().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listRoles().then(callback).catch(console.error);
-
-  // 2. Listen for changes with debounced handler
-  const channel = supabase
-    .channel('roles-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'roles' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  // 3. Return cleanup
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
-}
-
-/**
- * Shared subscription to real-time role updates.
- * Multiple callers share a single Supabase Realtime channel.
- */
-const sharedRolesSubscription = createSharedSubscription<CustomRole[]>(
-  'roles',
-  _subscribeToRolesRaw
-);
-
-/**
- * Subscribes to real-time role updates via shared subscription.
- * Multiple callers share one underlying Realtime channel.
- */
-export function subscribeToRoles(
-  callback: (roles: CustomRole[]) => void
-): () => void {
-  return sharedRolesSubscription.subscribe(callback);
 }

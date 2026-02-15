@@ -8,25 +8,28 @@ import type { Suggestion } from '../../types';
 import type { SuggestionRow } from './mappers';
 import { toSuggestion, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
-import { debounce } from '../../utils/debounce';
+import { createCrudService } from './crudFactory';
 
 type SuggestionInsert = Database['public']['Tables']['suggestions']['Insert'];
 
-/**
- * Fetches all suggestions.
- */
-export async function listSuggestions(): Promise<Suggestion[]> {
-  const { data, error } = await supabase
-    .from('suggestions')
-    .select('*')
-    .limit(200);
+// -- Factory-generated operations ------------------------------------------
 
-  if (error) {
-    throw new Error(`Failed to fetch suggestions: ${error.message}`);
-  }
+const crud = createCrudService<Suggestion>({
+  table: 'suggestions',
+  selectClause: '*',
+  mapRow: (row) => toSuggestion(row as SuggestionRow),
+  entityName: 'suggestion',
+  subscription: {
+    channelName: 'suggestions-all',
+    tables: [{ table: 'suggestions' }],
+  },
+});
 
-  return ((data ?? []) as SuggestionRow[]).map(toSuggestion);
-}
+export const listSuggestions = crud.list;
+export const deleteSuggestion = crud.remove;
+export const subscribeToSuggestions = crud.subscribe;
+
+// -- Custom operations -----------------------------------------------------
 
 /**
  * Creates a new suggestion.
@@ -72,53 +75,4 @@ export async function updateSuggestionStatus(
   if (error) {
     throw new Error(`Failed to update suggestion status ${id}: ${error.message}`);
   }
-}
-
-/**
- * Deletes a suggestion permanently.
- */
-export async function deleteSuggestion(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('suggestions')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    throw new Error(`Failed to delete suggestion ${id}: ${error.message}`);
-  }
-}
-
-/**
- * Subscribes to real-time suggestion updates.
- * Fetches initial data then re-fetches on every change.
- * @returns Cleanup function to remove the channel.
- */
-export function subscribeToSuggestions(
-  callback: (suggestions: Suggestion[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listSuggestions().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listSuggestions().then(callback).catch(console.error);
-
-  // 2. Listen for changes with debounced handler
-  const channel = supabase
-    .channel('suggestions-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'suggestions' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  // 3. Return cleanup
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
 }

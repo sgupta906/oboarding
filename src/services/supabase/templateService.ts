@@ -9,49 +9,32 @@ import type { Template, Step } from '../../types';
 import type { TemplateRow, TemplateStepRow, InstanceRow, InstanceStepRow } from './mappers';
 import { toTemplate, toInstance, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
-import { debounce } from '../../utils/debounce';
-import { createSharedSubscription } from './subscriptionManager';
+import { createCrudService } from './crudFactory';
 
 type TemplateInsert = Database['public']['Tables']['templates']['Insert'];
 type TemplateStepInsert = Database['public']['Tables']['template_steps']['Insert'];
 
-/**
- * Fetches all onboarding templates with their steps.
- */
-export async function listTemplates(): Promise<Template[]> {
-  const { data, error } = await supabase
-    .from('templates')
-    .select('*, template_steps(*)')
-    .limit(200);
+// -- Factory-generated operations ------------------------------------------
 
-  if (error) {
-    throw new Error(`Failed to fetch templates: ${error.message}`);
-  }
+const crud = createCrudService<Template>({
+  table: 'templates',
+  selectClause: '*, template_steps(*)',
+  mapRow: (row: any) =>
+    toTemplate(row as TemplateRow, ((row as any).template_steps ?? []) as TemplateStepRow[]),
+  entityName: 'template',
+  subscription: {
+    channelName: 'templates-all',
+    tables: [{ table: 'templates' }, { table: 'template_steps' }],
+    shared: true,
+  },
+});
 
-  return (data ?? []).map((row: any) =>
-    toTemplate(row as TemplateRow, ((row as any).template_steps ?? []) as TemplateStepRow[])
-  );
-}
+export const listTemplates = crud.list;
+export const getTemplate = crud.get;
+export const deleteTemplate = crud.remove;
+export const subscribeToTemplates = crud.subscribe;
 
-/**
- * Fetches a single template by ID with its steps.
- */
-export async function getTemplate(id: string): Promise<Template | null> {
-  const { data, error } = await supabase
-    .from('templates')
-    .select('*, template_steps(*)')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null; // Not found
-    throw new Error(`Failed to fetch template ${id}: ${error.message}`);
-  }
-
-  return data
-    ? toTemplate(data as unknown as TemplateRow, ((data as any).template_steps ?? []) as TemplateStepRow[])
-    : null;
-}
+// -- Custom operations -----------------------------------------------------
 
 /**
  * Creates a new template with steps.
@@ -233,78 +216,4 @@ async function syncTemplateStepsToInstances(templateId: string, newSteps: Step[]
       err instanceof Error ? err.message : String(err)
     );
   }
-}
-
-/**
- * Deletes a template. CASCADE in the database handles step deletion.
- */
-export async function deleteTemplate(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('templates')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    throw new Error(`Failed to delete template ${id}: ${error.message}`);
-  }
-}
-
-/**
- * Raw subscription to real-time template updates (used internally).
- * Listens on both templates and template_steps tables.
- */
-function _subscribeToTemplatesRaw(
-  callback: (templates: Template[]) => void
-): () => void {
-  // Debounced re-fetch to batch rapid Realtime events
-  const debouncedRefetch = debounce(() => {
-    listTemplates().then(callback).catch(console.error);
-  }, 300);
-
-  // 1. Initial fetch (NOT debounced -- immediate)
-  listTemplates().then(callback).catch(console.error);
-
-  // 2. Listen for changes on both tables with debounced handler
-  const channel = supabase
-    .channel('templates-all')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'templates' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'template_steps' },
-      () => {
-        debouncedRefetch();
-      }
-    )
-    .subscribe();
-
-  // 3. Return cleanup
-  return () => {
-    debouncedRefetch.cancel();
-    supabase.removeChannel(channel);
-  };
-}
-
-/**
- * Shared subscription to real-time template updates.
- * Multiple callers share a single Supabase Realtime channel.
- */
-const sharedTemplatesSubscription = createSharedSubscription<Template[]>(
-  'templates',
-  _subscribeToTemplatesRaw
-);
-
-/**
- * Subscribes to real-time template updates via shared subscription.
- * Multiple callers share one underlying Realtime channel.
- */
-export function subscribeToTemplates(
-  callback: (templates: Template[]) => void
-): () => void {
-  return sharedTemplatesSubscription.subscribe(callback);
 }
