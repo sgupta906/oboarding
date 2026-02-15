@@ -11,4 +11,4 @@ export { KPISection } from './KPISection';
 export { SuggestionsSection } from './SuggestionsSection';
 export { ActivitySection } from './ActivitySection';
 export { RoleManagementPanel } from './RoleManagementPanel';
-export { UsersPanel } from './UsersPanel';
+export { NewHiresPanel } from './NewHiresPanel';

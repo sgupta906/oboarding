@@ -14,7 +14,7 @@ import {
   SuggestionsSection,
   ActivitySection,
   RoleManagementPanel,
-  UsersPanel,
+  NewHiresPanel,
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
 import { useCreateOnboarding, useRoles, useTemplates } from '../hooks';
@@ -65,7 +65,7 @@ export function ManagerView({
   const { roles, isLoading: rolesLoading } = useRoles();
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'new-hires'>('dashboard');
 
   const handleOpenCreateOnboarding = () => {
     resetError();
@@ -138,16 +138,16 @@ export function ManagerView({
           Roles
         </button>
         <button
-          onClick={() => setActiveTab('users')}
+          onClick={() => setActiveTab('new-hires')}
           className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === 'users'
+            activeTab === 'new-hires'
               ? 'border-brand-600 text-brand-600'
               : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
-          aria-label="Show users management view"
-          aria-current={activeTab === 'users' ? 'page' : undefined}
+          aria-label="Show new hires view"
+          aria-current={activeTab === 'new-hires' ? 'page' : undefined}
         >
-          Users
+          New Hires
         </button>
       </div>
 
@@ -197,10 +197,10 @@ export function ManagerView({
         </div>
       )}
 
-      {/* Users Tab Content */}
-      {activeTab === 'users' && (
+      {/* New Hires Tab Content */}
+      {activeTab === 'new-hires' && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
-          <UsersPanel />
+          <NewHiresPanel />
         </div>
       )}
 

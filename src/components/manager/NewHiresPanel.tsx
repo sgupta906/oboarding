@@ -1,0 +1,249 @@
+/**
+ * NewHiresPanel Component - Read-only view of employees going through onboarding
+ * Displays onboarding instances in a table with status filter, progress bars, and status badges
+ * Self-contained: uses useOnboardingInstances() directly, no props needed
+ */
+
+import { useState, useMemo } from 'react';
+import { Users } from 'lucide-react';
+import { useOnboardingInstances } from '../../hooks';
+import { ProgressBar } from '../ui/ProgressBar';
+
+type StatusFilter = 'all' | 'active' | 'completed' | 'on_hold';
+
+/** Returns Tailwind classes for status badge colors */
+function getStatusBadgeClasses(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300';
+    case 'completed':
+      return 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300';
+    case 'on_hold':
+      return 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+    default:
+      return 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400';
+  }
+}
+
+/** Returns human-readable label for a status value */
+function getStatusLabel(status: string): string {
+  switch (status) {
+    case 'active':
+      return 'Active';
+    case 'completed':
+      return 'Completed';
+    case 'on_hold':
+      return 'On Hold';
+    default:
+      return status;
+  }
+}
+
+/** Formats a Unix timestamp to a locale date string, or returns a dash */
+function formatDate(timestamp?: number): string {
+  if (!timestamp) return '-';
+  return new Date(timestamp).toLocaleDateString();
+}
+
+/** Returns an empty-state message appropriate for the current filter */
+function getEmptyMessage(filter: StatusFilter): string {
+  switch (filter) {
+    case 'active':
+      return 'No active new hires';
+    case 'completed':
+      return 'No completed new hires';
+    case 'on_hold':
+      return 'No on-hold new hires';
+    default:
+      return 'No new hires';
+  }
+}
+
+/**
+ * Renders a read-only table of onboarding instances for managers.
+ * Includes a four-option status filter (All / Active / Completed / On Hold).
+ */
+export function NewHiresPanel() {
+  const { data, isLoading, error } = useOnboardingInstances();
+  const [filter, setFilter] = useState<StatusFilter>('all');
+
+  const filteredInstances = useMemo(
+    () => (filter === 'all' ? data : data.filter((inst) => inst.status === filter)),
+    [data, filter],
+  );
+
+  const statusCounts = useMemo(() => {
+    const counts = { all: data.length, active: 0, completed: 0, on_hold: 0 };
+    for (const inst of data) {
+      if (inst.status === 'active') counts.active++;
+      else if (inst.status === 'completed') counts.completed++;
+      else if (inst.status === 'on_hold') counts.on_hold++;
+    }
+    return counts;
+  }, [data]);
+
+  const filterButtons: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'active', label: 'Active' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'on_hold', label: 'On Hold' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 bg-brand-100 dark:bg-brand-900/40 rounded-lg">
+          <Users className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50">New Hires</h2>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+            Employees currently going through onboarding
+          </p>
+        </div>
+      </div>
+
+      {/* Filter Toggle Group */}
+      <div
+        className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden w-fit"
+        role="group"
+        aria-label="Status filter"
+      >
+        {filterButtons.map(({ key, label }, idx) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key)}
+            aria-pressed={filter === key}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+              idx > 0 ? 'border-l border-slate-200 dark:border-slate-600' : ''
+            } ${
+              filter === key
+                ? 'bg-brand-600 text-white'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            {label} ({statusCounts[key]})
+          </button>
+        ))}
+      </div>
+
+      {/* Loading State */}
+      {isLoading && (
+        <div className="p-8 text-center">
+          <div className="inline-flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-brand-600 dark:border-brand-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-slate-600 dark:text-slate-400">
+              Loading onboarding data...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm font-medium text-red-800 dark:text-red-300">{error.message}</p>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && !error && filteredInstances.length === 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
+          <Users className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-3" />
+          <p className="text-slate-600 dark:text-slate-300 font-medium">
+            {getEmptyMessage(filter)}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            {filter === 'all'
+              ? 'No onboarding instances have been created yet'
+              : 'Try changing the filter to see other statuses'}
+          </p>
+        </div>
+      )}
+
+      {/* Table */}
+      {!isLoading && !error && filteredInstances.length > 0 && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                <tr>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Department
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Progress
+                  </th>
+                  <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
+                    Start Date
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-600">
+                {filteredInstances.map((instance) => (
+                  <tr
+                    key={instance.id}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-slate-900 dark:text-slate-50">
+                        {instance.employeeName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-slate-600 dark:text-slate-300 text-xs font-mono">
+                        {instance.employeeEmail}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-slate-700 dark:text-slate-300">
+                        {instance.department}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex px-2 py-1 bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 rounded text-xs font-medium">
+                        {instance.role}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex px-2 py-1 rounded text-xs font-medium ${getStatusBadgeClasses(instance.status)}`}
+                      >
+                        {getStatusLabel(instance.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <ProgressBar
+                        value={instance.progress}
+                        showPercentage={true}
+                        className="w-24"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-600 dark:text-slate-300">
+                        {formatDate(instance.startDate)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
