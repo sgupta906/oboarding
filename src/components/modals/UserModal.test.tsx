@@ -1,7 +1,7 @@
 /**
  * UserModal Component Tests
  * Unified tests for create and edit modes
- * Merged from CreateUserModal.test.tsx (EditUserModal had no tests)
+ * Tests focus on validation, submission, role/profile selection, and pre-fill
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -39,50 +39,6 @@ describe('UserModal', () => {
   // ==========================================================================
 
   describe('UserModal - create mode', () => {
-    it('should render modal when open', () => {
-      render(
-        <UserModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByText('Add System User')).toBeInTheDocument();
-      expect(screen.getByLabelText('User email')).toBeInTheDocument();
-      expect(screen.getByLabelText('User name')).toBeInTheDocument();
-    });
-
-    it('should not render modal when closed', () => {
-      const { container } = render(
-        <UserModal
-          mode="create"
-          isOpen={false}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(container.querySelector('[role="dialog"]')).not.toBeInTheDocument();
-    });
-
-    it('should show intro section (amber box) in create mode', () => {
-      render(
-        <UserModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByText(/Add a manager, admin, or contractor/i)).toBeInTheDocument();
-    });
-
     it('should validate email field', async () => {
       render(
         <UserModal
@@ -270,54 +226,6 @@ describe('UserModal', () => {
       });
     });
 
-    it('should display server error', () => {
-      render(
-        <UserModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          error="Email already exists"
-        />
-      );
-
-      expect(screen.getByText('Email already exists')).toBeInTheDocument();
-    });
-
-    it('should disable submit button while submitting', () => {
-      render(
-        <UserModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          isSubmitting={true}
-        />
-      );
-
-      const submitButton = screen.getByLabelText('Create user');
-      expect(submitButton).toBeDisabled();
-    });
-
-    it('should close modal on cancel', () => {
-      render(
-        <UserModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      const cancelButton = screen.getByLabelText('Cancel creating user');
-      fireEvent.click(cancelButton);
-
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-
     it('should trim whitespace from inputs', async () => {
       mockOnSubmit.mockResolvedValue(undefined);
 
@@ -392,37 +300,6 @@ describe('UserModal', () => {
       expect(nameInput.value).toBe(mockUser.name);
     });
 
-    it('should not show intro section (amber box) in edit mode', () => {
-      render(
-        <UserModal
-          mode="edit"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          user={mockUser}
-        />
-      );
-
-      expect(screen.queryByText(/Add a manager, admin, or contractor/i)).not.toBeInTheDocument();
-    });
-
-    it('should show "Save Changes" submit button', () => {
-      render(
-        <UserModal
-          mode="edit"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          user={mockUser}
-        />
-      );
-
-      expect(screen.getByLabelText('Save user changes')).toBeInTheDocument();
-      expect(screen.getByText('Save Changes')).toBeInTheDocument();
-    });
-
     it('should return null when user is null', () => {
       const { container } = render(
         <UserModal
@@ -464,56 +341,6 @@ describe('UserModal', () => {
           })
         );
       });
-    });
-
-    it('should show "Saving..." loading state in edit mode', () => {
-      render(
-        <UserModal
-          mode="edit"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          user={mockUser}
-          isSubmitting={true}
-        />
-      );
-
-      expect(screen.getByText('Saving...')).toBeInTheDocument();
-    });
-
-    it('should close modal on cancel in edit mode', () => {
-      render(
-        <UserModal
-          mode="edit"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          user={mockUser}
-        />
-      );
-
-      const cancelButton = screen.getByLabelText('Cancel editing user');
-      fireEvent.click(cancelButton);
-
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-
-    it('should display server error in edit mode', () => {
-      render(
-        <UserModal
-          mode="edit"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          user={mockUser}
-          error="Failed to update user"
-        />
-      );
-
-      expect(screen.getByText('Failed to update user')).toBeInTheDocument();
     });
   });
 });

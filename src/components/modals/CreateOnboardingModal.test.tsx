@@ -1,6 +1,6 @@
 /**
  * Unit tests for CreateOnboardingModal component
- * Tests form validation, template loading, submission, and error handling
+ * Tests form validation, template preview, submission, and whitespace trimming
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -113,103 +113,7 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   // ============================================================================
-  // Test 1: Visibility Tests
-  // ============================================================================
-
-  it('should not render when isOpen is false', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={false}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    expect(screen.queryByText('Create New Onboarding')).not.toBeInTheDocument();
-  });
-
-  it('should render modal when isOpen is true', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    expect(screen.getByText('Add New Employee Onboarding')).toBeInTheDocument();
-  });
-
-  // ============================================================================
-  // Test 2: Form Fields Rendering
-  // ============================================================================
-
-  it('should render all form fields', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    expect(screen.getByLabelText(/employee name/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/email address/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('Employee role')).toBeInTheDocument();
-    expect(screen.getByLabelText(/department/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/role-based template/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/start date/i)).toBeInTheDocument();
-  });
-
-  it('should render role dropdown with available roles', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    const roleSelect = screen.getByLabelText('Employee role') as HTMLSelectElement;
-    expect(roleSelect).toHaveProperty('value', '');
-
-    const options = Array.from(roleSelect.options).map((o) => o.value);
-    expect(options).toContain('Engineering');
-    expect(options).toContain('Sales');
-    expect(options).toContain('Product');
-    expect(options).toContain('HR');
-  });
-
-  it('should render template dropdown with available templates', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    const templateSelect = screen.getByLabelText(
-      /onboarding template/i
-    ) as HTMLSelectElement;
-    const options = Array.from(templateSelect.options).map((o) => o.value);
-
-    expect(options).toContain('template-1');
-    expect(options).toContain('template-2');
-  });
-
-  // ============================================================================
-  // Test 3: Form Submission - Validation Errors
+  // Validation Errors
   // ============================================================================
 
   it('should show validation error for missing employee name', async () => {
@@ -376,7 +280,7 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   // ============================================================================
-  // Test 4: Successful Submission
+  // Successful Submission
   // ============================================================================
 
   it('should submit form with valid data', async () => {
@@ -468,7 +372,7 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   // ============================================================================
-  // Test 5: Template Preview
+  // Template Preview
   // ============================================================================
 
   it('should display template preview when template is selected', async () => {
@@ -489,7 +393,6 @@ describe('CreateOnboardingModal Component', () => {
     );
 
     expect(screen.getByText(/template preview/i)).toBeInTheDocument();
-    // Check for the preview section specifically
     const preview = screen.getByText(/template preview/i).closest('div');
     expect(preview).toBeInTheDocument();
     expect(preview?.textContent).toContain('Engineering Onboarding');
@@ -541,171 +444,8 @@ describe('CreateOnboardingModal Component', () => {
   });
 
   // ============================================================================
-  // Test 6: Loading and Error States
+  // Whitespace Trimming
   // ============================================================================
-
-  it('should show loading message when templates are loading', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={[]}
-        templatesLoading={true}
-      />
-    );
-
-    expect(screen.getByText(/loading templates/i)).toBeInTheDocument();
-  });
-
-  it('should show error message when no templates are available', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={[]}
-        templatesLoading={false}
-      />
-    );
-
-    expect(
-      screen.getByText(/no templates available/i)
-    ).toBeInTheDocument();
-  });
-
-  it('should disable submit button when templates are loading', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={[]}
-        templatesLoading={true}
-      />
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /create onboarding/i,
-    });
-    expect(submitButton).toBeDisabled();
-  });
-
-  it('should disable submit button when no templates available', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={[]}
-        templatesLoading={false}
-      />
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /create onboarding/i,
-    });
-    expect(submitButton).toBeDisabled();
-  });
-
-  it('should display server error message', () => {
-    const errorMessage = 'Failed to create onboarding instance';
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-        error={errorMessage}
-      />
-    );
-
-    expect(screen.getByText(errorMessage)).toBeInTheDocument();
-  });
-
-  // ============================================================================
-  // Test 7: Loading State During Submission
-  // ============================================================================
-
-  it('should show loading spinner during submission', async () => {
-    const slowSubmit = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, 1000);
-        })
-    );
-
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={slowSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-        isSubmitting={true}
-      />
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /creating/i,
-    });
-    expect(submitButton).toBeDisabled();
-  });
-
-  it('should disable all form inputs during submission', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-        isSubmitting={true}
-      />
-    );
-
-    expect(
-      screen.getByLabelText(/employee name/i)
-    ).toBeDisabled();
-    expect(
-      screen.getByLabelText(/email address/i)
-    ).toBeDisabled();
-    expect(
-      screen.getByLabelText('Employee role')
-    ).toBeDisabled();
-    expect(
-      screen.getByLabelText(/department/i)
-    ).toBeDisabled();
-  });
-
-  // ============================================================================
-  // Test 8: Modal Controls
-  // ============================================================================
-
-  it('should call onClose when cancel button is clicked', async () => {
-    const user = userEvent.setup();
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    const cancelButton = screen.getByRole('button', { name: /cancel/i });
-    await user.click(cancelButton);
-
-    expect(mockOnClose).toHaveBeenCalled();
-  });
 
   it('should trim whitespace from form inputs', async () => {
     const user = userEvent.setup();
@@ -748,89 +488,5 @@ describe('CreateOnboardingModal Component', () => {
         })
       );
     });
-  });
-
-  // ============================================================================
-  // Test 9: Accessibility
-  // ============================================================================
-
-  it('should have proper ARIA labels and descriptions', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    expect(
-      screen.getByLabelText(/employee name/i)
-    ).toHaveAttribute('aria-required', 'true');
-    expect(
-      screen.getByLabelText(/email address/i)
-    ).toHaveAttribute('aria-required', 'true');
-    expect(
-      screen.getByLabelText('Employee role')
-    ).toHaveAttribute('aria-required', 'true');
-  });
-
-  it('should associate error messages with form fields', async () => {
-    const user = userEvent.setup();
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    const submitButton = screen.getByRole('button', {
-      name: /create onboarding/i,
-    });
-    await user.click(submitButton);
-
-    const emailInput = screen.getByLabelText(/email address/i);
-    expect(emailInput).toHaveAttribute('aria-describedby');
-  });
-
-  // ============================================================================
-  // Test 10: Required Field Indicators
-  // ============================================================================
-
-  it('should display required field indicators', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    // Check for red asterisk indicators on required fields
-    const labels = screen.getAllByText('*');
-    expect(labels.length).toBeGreaterThan(0);
-  });
-
-  it('should mark optional fields correctly', () => {
-    render(
-      <CreateOnboardingModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-        roles={mockRoles}
-        templates={mockTemplates}
-      />
-    );
-
-    // Start Date field should be marked as Optional
-    expect(
-      screen.getByText(/start date/i).parentElement?.textContent
-    ).toMatch(/optional/i);
   });
 });

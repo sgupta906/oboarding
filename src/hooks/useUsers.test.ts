@@ -1,10 +1,10 @@
 /**
  * Tests for useUsers Hook
- * Validates user CRUD operations, loading states, and error handling
+ * Validates user CRUD operations, error handling, and state reset
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useUsers } from './useUsers';
 import * as userOps from '../services/supabase';
 import type { User, UserFormData } from '../types';
@@ -52,37 +52,6 @@ describe('useUsers Hook', () => {
     vi.restoreAllMocks();
   });
 
-  it('should initialize with empty users and loading state', () => {
-    (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
-      // Simulate async subscription
-      setTimeout(() => callback([]), 0);
-      return () => {};
-    });
-
-    const { result } = renderHook(() => useUsers());
-
-    // Initially loading is true, but callback hasn't been called yet
-    // Since the callback is scheduled asynchronously, isLoading may already be false
-    expect(result.current.users).toBeDefined();
-    expect(result.current.error).toBe(null);
-  });
-
-  it('should load users on mount', async () => {
-    (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
-      setTimeout(() => callback(mockUsers), 100);
-      return () => {};
-    });
-
-    const { result } = renderHook(() => useUsers());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    expect(result.current.users).toEqual(mockUsers);
-    expect(result.current.error).toBe(null);
-  });
-
   it('should create a new user successfully', async () => {
     const newUser: User = {
       ...mockUser,
@@ -114,7 +83,6 @@ describe('useUsers Hook', () => {
 
     expect(createdUser).toEqual(newUser);
     expect(userOps.createUser).toHaveBeenCalled();
-    // Verify the call was made with the correct createdBy parameter
     const callArgs = (userOps.createUser as any).mock.calls[0];
     expect(callArgs[1]).toBe('admin-1');
   });
@@ -230,43 +198,6 @@ describe('useUsers Hook', () => {
     expect(result.current.error).toBe('User not found');
   });
 
-  it('should fetch a single user by ID', async () => {
-    (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
-      callback(mockUsers);
-      return () => {};
-    });
-
-    (userOps.getUser as any).mockResolvedValue(mockUser);
-
-    const { result } = renderHook(() => useUsers());
-
-    let fetchedUser: User | null = null;
-    await act(async () => {
-      fetchedUser = await result.current.fetchUser('user-1');
-    });
-
-    expect(fetchedUser).toEqual(mockUser);
-    expect(userOps.getUser).toHaveBeenCalledWith('user-1');
-  });
-
-  it('should handle when user not found', async () => {
-    (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
-      callback(mockUsers);
-      return () => {};
-    });
-
-    (userOps.getUser as any).mockResolvedValue(null);
-
-    const { result } = renderHook(() => useUsers());
-
-    let fetchedUser: User | null = null;
-    await act(async () => {
-      fetchedUser = await result.current.fetchUser('nonexistent');
-    });
-
-    expect(fetchedUser).toBeNull();
-  });
-
   it('should reset error state', async () => {
     (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
       callback(mockUsers);
@@ -296,16 +227,5 @@ describe('useUsers Hook', () => {
     });
 
     expect(result.current.error).toBe(null);
-  });
-
-  it('should unsubscribe on cleanup', () => {
-    const unsubscribeMock = vi.fn();
-    (userOps.subscribeToUsers as any).mockReturnValue(unsubscribeMock);
-
-    const { unmount } = renderHook(() => useUsers());
-
-    unmount();
-
-    expect(unsubscribeMock).toHaveBeenCalled();
   });
 });

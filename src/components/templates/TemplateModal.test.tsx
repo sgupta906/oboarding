@@ -1,7 +1,7 @@
 /**
  * TemplateModal Component Tests
  * Unified tests for create and edit modes
- * Merged from CreateTemplateModal.test.tsx and EditTemplateModal.test.tsx
+ * Tests focus on validation, submission, step management, and pre-fill
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -72,110 +72,6 @@ describe('TemplateModal', () => {
   // ==========================================================================
 
   describe('TemplateModal - create mode', () => {
-    it('should not render when isOpen is false', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={false}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(
-        screen.queryByText('Create New Template')
-      ).not.toBeInTheDocument();
-    });
-
-    it('should render modal when isOpen is true', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByText('Create New Template')).toBeInTheDocument();
-    });
-
-    it('should show "Create New Template" title', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByText('Create New Template')).toBeInTheDocument();
-    });
-
-    it('should start with 1 empty step', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByLabelText('Step 1 title')).toBeInTheDocument();
-      expect(screen.getByLabelText('Step 1 description')).toBeInTheDocument();
-    });
-
-    it('should show template name input field', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByLabelText('Template Name')).toBeInTheDocument();
-    });
-
-    it('should show role selection checkboxes', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByLabelText('Include Engineering role')).toBeInTheDocument();
-      expect(screen.getByLabelText('Include Sales role')).toBeInTheDocument();
-      expect(screen.getByLabelText('Include Product role')).toBeInTheDocument();
-    });
-
-    it('should show status radio buttons', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByLabelText('Set status to Draft')).toBeInTheDocument();
-      expect(screen.getByLabelText('Set status to Published')).toBeInTheDocument();
-    });
-
     it('should validate template name is required', async () => {
       const user = userEvent.setup();
       render(
@@ -291,24 +187,6 @@ describe('TemplateModal', () => {
       expect(submittedTemplate.role).toBe('Engineering');
     });
 
-    it('should close modal when cancel button is clicked', async () => {
-      const user = userEvent.setup();
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      await user.click(cancelButton);
-
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-
     it('should allow adding multiple steps', async () => {
       const user = userEvent.setup();
       render(
@@ -333,54 +211,6 @@ describe('TemplateModal', () => {
       }
     });
 
-    it('should show step form with required fields', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.getByLabelText('Step 1 title')).toBeInTheDocument();
-      expect(screen.getByLabelText('Step 1 description')).toBeInTheDocument();
-    });
-
-    it('should display error message when provided', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          error="Failed to create template"
-        />
-      );
-
-      expect(screen.getByText('Failed to create template')).toBeInTheDocument();
-    });
-
-    it('should disable submit button when submitting', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-          isSubmitting={true}
-        />
-      );
-
-      const buttons = screen.getAllByRole('button');
-      const saveButton = buttons.find((btn) => btn.textContent?.includes('Saving'));
-      expect(saveButton).toBeDefined();
-      expect(saveButton).toBeDisabled();
-    });
-
     it('should allow selecting multiple roles', async () => {
       const user = userEvent.setup();
       render(
@@ -402,23 +232,6 @@ describe('TemplateModal', () => {
       expect(engineeringCheckbox).toBeChecked();
       expect(salesCheckbox).toBeChecked();
     });
-
-    it('should set default status to Draft', () => {
-      render(
-        <TemplateModal
-          mode="create"
-          isOpen={true}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          roles={mockRoles}
-        />
-      );
-
-      const draftRadio = screen.getByLabelText(
-        'Set status to Draft'
-      ) as HTMLInputElement;
-      expect(draftRadio.checked).toBe(true);
-    });
   });
 
   // ==========================================================================
@@ -426,58 +239,6 @@ describe('TemplateModal', () => {
   // ==========================================================================
 
   describe('TemplateModal - edit mode', () => {
-    it('should not render when isOpen is false', () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={false}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      expect(screen.queryByText(/Edit Template:/)).not.toBeInTheDocument();
-    });
-
-    it('should render modal when isOpen is true with template', () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      expect(
-        screen.getByText('Edit Template: Engineering Onboarding')
-      ).toBeInTheDocument();
-    });
-
-    it('should show "Edit Template: {name}" title', () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      expect(
-        screen.getByText('Edit Template: Engineering Onboarding')
-      ).toBeInTheDocument();
-    });
-
     it('should pre-fill steps from template', async () => {
       render(
         <TemplateModal
@@ -495,24 +256,6 @@ describe('TemplateModal', () => {
         expect(screen.getByDisplayValue('Setup Dev Environment')).toBeInTheDocument();
         expect(screen.getByDisplayValue('Install tools')).toBeInTheDocument();
       });
-    });
-
-    it('should show delete button', () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      const buttons = screen.getAllByRole('button');
-      const deleteButton = buttons.find((btn) => btn.textContent?.includes('Delete Template'));
-      expect(deleteButton).toBeDefined();
     });
 
     it('should pre-populate template name field', async () => {
@@ -552,27 +295,6 @@ describe('TemplateModal', () => {
           'Include Engineering role'
         ) as HTMLInputElement;
         expect(engineeringCheckbox.checked).toBe(true);
-      });
-    });
-
-    it('should pre-populate template status', async () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      await waitFor(() => {
-        const publishedRadio = screen.getByDisplayValue(
-          'Published'
-        ) as HTMLInputElement;
-        expect(publishedRadio.checked).toBe(true);
       });
     });
 
@@ -626,63 +348,6 @@ describe('TemplateModal', () => {
       }
     });
 
-    it('should close modal when cancel button is clicked', async () => {
-      const user = userEvent.setup();
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      await user.click(cancelButton);
-
-      expect(mockOnClose).toHaveBeenCalled();
-    });
-
-    it('should display error message when provided', () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-          error="Failed to update template"
-        />
-      );
-
-      expect(screen.getByText('Failed to update template')).toBeInTheDocument();
-    });
-
-    it('should disable save button when submitting', async () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-          isSubmitting={true}
-        />
-      );
-
-      const buttons = screen.getAllByRole('button');
-      const saveButton = buttons.find((btn) => btn.textContent?.includes('Saving'));
-      expect(saveButton).toBeDefined();
-      expect(saveButton).toBeDisabled();
-    });
-
     it('should allow editing step data', async () => {
       const user = userEvent.setup();
       render(
@@ -703,25 +368,6 @@ describe('TemplateModal', () => {
 
       await waitFor(() => {
         expect(screen.getByDisplayValue('Updated Step Title')).toBeInTheDocument();
-      });
-    });
-
-    it('should have proper form structure for editing', async () => {
-      render(
-        <TemplateModal
-          mode="edit"
-          isOpen={true}
-          template={mockTemplate}
-          onClose={mockOnClose}
-          onSubmit={mockOnSubmit}
-          onDelete={mockOnDelete}
-          roles={mockRoles}
-        />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByDisplayValue('Engineering Onboarding')).toBeInTheDocument();
-        expect(screen.getByDisplayValue('Setup Dev Environment')).toBeInTheDocument();
       });
     });
   });

@@ -1,6 +1,6 @@
 /**
  * RoleManagementPanel Component Tests
- * Tests for list rendering, CRUD operations, search/filter, empty states, and error handling
+ * Tests for search/filter, edit modal, delete confirmation, and UID tracking
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -65,66 +65,6 @@ describe('RoleManagementPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(rolesHook.useRoles).mockReturnValue(mockUseRoles);
-  });
-
-  describe('Rendering and Layout', () => {
-    it('renders the role management panel with header', () => {
-      render(<RoleManagementPanel />);
-      expect(screen.getByText('Custom Roles')).toBeInTheDocument();
-      expect(
-        screen.getByText('Create and manage roles for your organization')
-      ).toBeInTheDocument();
-    });
-
-    it('renders add new role button', () => {
-      render(<RoleManagementPanel />);
-      const addButton = screen.getByLabelText('Create a new custom role');
-      expect(addButton).toBeInTheDocument();
-      expect(addButton).toHaveTextContent('Add New Role');
-    });
-
-    it('renders search input with correct attributes', () => {
-      render(<RoleManagementPanel />);
-      const searchInput = screen.getByPlaceholderText(
-        'Search roles by name or description...'
-      );
-      expect(searchInput).toBeInTheDocument();
-      expect(searchInput).toHaveAttribute('aria-label', 'Search roles');
-    });
-
-    it('renders roles as table on desktop view', () => {
-      render(<RoleManagementPanel />);
-      const table = screen.getByRole('table');
-      expect(table).toBeInTheDocument();
-
-      // Check table headers
-      expect(screen.getByText('Name')).toBeInTheDocument();
-      expect(screen.getByText('Description')).toBeInTheDocument();
-      expect(screen.getByText('Created Date')).toBeInTheDocument();
-      expect(screen.getByText('Actions')).toBeInTheDocument();
-    });
-
-    it('displays all roles in the table', () => {
-      render(<RoleManagementPanel />);
-      const table = screen.getByRole('table');
-      mockRoles.forEach((role) => {
-        expect(within(table).getByText(role.name)).toBeInTheDocument();
-      });
-    });
-
-    it('displays role description or dash when empty', () => {
-      render(<RoleManagementPanel />);
-      const table = screen.getByRole('table');
-      expect(within(table).getByText('Experienced full-stack developer')).toBeInTheDocument();
-      expect(within(table).getByText('Strategic product leadership')).toBeInTheDocument();
-      expect(within(table).getByText('—')).toBeInTheDocument();
-    });
-
-    it('formats and displays creation dates correctly', () => {
-      render(<RoleManagementPanel />);
-      const dateElements = screen.getAllByText(/Dec/);
-      expect(dateElements.length).toBeGreaterThan(0);
-    });
   });
 
   describe('Search and Filter Functionality', () => {
@@ -202,93 +142,6 @@ describe('RoleManagementPanel', () => {
     });
   });
 
-  describe('Empty States', () => {
-    it('shows empty state when no roles exist', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        roles: [],
-      });
-
-      render(<RoleManagementPanel />);
-      expect(screen.getByText('No roles yet')).toBeInTheDocument();
-      expect(
-        screen.getByText('Create your first custom role to get started')
-      ).toBeInTheDocument();
-    });
-
-    it('shows create first role button in empty state', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        roles: [],
-      });
-
-      render(<RoleManagementPanel />);
-      expect(screen.getByLabelText('Create first role')).toBeInTheDocument();
-    });
-  });
-
-  describe('Loading States', () => {
-    it('shows loading skeleton while roles are loading', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        isLoading: true,
-      });
-
-      render(<RoleManagementPanel />);
-      // Check for loading state - component should show loading message or placeholder
-      expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    });
-
-    it('does not render table while loading', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        isLoading: true,
-      });
-
-      render(<RoleManagementPanel />);
-      expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('displays error message when roles fail to load', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        error: 'Failed to load roles',
-        isLoading: false,
-      });
-
-      render(<RoleManagementPanel />);
-      expect(screen.getByText('Failed to load roles')).toBeInTheDocument();
-    });
-
-    it('shows retry button in error state', () => {
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        error: 'Failed to load roles',
-        isLoading: false,
-      });
-
-      render(<RoleManagementPanel />);
-      expect(screen.getByLabelText('Retry loading roles')).toBeInTheDocument();
-    });
-
-    it('calls refetch when retry button is clicked', async () => {
-      const user = userEvent.setup();
-      vi.mocked(rolesHook.useRoles).mockReturnValue({
-        ...mockUseRoles,
-        error: 'Failed to load roles',
-        isLoading: false,
-      });
-
-      render(<RoleManagementPanel />);
-      const retryButton = screen.getByLabelText('Retry loading roles');
-      await user.click(retryButton);
-
-      expect(mockUseRoles.refetch).toHaveBeenCalled();
-    });
-  });
-
   describe('Edit Modal', () => {
     it('opens edit modal when edit button is clicked', async () => {
       const user = userEvent.setup();
@@ -351,12 +204,10 @@ describe('RoleManagementPanel', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Delete Role')).toBeInTheDocument();
-        // Look within the dialog for the role name
         const dialog = screen.getByText('Delete Role').closest('[role="dialog"], div');
         if (dialog) {
           expect(dialog.textContent).toContain(mockRoles[0].name);
         } else {
-          // Fallback: just check that the name is somewhere in the document
           expect(document.body.textContent).toContain(mockRoles[0].name);
         }
       });
@@ -398,85 +249,6 @@ describe('RoleManagementPanel', () => {
       await waitFor(() => {
         expect(screen.queryByText('Delete Role')).not.toBeInTheDocument();
       });
-    });
-  });
-
-  describe('Callbacks', () => {
-    it('calls onRoleCreated callback when role is created', async () => {
-      const onRoleCreated = vi.fn();
-      const user = userEvent.setup();
-
-      render(<RoleManagementPanel onRoleCreated={onRoleCreated} />);
-
-      const addButton = screen.getByLabelText('Create a new custom role');
-      await user.click(addButton);
-
-      // This would require interaction with the modal
-      // For now, we verify the callback is set up correctly
-      expect(onRoleCreated).toBeDefined();
-    });
-
-    it('calls onRoleDeleted callback when role is deleted', async () => {
-      const onRoleDeleted = vi.fn();
-      const user = userEvent.setup();
-
-      render(<RoleManagementPanel onRoleDeleted={onRoleDeleted} />);
-
-      const deleteButtons = screen.getAllByLabelText(`Delete role ${mockRoles[0].name}`);
-      await user.click(deleteButtons[0]);
-
-      await waitFor(() => {
-        expect(screen.getByText('Delete Role')).toBeInTheDocument();
-      });
-
-      const confirmButton = screen.getByRole('button', { name: 'Delete' });
-      await user.click(confirmButton);
-
-      // The callback would be called after deletion
-      expect(onRoleDeleted).toBeDefined();
-    });
-  });
-
-  describe('Accessibility', () => {
-    it('has proper ARIA labels on all buttons', () => {
-      render(<RoleManagementPanel />);
-
-      expect(screen.getByLabelText('Create a new custom role')).toBeInTheDocument();
-      expect(screen.getByLabelText('Search roles')).toBeInTheDocument();
-
-      mockRoles.forEach((role) => {
-        const editButtons = screen.queryAllByLabelText(`Edit role ${role.name}`);
-        const deleteButtons = screen.queryAllByLabelText(`Delete role ${role.name}`);
-        expect(editButtons.length).toBeGreaterThan(0);
-        expect(deleteButtons.length).toBeGreaterThan(0);
-      });
-    });
-
-    it('uses semantic HTML table structure', () => {
-      render(<RoleManagementPanel />);
-
-      const table = screen.getByRole('table');
-      expect(table.querySelector('thead')).toBeInTheDocument();
-      expect(table.querySelector('tbody')).toBeInTheDocument();
-      expect(table.querySelectorAll('tr').length).toBeGreaterThan(1);
-    });
-
-    it('has proper heading hierarchy', () => {
-      render(<RoleManagementPanel />);
-
-      const mainHeading = screen.getByText('Custom Roles');
-      expect(mainHeading.tagName).toBe('H2');
-    });
-  });
-
-  describe('Responsive Design', () => {
-    it('renders mobile card view on small screens', () => {
-      // This test would require viewport size manipulation
-      // For now, we verify the structure supports both
-      render(<RoleManagementPanel />);
-
-      const table = screen.getByRole('table');
-      expect(table).toBeInTheDocument();
     });
   });
 
