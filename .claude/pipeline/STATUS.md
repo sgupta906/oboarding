@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** (none - awaiting next feature)
+**Current Feature:** None (awaiting next feature)
 **Current Phase:** Idle
-**Next Command:** `/research <next-feature>`
+**Next Command:** (awaiting user direction)
 
 ### Pipeline Progress
 - [ ] /research
@@ -59,6 +59,7 @@ The codebase has ~13,000 lines of source + ~12,500 lines of tests for what is es
 | 11 | `slim-tests` | 2026-02-15 | 15b86c5 | Removed low-value mocked tests, trimmed suite by 56.9%, 297 tests passing across 17 files |
 | 12 | `responsive-ux` | 2026-02-14 | 6c90585 | Optimistic updates, fire-and-forget logging, loading states, toast notifications, instance status revert fix |
 | 13 | `user-management` | 2026-02-15 | 4a8235e | Onboarding status columns, filter toggle, cascade delete with instance cleanup, +12 tests (332 total) |
+| 14 | `new-hires-view` | 2026-02-15 | 45c2555 | Replaced Users tab (636 lines) with New Hires onboarding table (249 lines), status filters, -350 lines, +12 tests (338 total) |
 
 ---
 
