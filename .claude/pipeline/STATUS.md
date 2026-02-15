@@ -57,7 +57,7 @@ The codebase has ~13,000 lines of source + ~12,500 lines of tests for what is es
 | 9 | `slim-modals` | 2026-02-15 | 380b709 | Unified 6 modals into 3 mode-based components, -771 lines (37%), +19 tests |
 | 10 | `slim-services` | 2026-02-15 | f511dbb | Generic CRUD factory, refactored 8 services, -266 lines (11.3%), +22 tests |
 | 11 | `slim-tests` | 2026-02-15 | 15b86c5 | Removed low-value mocked tests, trimmed suite by 56.9%, 297 tests passing across 17 files |
-| 12 | `responsive-ux` | 2026-02-14 | TBD | Optimistic updates, fire-and-forget logging, loading states, toast notifications, instance status revert fix |
+| 12 | `responsive-ux` | 2026-02-14 | 6c90585 | Optimistic updates, fire-and-forget logging, loading states, toast notifications, instance status revert fix |
 
 ---
 
