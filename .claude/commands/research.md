@@ -24,14 +24,20 @@ This is the FIRST step in the pipeline and MUST be completed before `/plan`.
 
 ## What This Does
 
-1. **Spawns the research-agent** to perform thorough research
-2. **Creates feature directory**: `.claude/features/<feature-name>/`
-3. **Agent gathers context**:
+1. **Launches Playwright visual agent** (in parallel with research-agent):
+   - Navigates to the app and screenshots the affected area
+   - Documents current state: what works, what's broken, what's slow
+   - Saves screenshots to `.claude/features/<feature-name>/screenshots/`
+   - Gives concrete "before" visuals for comparison after implementation
+2. **Spawns the research-agent** to perform thorough research
+3. **Creates feature directory**: `.claude/features/<feature-name>/`
+4. **Agent gathers context**:
    - Reads project specs/requirements for context
    - Reads CLAUDE.md for project conventions
    - Analyzes existing codebase
    - Identifies constraints and risks
-4. **Agent creates research document**: `YYYY-MM-DDTHH:MM_research.md`
+   - Incorporates visual findings from Playwright agent
+5. **Agent creates research document**: `YYYY-MM-DDTHH:MM_research.md`
 
 ## The Research Agent
 

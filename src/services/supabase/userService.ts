@@ -378,13 +378,38 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user. Database CASCADE handles junction table cleanup.
+ * Deletes a user and their associated onboarding instances.
+ * Database CASCADE handles junction table cleanup (user_roles, user_profiles).
+ * Onboarding instances must be deleted explicitly since they reference users
+ * by employee_email (TEXT), not by foreign key.
  * Also removes auth credentials.
  */
 export async function deleteUser(userId: string): Promise<void> {
-  // Fetch user to get email for auth cleanup
+  // Fetch user to get email for auth cleanup and instance lookup
   const user = await getUser(userId);
   if (!user) return; // Idempotent
+
+  // Delete associated onboarding instances (by email, since no FK to users)
+  const { data: instances } = await supabase
+    .from('onboarding_instances')
+    .select('id')
+    .ilike('employee_email', user.email);
+
+  if (instances && instances.length > 0) {
+    const instanceIds = instances.map((i: { id: string }) => i.id);
+    const { error: instanceError } = await supabase
+      .from('onboarding_instances')
+      .delete()
+      .in('id', instanceIds);
+
+    if (instanceError) {
+      throw new Error(
+        `Failed to delete onboarding instances for user ${userId}: ${instanceError.message}`
+      );
+    }
+    // CASCADE handles instance_steps, instance_profiles, instance_template_refs
+    // suggestions.instance_id gets SET NULL
+  }
 
   // Delete user row (CASCADE handles user_roles, user_profiles)
   const { error } = await supabase

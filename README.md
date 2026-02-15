@@ -103,7 +103,7 @@ npm run test:coverage
 # Test UI dashboard
 npm run test:ui
 ```
-
+npx vite --host    
 ## How to Log In
 
 ### Dev Auth Mode (Local Development)

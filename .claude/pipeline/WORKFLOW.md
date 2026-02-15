@@ -10,10 +10,11 @@
 │                           HAPPY PATH FLOW                                  │
 │                                                                            │
 │   /research → /plan → /implement → /test → /finalize                      │
-│       │          │          │          │          │                         │
-│       ▼          ▼          ▼          ▼          ▼                         │
-│   research.md  plan.md   impl.md   success.md  PR Created                 │
-│               tasks.md                                                     │
+│    (visual)     │          │          │          │                         │
+│       │         ▼          ▼          ▼          ▼                         │
+│       ▼       plan.md   impl.md   success.md  PR Created                  │
+│   research.md tasks.md                                                     │
+│   screenshots/                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -78,18 +79,34 @@
 
 **Purpose:** Gather all context before planning
 
-**Agent:** research-agent
+**Agent:** research-agent + Playwright visual agent (parallel)
+
+**Visual Reproduction (NEW):**
+Before or during research, Claude MUST launch a sub-agent that uses Playwright MCP
+to visually reproduce the current state of the affected area. This gives concrete
+"before" screenshots and helps identify issues that code analysis alone might miss.
+
+The visual agent:
+1. Navigates to the app (dev server must be running)
+2. Screenshots the relevant views/components
+3. Documents what's working, what's broken, what's slow
+4. Saves screenshots to `.claude/features/<feature-name>/screenshots/`
+
+The research-agent runs in parallel and includes the visual findings in its report.
 
 **Inputs:**
 - Feature name from user
 - Project specs / requirements
 - CLAUDE.md (project conventions)
 - Existing codebase
+- Playwright visual screenshots (from parallel agent)
 
 **Outputs:**
 - `.claude/features/<feature-name>/YYYY-MM-DDTHH:MM_research.md`
+- `.claude/features/<feature-name>/screenshots/` (before screenshots)
 
 **Gate:** Research is complete when:
+- [ ] Visual reproduction captured (screenshots)
 - [ ] All requirements extracted
 - [ ] Existing code analyzed
 - [ ] Constraints documented
@@ -155,19 +172,39 @@
 
 **Purpose:** Validate feature works end-to-end
 
-**Agent:** test-agent
+**Agent:** test-agent + Playwright visual verification agent
+
+**Testing has TWO phases:**
+
+**Phase A — Automated tests (test-agent):**
+- Run full test suite (`npx vitest run`)
+- Run type check (`npx tsc -b`)
+- Run build check (`npx vite build`)
+- Create pass/fail report
+
+**Phase B — Playwright visual verification (parallel or after Phase A):**
+- Launch a sub-agent with Playwright MCP
+- Navigate the app and test all affected views
+- Verify the feature works visually in the browser
+- Compare with "before" screenshots from research phase
+- Document any visual regressions or broken flows
+- Save screenshots to `.claude/active-work/<feature-name>/screenshots/`
+
+**Both phases must pass for the feature to proceed to /finalize.**
 
 **Inputs:**
 - `.claude/active-work/<feature-name>/implementation.md` (REQUIRED)
 - `.claude/features/<feature-name>/tasks.md`
+- `.claude/features/<feature-name>/screenshots/` (before screenshots from research)
 
 **Outputs (ONE of):**
 - `.claude/active-work/<feature-name>/test-success.md` → proceed to /finalize
 - `.claude/active-work/<feature-name>/test-failure.md` → proceed to /diagnose
 
 **Gate:** Testing is complete when:
-- [ ] All tests executed
-- [ ] Report created
+- [ ] All automated tests pass
+- [ ] Playwright visual verification passes
+- [ ] Report created with screenshots
 - [ ] Clear next step identified
 
 ---

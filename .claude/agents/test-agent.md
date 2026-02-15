@@ -58,6 +58,8 @@ Run all test layers systematically using the project's test commands (from CLAUD
 4. **Lint / type checks** - Final quality validation
 5. **Build check** - Ensure project builds cleanly
 
+Also use the MCP Playwright to test everything that was added/accomplished by execute agent to make sure it works. 
+
 ### Phase 3: Test Success Report
 
 If all tests pass, create `.claude/active-work/[feature-name]/test-success.md` with:

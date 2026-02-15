@@ -56,7 +56,7 @@ If tests fail:
 
 | Step | Command | Agent | Purpose |
 |------|---------|-------|---------|
-| 1 | `/research <feature>` | research-agent | Gather context, extract requirements |
+| 1 | `/research <feature>` | research-agent + Playwright | Gather context, visual reproduction, extract requirements |
 | 2 | `/plan <feature>` | plan-agent | Design architecture, create tasks |
 | 3 | `/implement <feature>` | execute-agent | Build feature following TDD |
 | 4 | `/test <feature>` | test-agent | Validate with full test suite |
