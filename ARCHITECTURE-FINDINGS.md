@@ -97,3 +97,108 @@ Update once → updates everywhere. Same object reference.
 - Any new view added in the future automatically gets correct, synced data
 - Fewer Supabase subscriptions (one per table instead of one per hook instance)
 - Less code overall (store replaces ~1,000 lines of hook boilerplate)
+
+---
+
+## Other Issues Found
+
+### 2. Duplicate Subscriptions
+
+`NewHiresPanel` calls `useOnboardingInstances()` directly inside itself (line 67). But `OnboardingHub` already loads `useOnboardingInstances` via `useManagerData`. So when a manager views the New Hires tab, **two independent subscriptions** to the same Supabase table are running simultaneously, each with its own state.
+
+Same pattern in `RoleManagementPanel` — it likely calls `useRoles()` internally while the parent also loads roles for the Create Onboarding modal.
+
+**Fix:** Centralized store eliminates this. Every component reads from one place, one subscription per table.
+
+### 3. God Component — OnboardingHub (343 lines)
+
+`OnboardingHub.tsx` is doing too much:
+- Manages employee data loading
+- Manages manager data loading
+- Handles step status changes with optimistic updates
+- Handles suggestion approve/reject with optimistic updates
+- Manages modal state
+- Handles employee selection for manager view
+- Computes derived data (managerSteps, stuckEmployeeNames)
+- Renders conditionally for employee vs. manager
+
+Every new feature touching onboarding touches this file. It's a bottleneck.
+
+**Fix:** With a centralized store, most of the state management and event handlers move out. `OnboardingHub` becomes a thin routing component: "are you an employee or manager? Render that view." The views themselves read from the store and dispatch actions directly.
+
+### 4. Props Drilling Through ManagerView
+
+Look at the data flow for suggestions:
+```
+OnboardingHub
+  → loads suggestions via useManagerData
+  → passes suggestions to ManagerView as props
+    → ManagerView passes them to SuggestionsSection as props
+      → SuggestionsSection passes each to SuggestionCard as props
+```
+
+And the callbacks go back up:
+```
+SuggestionCard → onApprove(id)
+  → SuggestionsSection → onApprove(id)
+    → ManagerView → onApproveSuggestion(id)
+      → OnboardingHub → handleApproveSuggestion(id)
+```
+
+Four levels deep, both directions. Adding any new data to the manager dashboard means threading it through every layer.
+
+**Fix:** With a store, `SuggestionCard` calls `useStore(s => s.approveSuggestion)` directly. No prop threading.
+
+### 5. No Routing Library
+
+The app uses manual hash routing in `App.tsx`:
+```ts
+window.addEventListener('hashchange', handleHashChange);
+```
+
+This works for 3 routes (`#/`, `#/templates`, `#/sign-out`), but adding the Users page (or any future page) means more `if/else` branches in `App.tsx`. There's no route params, no nested routes, no programmatic navigation beyond `window.location.hash = '...'`.
+
+The tab system inside `ManagerView` is also manual state (`activeTab: 'dashboard' | 'roles' | 'new-hires'`). These tabs aren't in the URL, so you can't link directly to the Roles tab or use browser back/forward.
+
+**Fix (optional):** If you're adding more pages, consider a lightweight router. React Router is the standard, but even something like `wouter` (~1.5KB) would give you route params and nested routes. This is lower priority than the state management fix — the current approach works, it's just not scalable.
+
+### 6. Inline Tailwind Sprawl
+
+649 `className=` occurrences across 35 files. Some examples from `ManagerView.tsx`:
+```tsx
+className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+  activeTab === 'dashboard'
+    ? 'border-brand-600 text-brand-600'
+    : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+}`}
+```
+
+This same tab button pattern is repeated 3 times in that file. Similar patterns repeat across components for badges, cards, buttons, status indicators, etc.
+
+Not a bug, but it makes components harder to read and the styling harder to stay consistent. The `getStatusBadgeClasses()` pattern in `NewHiresPanel` is actually the right idea — extract repeated style logic into named functions.
+
+**Fix (low priority):** No need for a full CSS refactor, but as you touch components, extract repeated className patterns into small utility functions or shared Tailwind `@apply` classes. The existing `ui/` components (Badge, Card, ProgressBar) are a good start — just extend the pattern.
+
+### 7. Types File Is a Grab Bag
+
+`src/types/index.ts` (377 lines) has domain types, component props, validation types, and UI state types all in one file. When you add a new component, you add its props here. When you add a new entity, you add its type here.
+
+This creates a coupling problem: changing a `BadgeColor` type triggers a recompile of everything that imports from `types/`. More practically, it's hard to find what you're looking for.
+
+**Fix (low priority):** Split into `types/entities.ts` (User, Step, Instance, etc.), `types/props.ts` (component props), and keep `types/index.ts` as a barrel. Or co-locate component props with their components — that's the more modern React pattern.
+
+---
+
+## Priority Order
+
+| # | Issue | Impact | Effort |
+|---|-------|--------|--------|
+| 1 | Centralized store (Zustand) | Fixes 3 known bugs, prevents future sync issues, enables easy feature addition | Medium — 2-3 day refactor |
+| 2 | Eliminate duplicate subscriptions | Performance + correctness | Comes free with #1 |
+| 3 | Slim down OnboardingHub | Maintainability | Comes mostly free with #1 |
+| 4 | Remove prop drilling | Developer experience | Comes free with #1 |
+| 5 | Add routing library | Scalability for new pages | Small — if/when needed |
+| 6 | Extract Tailwind patterns | Readability | Ongoing, low effort |
+| 7 | Split types file | Organization | Small, do anytime |
+
+The Zustand refactor is the big one. Issues #2, #3, and #4 resolve themselves as a byproduct of it. Issues #5-#7 are quality-of-life improvements you can do incrementally.
