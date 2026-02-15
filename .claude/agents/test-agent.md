@@ -58,7 +58,15 @@ Run all test layers systematically using the project's test commands (from CLAUD
 4. **Lint / type checks** - Final quality validation
 5. **Build check** - Ensure project builds cleanly
 
-Also use the MCP Playwright to test everything that was added/accomplished by execute agent to make sure it works. 
+**MANDATORY Playwright Functional Testing:**
+Use MCP Playwright to perform FUNCTIONAL interaction testing — not just screenshots. You MUST:
+- Navigate the app and interact with every feature that was added/changed
+- Click buttons, fill forms, toggle filters, and verify the resulting UI state changes
+- Test real-time updates: perform an action in one view, switch to another view, verify data propagated
+- Test error states: try invalid inputs, verify error messages appear
+- Verify optimistic updates: click an action, confirm instant UI feedback, confirm final state after server response
+- Take screenshots as evidence, but the primary goal is verifying BEHAVIOR, not appearance
+- If any interaction doesn't work as expected, report it as a test failure
 
 ### Phase 3: Test Success Report
 

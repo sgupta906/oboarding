@@ -6,39 +6,37 @@
 
 ## Current State
 
-**Current Feature:** None (awaiting next feature)
-**Current Phase:** Idle
-**Next Command:** (awaiting user direction)
+**Current Feature:** `restore-users-tab`
+**Current Phase:** Awaiting /research
+**Next Command:** `/research restore-users-tab`
 
 ### Pipeline Progress
 - [ ] /research
 - [ ] /plan
 - [ ] /implement
-- [ ] /test
+- [ ] /test (with mandatory Playwright functional testing)
 - [ ] /finalize
 
 ---
 
-## Fat-Trim Roadmap
+## Bug-Fix Roadmap
 
-The codebase has ~13,000 lines of source + ~12,500 lines of tests for what is essentially a CRUD app with 5 entities. Target: cut source by ~40% without losing functionality.
+Issues found after `new-hires-view` replaced the Users tab without proper functional Playwright testing. Fix one at a time through the full pipeline. **Playwright functional interaction testing is MANDATORY for every /test step.**
 
-### Trim Features (in order)
+### Fix Features (in order)
 
-| # | Feature | Target | Est. Savings | Status |
-|---|---------|--------|-------------|--------|
-| 1 | `slim-modals` | Merge 3 Create/Edit modal pairs into unified components | 771 lines (37%) | **Complete** |
-| 2 | `slim-services` | Generic CRUD service factory to replace 8 repetitive services | 266 lines (11.3%) | **Complete** |
-| 3 | `slim-tests` | Remove low-value mocked tests, keep only meaningful ones | 7,638 lines (56.9%) | **Complete** |
+| # | Feature | Problem | Target Fix | Status |
+|---|---------|---------|------------|--------|
+| 1 | `restore-users-tab` | Users admin page deleted — managers can't manage system users (create/edit/delete managers, admins, contractors). `useUsers` hook and `userService` are orphaned with no UI. | Add Users tab back alongside New Hires tab (4 tabs: Dashboard, Roles, New Hires, Users) | **Next** |
+| 2 | `step-button-fix` | Employee onboarding step buttons glitch/delay before registering clicks. Optimistic update + 300ms debounce race condition suspected. | Playwright functional test to reproduce, then fix the interaction timing | Queued |
+| 3 | `employee-dropdown-sync` | Manager's Employee View dropdown doesn't update progress/status as employees complete steps in real-time. | Verify subscription wiring, fix if broken, Playwright functional test across views | Queued |
+| 4 | `realtime-status-sync` | New Hires table progress/status columns may not update in real-time when employees complete steps. Single status value per user should propagate everywhere. | Playwright cross-view functional test: complete step as employee, verify manager views update | Queued |
 
 ### Approach
 - One feature at a time through the full pipeline
-- Verify with Playwright after each trim to ensure nothing breaks
-- Each trim gets its own commit on main
-
-### Known Bugs (fix after trim)
-- Some views may still have loading/UX issues to address
-- Will audit after the codebase is lean
+- **Playwright functional testing is MANDATORY** — not just screenshots, but clicking buttons, filling forms, verifying state changes across views
+- Each fix gets its own commit on main
+- Test agent must interact with the app, not just render-check
 
 ---
 
