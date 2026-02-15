@@ -12,3 +12,4 @@ export { SuggestionsSection } from './SuggestionsSection';
 export { ActivitySection } from './ActivitySection';
 export { RoleManagementPanel } from './RoleManagementPanel';
 export { NewHiresPanel } from './NewHiresPanel';
+export { UsersPanel } from './UsersPanel';

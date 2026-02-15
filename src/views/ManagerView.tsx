@@ -15,6 +15,7 @@ import {
   ActivitySection,
   RoleManagementPanel,
   NewHiresPanel,
+  UsersPanel,
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
 import { useCreateOnboarding, useRoles, useTemplates } from '../hooks';
@@ -65,7 +66,7 @@ export function ManagerView({
   const { roles, isLoading: rolesLoading } = useRoles();
   const { data: templates, isLoading: templatesLoading } = useTemplates();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'new-hires'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'new-hires' | 'users'>('dashboard');
 
   const handleOpenCreateOnboarding = () => {
     resetError();
@@ -149,6 +150,18 @@ export function ManagerView({
         >
           New Hires
         </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+            activeTab === 'users'
+              ? 'border-brand-600 text-brand-600'
+              : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+          aria-label="Show users management view"
+          aria-current={activeTab === 'users' ? 'page' : undefined}
+        >
+          Users
+        </button>
       </div>
 
       {/* Success Toast Message */}
@@ -201,6 +214,13 @@ export function ManagerView({
       {activeTab === 'new-hires' && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
           <NewHiresPanel />
+        </div>
+      )}
+
+      {/* Users Tab Content */}
+      {activeTab === 'users' && (
+        <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-6">
+          <UsersPanel />
         </div>
       )}
 
