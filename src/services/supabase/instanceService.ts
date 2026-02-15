@@ -245,6 +245,9 @@ export async function updateStepStatus(
   if (progress === 100) {
     instanceUpdates.status = 'completed';
     instanceUpdates.completed_at = new Date().toISOString();
+  } else {
+    instanceUpdates.status = 'active';
+    instanceUpdates.completed_at = null;
   }
 
   const { error: progressError } = await supabase

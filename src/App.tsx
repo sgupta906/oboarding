@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { DarkModeProvider } from './context/DarkModeContext';
+import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './config/authContext';
 import { OnboardingHub } from './components/OnboardingHub';
 import { TemplatesView } from './views/TemplatesView';
@@ -132,7 +133,9 @@ function App() {
   return (
     <AuthProvider>
       <DarkModeProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </DarkModeProvider>
     </AuthProvider>
   );

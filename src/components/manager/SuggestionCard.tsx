@@ -42,6 +42,7 @@ export function SuggestionCard({
   stepTitle,
   onApprove,
   onReject,
+  isLoading = false,
 }: SuggestionCardProps) {
   // Use timestamp if available, otherwise use creation time
   const createdAt = ((suggestion as unknown) as { createdAt?: number }).createdAt || Date.now();
@@ -77,16 +78,18 @@ export function SuggestionCard({
         </div>
         <div className="flex gap-1">
           <button
-            onClick={() => onApprove(suggestion.id)}
-            className="p-2 hover:bg-emerald-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-all duration-150 hover:scale-110"
+            onClick={() => { if (!isLoading) onApprove(suggestion.id); }}
+            disabled={isLoading}
+            className={`p-2 hover:bg-emerald-100 rounded-lg text-slate-400 hover:text-emerald-600 transition-all duration-150 hover:scale-110 ${isLoading ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}`}
             title="Approve suggestion"
             aria-label={`Approve suggestion from ${suggestion.user}`}
           >
             <CheckCircle size={18} />
           </button>
           <button
-            onClick={() => onReject(suggestion.id)}
-            className="p-2 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-600 transition-all duration-150 hover:scale-110"
+            onClick={() => { if (!isLoading) onReject(suggestion.id); }}
+            disabled={isLoading}
+            className={`p-2 hover:bg-rose-100 rounded-lg text-slate-400 hover:text-rose-600 transition-all duration-150 hover:scale-110 ${isLoading ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''}`}
             title="Reject suggestion"
             aria-label={`Reject suggestion from ${suggestion.user}`}
           >

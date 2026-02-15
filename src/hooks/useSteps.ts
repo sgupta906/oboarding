@@ -3,14 +3,15 @@
  * Manages subscription lifecycle and provides loading/error states
  */
 
-import { useEffect, useState } from 'react';
-import { subscribeToSteps } from '../services/supabase';
-import { Step } from '../types';
+import { useEffect, useState, useCallback } from 'react';
+import { subscribeToSteps, updateStepStatus } from '../services/supabase';
+import type { Step, StepStatus } from '../types';
 
 interface UseStepsReturn {
   data: Step[];
   isLoading: boolean;
   error: Error | null;
+  updateStatus: (stepId: number, status: StepStatus) => Promise<void>;
 }
 
 /**
@@ -56,5 +57,20 @@ export function useSteps(instanceId: string): UseStepsReturn {
     };
   }, [instanceId]);
 
-  return { data, isLoading, error };
+  /**
+   * Optimistically updates a step's status in local state,
+   * then sends the update to the server. Rolls back on error.
+   */
+  const updateStatus = useCallback(async (stepId: number, status: StepStatus): Promise<void> => {
+    const snapshot = data;
+    setData((prev) => prev.map((s) => (s.id === stepId ? { ...s, status } : s)));
+    try {
+      await updateStepStatus(instanceId, stepId, status);
+    } catch (err) {
+      setData(snapshot);
+      throw err;
+    }
+  }, [data, instanceId]);
+
+  return { data, isLoading, error, updateStatus };
 }

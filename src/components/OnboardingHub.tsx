@@ -14,6 +14,7 @@ import { EmployeeView, ManagerView } from '../views';
 import { SuggestEditModal, ReportStuckModal } from '../components/modals';
 import { EmployeeSelector } from './onboarding';
 import { useAuth } from '../config/authContext';
+import { useToast } from '../context/ToastContext';
 import {
   useEmployeeOnboarding,
   useSteps,
@@ -23,7 +24,6 @@ import {
   createSuggestion,
   deleteSuggestion,
   logActivity,
-  updateStepStatus,
   updateSuggestionStatus,
 } from '../services/supabase';
 import type { Step, StepStatus, ModalState } from '../types';
@@ -39,6 +39,7 @@ const MemoizedEmployeeView = memo(EmployeeView);
 
 export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) {
   const { user, role } = useAuth();
+  const { showToast } = useToast();
   const isManager = role === 'manager' || role === 'admin';
 
   // Employee-specific data (only load for employees OR when manager views employee tab)
@@ -47,7 +48,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     instance: employeeInstance,
     isLoading: employeeInstanceLoading,
   } = useEmployeeOnboarding(employeeEmail);
-  const { data: employeeStepsData, isLoading: employeeStepsLoading } = useSteps(
+  const { data: employeeStepsData, isLoading: employeeStepsLoading, updateStatus } = useSteps(
     employeeInstance?.id ?? ''
   );
 
@@ -58,6 +59,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     onboardingInstances,
     isDashboardLoading,
     areInstancesLoading,
+    suggestionsOptimistic,
   } = useManagerData({
     enableDashboardData: shouldLoadDashboardData,
     enableInstances: isManager,
@@ -92,11 +94,16 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       .map((instance) => instance.employeeName);
   }, [isManager, onboardingInstances]);
 
+  // Per-ID loading state tracking
+  const [loadingStepIds, setLoadingStepIds] = useState<Set<number>>(new Set());
+  const [loadingSuggestionIds, setLoadingSuggestionIds] = useState<Set<number | string>>(new Set());
+
   const handleStatusChange = async (id: number, newStatus: StepStatus) => {
     if (!employeeInstance?.id) return;
+    setLoadingStepIds((prev) => new Set(prev).add(id));
     try {
-      await updateStepStatus(employeeInstance.id, id, newStatus);
-      await logActivity({
+      await updateStatus(id, newStatus);
+      logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
         action:
           newStatus === 'completed'
@@ -105,9 +112,15 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
               ? `reported stuck on step ${id}`
               : `marked step ${id} as pending`,
         timeAgo: 'just now',
+      }).catch(console.warn);
+    } catch {
+      showToast('Failed to update step status. Please try again.', 'error');
+    } finally {
+      setLoadingStepIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
       });
-    } catch (error) {
-      console.error('Failed to update step status', error);
     }
   };
 
@@ -130,14 +143,14 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
         status: 'pending',
         instanceId: employeeInstance.id,
       });
-      await logActivity({
+      logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
         action: `submitted suggestion for step ${activeModal.stepId}`,
         timeAgo: 'just now',
-      });
+      }).catch(console.warn);
       setActiveModal(null);
-    } catch (error) {
-      console.error('Failed to submit suggestion', error);
+    } catch {
+      showToast('Failed to submit suggestion. Please try again.', 'error');
     } finally {
       setIsSubmittingModal(false);
     }
@@ -147,43 +160,61 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     if (!activeModal || !employeeInstance) return;
     setIsSubmittingModal(true);
     try {
-      await updateStepStatus(employeeInstance.id, activeModal.stepId, 'stuck');
-      await logActivity({
+      await updateStatus(activeModal.stepId, 'stuck');
+      logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
         action: `reported stuck on step ${activeModal.stepId}`,
         timeAgo: 'just now',
-      });
+      }).catch(console.warn);
       setActiveModal(null);
-    } catch (error) {
-      console.error('Failed to mark step as stuck', error);
+    } catch {
+      showToast('Failed to mark step as stuck. Please try again.', 'error');
     } finally {
       setIsSubmittingModal(false);
     }
   };
 
   const handleApproveSuggestion = async (suggestionId: number | string) => {
+    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
+    const snapshot = suggestionsOptimistic.optimisticUpdateStatus(suggestionId, 'reviewed');
     try {
       await updateSuggestionStatus(String(suggestionId), 'reviewed');
-      await logActivity({
+      logActivity({
         userInitials: 'MG',
         action: 'approved a documentation suggestion',
         timeAgo: 'just now',
+      }).catch(console.warn);
+    } catch {
+      suggestionsOptimistic.rollback(snapshot);
+      showToast('Failed to approve suggestion. Please try again.', 'error');
+    } finally {
+      setLoadingSuggestionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
       });
-    } catch (error) {
-      console.error('Failed to approve suggestion', error);
     }
   };
 
   const handleRejectSuggestion = async (suggestionId: number | string) => {
+    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
+    const snapshot = suggestionsOptimistic.optimisticRemove(suggestionId);
     try {
       await deleteSuggestion(String(suggestionId));
-      await logActivity({
+      logActivity({
         userInitials: 'MG',
         action: 'rejected a documentation suggestion',
         timeAgo: 'just now',
+      }).catch(console.warn);
+    } catch {
+      suggestionsOptimistic.rollback(snapshot);
+      showToast('Failed to reject suggestion. Please try again.', 'error');
+    } finally {
+      setLoadingSuggestionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
       });
-    } catch (error) {
-      console.error('Failed to reject suggestion', error);
     }
   };
 
@@ -263,6 +294,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           onStatusChange={handleStatusChange}
           onSuggestEdit={handleSuggestEditOpen}
           onReportStuck={handleReportStuckOpen}
+          loadingStepIds={loadingStepIds}
         />
       )}
 
@@ -276,6 +308,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           onboardingInstances={onboardingInstances}
           onApproveSuggestion={handleApproveSuggestion}
           onRejectSuggestion={handleRejectSuggestion}
+          loadingSuggestionIds={loadingSuggestionIds}
         />
       )}
 

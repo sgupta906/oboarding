@@ -7,12 +7,18 @@ import { useEffect, useState } from 'react';
 import { useActivities } from './useActivities';
 import { useOnboardingInstances } from './useOnboardingInstances';
 import { useSuggestions } from './useSuggestions';
-import type { Activity, Suggestion, OnboardingInstance } from '../types';
+import type { Activity, Suggestion, SuggestionStatus, OnboardingInstance } from '../types';
 
 interface UseManagerDataOptions {
   enableDashboardData: boolean;
   enableInstances: boolean;
   timeoutMs?: number;
+}
+
+interface SuggestionsOptimistic {
+  optimisticUpdateStatus: (id: number | string, status: SuggestionStatus) => Suggestion[];
+  optimisticRemove: (id: number | string) => Suggestion[];
+  rollback: (snapshot: Suggestion[]) => void;
 }
 
 interface UseManagerDataResult {
@@ -21,6 +27,7 @@ interface UseManagerDataResult {
   onboardingInstances: OnboardingInstance[];
   isDashboardLoading: boolean;
   areInstancesLoading: boolean;
+  suggestionsOptimistic: SuggestionsOptimistic;
 }
 
 /**
@@ -79,5 +86,10 @@ export function useManagerData({
     onboardingInstances: enableInstances ? instancesResult.data : [],
     isDashboardLoading,
     areInstancesLoading: enableInstances && instancesResult.isLoading,
+    suggestionsOptimistic: {
+      optimisticUpdateStatus: suggestionsResult.optimisticUpdateStatus,
+      optimisticRemove: suggestionsResult.optimisticRemove,
+      rollback: suggestionsResult.rollback,
+    },
   };
 }

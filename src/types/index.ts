@@ -182,6 +182,7 @@ export interface StepCardProps {
   onStatusChange: (id: number, newStatus: StepStatus) => void;
   onSuggestEdit: (stepId: number) => void;
   onReportStuck: (stepId: number) => void;
+  isLoading?: boolean;
 }
 
 export interface WelcomeHeaderProps {
@@ -198,6 +199,7 @@ export interface ActionBarProps {
   onStatusChange: (id: number, newStatus: StepStatus) => void;
   onSuggestEdit: (stepId: number) => void;
   onReportStuck: (stepId: number) => void;
+  isLoading?: boolean;
 }
 
 /**
@@ -216,6 +218,7 @@ export interface SuggestionCardProps {
   stepTitle: string;
   onApprove: (id: number | string) => void;
   onReject: (id: number | string) => void;
+  isLoading?: boolean;
 }
 
 export interface ActivityFeedProps {
@@ -365,6 +368,7 @@ export interface SuggestionsSectionProps {
   steps: Step[];
   onApprove?: (id: number | string) => void;
   onReject?: (id: number | string) => void;
+  loadingSuggestionIds?: Set<number | string>;
 }
 
 export interface ActivitySectionProps {

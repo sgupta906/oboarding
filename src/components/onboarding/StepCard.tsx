@@ -24,6 +24,7 @@ export function StepCard({
   onStatusChange,
   onSuggestEdit,
   onReportStuck,
+  isLoading,
 }: StepCardProps) {
   const borderColorMap = {
     stuck: 'border-l-rose-500 ring-2 ring-rose-100 dark:ring-rose-900 bg-rose-50/30 dark:bg-rose-950/20',
@@ -142,6 +143,7 @@ export function StepCard({
               onStatusChange={onStatusChange}
               onSuggestEdit={onSuggestEdit}
               onReportStuck={onReportStuck}
+              isLoading={isLoading}
             />
           </div>
         </div>

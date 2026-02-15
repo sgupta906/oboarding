@@ -64,17 +64,22 @@ export function useUsers(): UseUsersReturn {
     }
   }, []);
 
-  // Update an existing user
+  // Update an existing user (with optimistic update and rollback)
   const editUser = useCallback(async (userId: string, data: Partial<UserFormData>): Promise<void> => {
     setError(null);
+    const snapshot = users;
+    // Optimistic update: apply patch to matching user immediately
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...data } : u)));
     try {
       await updateUser(userId, data);
     } catch (err) {
+      // Rollback on error
+      setUsers(snapshot);
       const errorMessage = err instanceof Error ? err.message : 'Failed to update user';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  }, []);
+  }, [users]);
 
   // Delete a user
   const removeUser = useCallback(async (userId: string): Promise<void> => {

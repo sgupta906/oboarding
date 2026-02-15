@@ -20,26 +20,33 @@ export function ActionBar({
   onStatusChange,
   onSuggestEdit,
   onReportStuck,
+  isLoading = false,
 }: ActionBarProps) {
   const isCompleted = step.status === 'completed';
   const isStuck = step.status === 'stuck';
+
+  const loadingClasses = isLoading ? 'opacity-60 cursor-not-allowed' : '';
 
   return (
     <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100">
       {/* Primary Action */}
       {!isCompleted ? (
         <button
-          onClick={() => onStatusChange(step.id, 'completed')}
-          disabled={isStuck}
+          onClick={() => { if (!isLoading) onStatusChange(step.id, 'completed'); }}
+          disabled={isStuck || isLoading}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
-            isStuck
+            isStuck || isLoading
               ? 'bg-slate-100 text-slate-400 cursor-not-allowed opacity-60'
               : 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2'
-          }`}
+          } ${loadingClasses}`}
           aria-label={`Mark ${step.title} as done`}
           title={isStuck ? 'Cannot mark as done while stuck. Clear stuck status first.' : undefined}
         >
-          <div className="w-4 h-4 border-2 border-white/30 rounded-full" />
+          {isLoading ? (
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <div className="w-4 h-4 border-2 border-white/30 rounded-full" />
+          )}
           Mark as Done
         </button>
       ) : (
@@ -51,8 +58,9 @@ export function ActionBar({
 
           {/* Mark as Incomplete Button */}
           <button
-            onClick={() => onStatusChange(step.id, 'pending')}
-            className="flex items-center gap-2 text-slate-600 font-medium text-sm px-3 py-2 bg-slate-100 hover:bg-slate-200 hover:text-slate-700 active:scale-95 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            onClick={() => { if (!isLoading) onStatusChange(step.id, 'pending'); }}
+            disabled={isLoading}
+            className={`flex items-center gap-2 text-slate-600 font-medium text-sm px-3 py-2 bg-slate-100 hover:bg-slate-200 hover:text-slate-700 active:scale-95 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 ${loadingClasses}`}
             aria-label={`Mark ${step.title} as incomplete to resume work`}
             title="Revert completion and resume work on this step"
           >
@@ -67,8 +75,9 @@ export function ActionBar({
           {isStuck ? (
             // When stuck: show "Resume Work" button to clear stuck status
             <button
-              onClick={() => onStatusChange(step.id, 'pending')}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 active:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2"
+              onClick={() => { if (!isLoading) onStatusChange(step.id, 'pending'); }}
+              disabled={isLoading}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 active:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 ${loadingClasses}`}
               aria-label={`Resume work on ${step.title} and clear stuck status`}
               title="Clear stuck status and return to pending"
             >
@@ -77,8 +86,9 @@ export function ActionBar({
           ) : (
             // When not stuck: show "I'm Stuck" button to report stuck status
             <button
-              onClick={() => onReportStuck(step.id)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2"
+              onClick={() => { if (!isLoading) onReportStuck(step.id); }}
+              disabled={isLoading}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 active:bg-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 ${loadingClasses}`}
               aria-label={`Report stuck on ${step.title}`}
               title="Report that you are stuck and need help"
             >
@@ -87,8 +97,9 @@ export function ActionBar({
           )}
 
           <button
-            onClick={() => onSuggestEdit(step.id)}
-            className="flex items-center gap-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ml-auto focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 active:scale-95"
+            onClick={() => { if (!isLoading) onSuggestEdit(step.id); }}
+            disabled={isLoading}
+            className={`flex items-center gap-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ml-auto focus:outline-none focus:ring-2 focus:ring-brand-400 focus:ring-offset-2 active:scale-95 ${loadingClasses}`}
             aria-label={`Suggest edit for ${step.title}`}
           >
             <Edit3 size={16} /> Suggest Edit

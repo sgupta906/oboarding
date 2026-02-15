@@ -5,14 +5,17 @@
  * Performance: Accepts enabled parameter to conditionally enable the subscription
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { subscribeToSuggestions } from '../services/supabase';
-import { Suggestion } from '../types';
+import type { Suggestion, SuggestionStatus } from '../types';
 
 interface UseSuggestionsReturn {
   data: Suggestion[];
   isLoading: boolean;
   error: Error | null;
+  optimisticUpdateStatus: (id: number | string, status: SuggestionStatus) => Suggestion[];
+  optimisticRemove: (id: number | string) => Suggestion[];
+  rollback: (snapshot: Suggestion[]) => void;
 }
 
 /**
@@ -59,5 +62,32 @@ export function useSuggestions(enabled: boolean = true): UseSuggestionsReturn {
     };
   }, [enabled]);
 
-  return { data, isLoading, error };
+  /**
+   * Optimistically updates a suggestion's status in local state.
+   * Returns the snapshot for caller to use for rollback on error.
+   */
+  const optimisticUpdateStatus = useCallback((id: number | string, status: SuggestionStatus): Suggestion[] => {
+    const snapshot = data;
+    setData((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+    return snapshot;
+  }, [data]);
+
+  /**
+   * Optimistically removes a suggestion from local state.
+   * Returns the snapshot for caller to use for rollback on error.
+   */
+  const optimisticRemove = useCallback((id: number | string): Suggestion[] => {
+    const snapshot = data;
+    setData((prev) => prev.filter((s) => s.id !== id));
+    return snapshot;
+  }, [data]);
+
+  /**
+   * Restores previous state from a snapshot.
+   */
+  const rollback = useCallback((snapshot: Suggestion[]) => {
+    setData(snapshot);
+  }, []);
+
+  return { data, isLoading, error, optimisticUpdateStatus, optimisticRemove, rollback };
 }

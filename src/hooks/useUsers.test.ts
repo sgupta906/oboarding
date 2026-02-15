@@ -228,4 +228,66 @@ describe('useUsers Hook', () => {
 
     expect(result.current.error).toBe(null);
   });
+
+  describe('editUser optimistic update', () => {
+    it('applies optimistic patch to matching user in list', async () => {
+      (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
+        callback(mockUsers);
+        return () => {};
+      });
+
+      (userOps.updateUser as any).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsers());
+
+      expect(result.current.users[0].name).toBe('John Doe');
+
+      await act(async () => {
+        await result.current.editUser('user-1', { name: 'John Updated' });
+      });
+
+      expect(result.current.users[0].name).toBe('John Updated');
+    });
+
+    it('rolls back on error', async () => {
+      (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
+        callback(mockUsers);
+        return () => {};
+      });
+
+      (userOps.updateUser as any).mockRejectedValue(new Error('Server error'));
+
+      const { result } = renderHook(() => useUsers());
+
+      expect(result.current.users[0].name).toBe('John Doe');
+
+      await act(async () => {
+        try {
+          await result.current.editUser('user-1', { name: 'John Updated' });
+        } catch {
+          // Expected
+        }
+      });
+
+      // Should have rolled back
+      expect(result.current.users[0].name).toBe('John Doe');
+    });
+
+    it('does not affect non-matching users', async () => {
+      (userOps.subscribeToUsers as any).mockImplementation((callback: (users: User[]) => void) => {
+        callback(mockUsers);
+        return () => {};
+      });
+
+      (userOps.updateUser as any).mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useUsers());
+
+      await act(async () => {
+        await result.current.editUser('user-1', { name: 'John Updated' });
+      });
+
+      expect(result.current.users[1].name).toBe('Jane Smith');
+    });
+  });
 });

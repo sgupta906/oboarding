@@ -30,6 +30,7 @@ interface ManagerViewProps {
   onRejectSuggestion?: (id: number | string) => void;
   onOnboardingCreated?: (employeeName: string) => void;
   onRefreshInstances?: () => void;
+  loadingSuggestionIds?: Set<number | string>;
 }
 
 /**
@@ -57,6 +58,7 @@ export function ManagerView({
   onRejectSuggestion,
   onOnboardingCreated,
   onRefreshInstances,
+  loadingSuggestionIds,
 }: ManagerViewProps) {
   const [isCreateOnboardingOpen, setIsCreateOnboardingOpen] = useState(false);
   const { mutate: createOnboarding, isLoading: isCreating, error: creationError, reset: resetError } = useCreateOnboarding();
@@ -179,6 +181,7 @@ export function ManagerView({
               steps={steps}
               onApprove={onApproveSuggestion}
               onReject={onRejectSuggestion}
+              loadingSuggestionIds={loadingSuggestionIds}
             />
 
             {/* Live Activity Section - Secondary (1fr) */}

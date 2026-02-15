@@ -22,6 +22,7 @@ export function SuggestionsSection({
   steps,
   onApprove,
   onReject,
+  loadingSuggestionIds,
 }: SuggestionsSectionProps) {
   /**
    * Find the step title by ID
@@ -70,6 +71,7 @@ export function SuggestionsSection({
               stepTitle={getStepTitle(sugg.stepId)}
               onApprove={onApprove || (() => {})}
               onReject={onReject || (() => {})}
+              isLoading={loadingSuggestionIds?.has(sugg.id)}
             />
           ))}
         </div>
