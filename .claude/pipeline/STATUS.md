@@ -6,15 +6,15 @@
 
 ## Current State
 
-**Current Feature:** `instance-progress-not-computed` (Bug #3 of 6 in bugfix-round)
-**Current Phase:** Awaiting /research
-**Next Command:** `/research instance-progress-not-computed`
+**Current Feature:** None (bugfix-round in progress)
+**Current Phase:** Ready for next feature
+**Next Command:** Select next bug to fix (see Known Bugs section)
 
 ### Pipeline Progress
 - [ ] /research
 - [ ] /plan
 - [ ] /implement
-- [ ] /test (with mandatory Playwright functional testing)
+- [ ] /test
 - [ ] /finalize
 
 ---
@@ -70,11 +70,26 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 1 | `step-update-400` | **FIXED** | ~~Employee "Mark as Done" fails with HTTP 400~~ | Fixed in commit [pending] - added missing `updated_at` column to `onboarding_instances` table |
 | 2 | `realtime-websocket-fail` | **FIXED** | ~~Supabase Realtime WebSocket closes before connecting~~ | Fixed in commit [pending] - implemented dual-track auth so WebSocket receives JWT, added channel status logging for observability. Server-side Realtime config still needs manual verification. |
 | 3 | `instance-progress-not-computed` | **P1 HIGH** | After completing a step, instance `progress` stays 0% — dropdown and New Hires table show stale progress while detail view shows 100% | Instance-level `progress` field is not recomputed from step statuses after a step update |
-| 4 | `newhire-create-no-refresh` | **P1 HIGH** | New Hires table doesn't refresh after creating a hire — only shows after full page reload | `onRefreshInstances` callback not passed from `OnboardingHub` to `ManagerView` |
+| 4 | `newhire-create-no-refresh` | **FIXED** | ~~New Hires table doesn't refresh after creating a hire — only shows after full page reload~~ | Fixed in commit 30a29c7 - added `_addInstance` action to Zustand store, wired `useCreateOnboarding` to push new instance instantly |
 | 5 | `manager-markdone-broken` | **P2 MEDIUM** | "Mark as Done" in manager's Employee View does nothing | `handleStatusChange` uses `employeeInstance` (always null for managers) instead of `selectedInstance` — but managers shouldn't update employee steps anyway, so this may just need the button hidden/disabled for managers |
-| 6 | `no-instance-delete` | **P3 LOW** | No way to delete onboarding instances from New Hires table UI | Missing feature — no delete button/action exists |
+| 6 | `no-instance-delete` | **FIXED** | ~~No way to delete onboarding instances from New Hires table UI~~ | Fixed in commit 187b7ab - added Actions column with Trash2 delete button, DeleteConfirmationDialog, server-first delete via `_removeInstance` store action, +8 tests (443 total) |
 
 **Priority order:** P0 bugs (1-2) make the entire app non-functional. P1 bugs (3-4) break key workflows. P2-P3 are UX gaps.
+
+### Users Feature Bugs (discovered via Playwright scouting 2026-02-16)
+
+> Full report: `.claude/active-work/users-scouting/bug-report.md`
+
+| # | Bug | Priority | Symptom | Root Cause |
+|---|-----|----------|---------|------------|
+| 7 | `devauth-uuid-invalid` | **P0 CRITICAL** | Create User fails: `invalid input syntax for type uuid: "test-test-manager"` | Dev-auth generates non-UUID IDs (`test-${email.split('@')[0]}`), but `users.created_by` column requires UUID. Blocks ALL user creation in dev mode. Also causes BUG 9. |
+| 8 | `user-form-clears-on-error` | **P1 HIGH** | UserModal form clears all fields when server returns an error | `handleCreateSubmit` catches error without re-throwing; `UserModal` interprets resolved promise as success and calls `resetForm()` |
+| 9 | `users-table-always-empty` | **P1 HIGH** | Users tab shows "No users" despite 8+ active onboarding instances | Same root cause as bug 7 — dev-auth UIDs fail DB validation, so `users` table has no valid rows; REST query returns 400 |
+| 10 | `users-error-persists` | **P2 MEDIUM** | Error banner stays visible after closing create modal | `usersError` in Zustand store not cleared on modal close; only `modalError` (local state) is cleared |
+| 11 | `users-tab-hmr-bounce` | **P2 MEDIUM** | Users tab intermittently switches to another tab | Vite HMR triggers `useAuth must be used within AuthProvider` errors, crashes component tree, resets `activeTab` state to default |
+| 12 | `users-duplicate-error-display` | **P3 LOW** | Error shown both inside modal AND behind modal simultaneously | Dual error channels — store sets `usersError` while component sets `modalError`; both rendered at same time |
+
+**Recommended fix order:** Bug 7 first (unblocks 9), then 8, 10, 11, 12.
 
 ### Low-Priority Cleanup (do incrementally, no dedicated pipeline run)
 
@@ -126,6 +141,8 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 20 | `zustand-cleanup` | 2026-02-16 | [pending] | Make ManagerView self-contained, delete useManagerData, slim OnboardingHub from 343 to 256 lines (-25%), complete Zustand migration (all 5 slices), +13 tests (425 total) |
 | 21 | `step-update-400` | 2026-02-16 | [pending] | Fixed P0 CRITICAL bug - added missing `updated_at` column to `onboarding_instances` table, migration 00008 with backfill, fixes HTTP 400 on step updates (PostgreSQL error 42703) |
 | 22 | `realtime-websocket-fail` | 2026-02-16 | [pending] | Fixed P0 CRITICAL bug - dual-track auth for WebSocket (real Supabase session + mock auth coexist), added channel status logging to all Realtime subscriptions, +7 tests (432 total). Server-side config (enable Realtime, apply publication) needs manual verification. |
+| 23 | `newhire-create-no-refresh` | 2026-02-16 | 30a29c7 | Fixed P1 HIGH bug - added `_addInstance` action to Zustand store so newly created onboarding instances appear instantly in New Hires table without page reload, +3 tests (435 total) |
+| 24 | `no-instance-delete` | 2026-02-16 | 187b7ab | Fixed P3 LOW bug - added delete onboarding instance feature to New Hires table with Actions column, Trash2 button, DeleteConfirmationDialog, server-first delete pattern, success toast, fire-and-forget activity logging, +8 tests (443 total) |
 
 ---
 
