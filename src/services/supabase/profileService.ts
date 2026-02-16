@@ -9,6 +9,7 @@ import type { ProfileRow, ProfileRoleTagRow } from './mappers';
 import { toProfile, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
+import { isValidUUID } from '../../utils/uuid';
 
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type ProfileRoleTagInsert = Database['public']['Tables']['profile_role_tags']['Insert'];
@@ -47,11 +48,14 @@ export async function createProfile(
   const trimmedName = name.trim();
   const trimmedDesc = description ? description.trim() : null;
 
+  // Only pass createdBy if it's a valid UUID; otherwise use null.
+  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+
   const row: ProfileInsert = {
     name: trimmedName,
     description: trimmedDesc,
     created_at: now,
-    created_by: createdBy,
+    created_by: safeCreatedBy,
   };
 
   // Insert profile row
@@ -89,7 +93,7 @@ export async function createProfile(
     description: trimmedDesc ?? undefined,
     roleTags,
     createdAt: new Date(now).getTime(),
-    createdBy,
+    createdBy: safeCreatedBy ?? createdBy,
   };
 }
 

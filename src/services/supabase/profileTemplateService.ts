@@ -10,6 +10,7 @@ import { toProfileTemplate, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { debounce } from '../../utils/debounce';
 import { createCrudService } from './crudFactory';
+import { isValidUUID } from '../../utils/uuid';
 
 type ProfileTemplateInsert = Database['public']['Tables']['profile_templates']['Insert'];
 type ProfileTemplateStepInsert = Database['public']['Tables']['profile_template_steps']['Insert'];
@@ -73,13 +74,16 @@ export async function createProfileTemplate(
   const trimmedName = name.trim();
   const trimmedDesc = description ? description.trim() : null;
 
+  // Only pass createdBy if it's a valid UUID; otherwise use null.
+  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+
   const row: ProfileTemplateInsert = {
     profile_id: profileId,
     name: trimmedName,
     description: trimmedDesc,
     created_at: now,
     updated_at: now,
-    created_by: createdBy,
+    created_by: safeCreatedBy,
     version: 1,
     is_published: false,
   };
@@ -128,7 +132,7 @@ export async function createProfileTemplate(
     steps,
     createdAt: new Date(now).getTime(),
     updatedAt: new Date(now).getTime(),
-    createdBy,
+    createdBy: safeCreatedBy ?? createdBy,
     version: 1,
     isPublished: false,
   };

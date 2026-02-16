@@ -9,17 +9,9 @@ import type { RoleRow } from './mappers';
 import { toRole, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
+import { isValidUUID } from '../../utils/uuid';
 
 type RoleInsert = Database['public']['Tables']['roles']['Insert'];
-
-/**
- * Validates whether a string is a valid UUID v4 format.
- * Used to prevent inserting non-UUID strings into UUID columns.
- */
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function isValidUUID(value: string): boolean {
-  return UUID_REGEX.test(value);
-}
 
 // -- Factory-generated operations ------------------------------------------
 

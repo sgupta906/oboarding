@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { getUserRole, signOut } from '../services/authService';
+import { getDevAuthUUID } from '../utils/uuid';
 import type { AuthUser, UserRole, AuthContextValue } from './authTypes';
 
 /**
@@ -45,7 +46,7 @@ export function impersonateUserForQA(options: ImpersonateUserOptions): void {
   localStorage.setItem(
     'mockAuthUser',
     JSON.stringify({
-      uid: `test-${options.email.split('@')[0]}`,
+      uid: getDevAuthUUID(options.email),
       email: options.email,
       role: options.role,
     })

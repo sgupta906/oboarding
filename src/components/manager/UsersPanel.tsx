@@ -57,14 +57,14 @@ export function UsersPanel() {
     setModalError(null);
     setIsSubmitting(true);
     try {
-      const currentUserId = authUser?.uid ?? 'unknown';
+      const currentUserId = authUser?.uid ?? '';
       await createNewUser(data, currentUserId);
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
         action: `Created user ${data.name}`,
         timeAgo: 'just now',
-        userId: currentUserId,
+        userId: authUser?.uid,
       }).catch(() => {});
       showSuccess('User created successfully');
       setShowCreateModal(false);
@@ -83,12 +83,11 @@ export function UsersPanel() {
     try {
       await editUser(editingUser.id, data);
       // Fire-and-forget activity log
-      const currentUserId = authUser?.uid ?? 'unknown';
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
         action: `Updated user ${data.name}`,
         timeAgo: 'just now',
-        userId: currentUserId,
+        userId: authUser?.uid,
       }).catch(() => {});
       showSuccess('User updated successfully');
       setEditingUser(null);
@@ -106,12 +105,11 @@ export function UsersPanel() {
     try {
       await removeUser(userToDelete.id);
       // Fire-and-forget activity log
-      const currentUserId = authUser?.uid ?? 'unknown';
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
         action: `Deleted user ${userToDelete.name}`,
         timeAgo: 'just now',
-        userId: currentUserId,
+        userId: authUser?.uid,
       }).catch(() => {});
       showSuccess('User deleted successfully');
       setUserToDelete(null);

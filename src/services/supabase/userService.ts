@@ -11,6 +11,7 @@ import type { UserRow, UserRoleRow, UserProfileRow } from './mappers';
 import { toUser, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
+import { isValidUUID } from '../../utils/uuid';
 
 type UserInsert = Database['public']['Tables']['users']['Insert'];
 type UserRoleInsert = Database['public']['Tables']['user_roles']['Insert'];
@@ -217,13 +218,18 @@ export async function createUser(
   const trimmedName = userData.name.trim();
   const primaryRole = userData.roles[0] || 'employee';
 
+  // Only pass createdBy if it's a valid UUID; otherwise use null.
+  // Dev auth generates non-UUID identifiers like "test-test-manager"
+  // which would cause a Postgres type error on the UUID column.
+  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+
   // Insert user row
   const row: UserInsert = {
     email: trimmedEmail,
     name: trimmedName,
     created_at: now,
     updated_at: now,
-    created_by: createdBy,
+    created_by: safeCreatedBy,
   };
 
   const { data, error } = await supabase
@@ -282,7 +288,7 @@ export async function createUser(
     profiles: profiles,
     createdAt: new Date(now).getTime(),
     updatedAt: new Date(now).getTime(),
-    createdBy,
+    createdBy: safeCreatedBy ?? createdBy,
   };
 }
 

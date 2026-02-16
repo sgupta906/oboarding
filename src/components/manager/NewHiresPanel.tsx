@@ -99,12 +99,11 @@ export function NewHiresPanel() {
     try {
       await removeInstance(instanceToDelete.id);
       // Fire-and-forget activity log
-      const currentUserId = authUser?.uid ?? 'unknown';
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
         action: `Deleted onboarding for ${instanceToDelete.employeeName}`,
         timeAgo: 'just now',
-        userId: currentUserId,
+        userId: authUser?.uid,
       }).catch(() => {});
       showSuccess('Onboarding instance deleted successfully');
       setInstanceToDelete(null);

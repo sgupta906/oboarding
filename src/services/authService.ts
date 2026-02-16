@@ -6,6 +6,7 @@
 import { supabase } from '../config/supabase';
 import type { UserRole } from '../config/authTypes';
 import { getAuthCredential } from './supabase';
+import { getDevAuthUUID } from '../utils/uuid';
 
 /**
  * Maps test emails to their predefined roles for mock sign-in
@@ -161,8 +162,8 @@ export async function signInWithEmailLink(email: string): Promise<void> {
       );
     }
 
-    // Generate a deterministic UID from email for consistency
-    const emailHash = btoa(trimmedEmail).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
+    // Generate a deterministic UUID from email for consistency
+    const fallbackUUID = getDevAuthUUID(trimmedEmail);
     let uid: string;
     let useSupabaseAuth = true;
 
@@ -188,18 +189,18 @@ export async function signInWithEmailLink(email: string): Promise<void> {
         if (signInError) {
           // Could not sign in - fall back to localStorage
           useSupabaseAuth = false;
-          uid = emailHash;
+          uid = fallbackUUID;
           console.warn('Supabase Auth sign-in unavailable, using localStorage fallback:', signInError.message);
         } else {
-          uid = signInData.user?.id ?? emailHash;
+          uid = signInData.user?.id ?? fallbackUUID;
         }
       } else {
-        uid = signUpData?.user?.id ?? emailHash;
+        uid = signUpData?.user?.id ?? fallbackUUID;
       }
     } catch (authError: unknown) {
       // Supabase not available or other error - fall back to localStorage
       useSupabaseAuth = false;
-      uid = emailHash;
+      uid = fallbackUUID;
       console.warn(
         'Supabase Auth unavailable, using localStorage fallback:',
         authError instanceof Error ? authError.message : authError

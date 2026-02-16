@@ -9,6 +9,7 @@ import type { ActivityRow } from './mappers';
 import { toActivity, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
+import { isValidUUID } from '../../utils/uuid';
 
 type ActivityInsert = Database['public']['Tables']['activities']['Insert'];
 
@@ -44,7 +45,7 @@ export async function logActivity(
     action: activity.action,
     time_ago: activity.timeAgo,
     timestamp: toISO(Date.now()),
-    user_id: activity.userId ?? null,
+    user_id: activity.userId && isValidUUID(activity.userId) ? activity.userId : null,
     resource_type: activity.resourceType ?? null,
     resource_id: activity.resourceId ?? null,
   };
