@@ -6,16 +6,16 @@
 
 ## Current State
 
-**Current Feature:** devauth-uuid-invalid (Bugs #7, #9)
-**Current Phase:** COMPLETE
-**Next Command:** Continue with remaining bugs from zustand-migration-bugfixes branch (Bug #8: user-form-clears-on-error)
+**Current Feature:** darkmode-batch (Bugs #22-27)
+**Current Phase:** IMPLEMENTATION COMPLETE
+**Next Command:** `/test darkmode-batch`
 
 ### Pipeline Progress
 - [x] /research
 - [x] /plan
 - [x] /implement
-- [x] /test
-- [x] /finalize
+- [ ] /test
+- [ ] /finalize
 
 ---
 
@@ -69,7 +69,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 |---|-----|----------|---------|------------|
 | 1 | `step-update-400` | **FIXED** | ~~Employee "Mark as Done" fails with HTTP 400~~ | Fixed in commit [pending] - added missing `updated_at` column to `onboarding_instances` table |
 | 2 | `realtime-websocket-fail` | **FIXED** | ~~Supabase Realtime WebSocket closes before connecting~~ | Fixed in commit [pending] - implemented dual-track auth so WebSocket receives JWT, added channel status logging for observability. Server-side Realtime config still needs manual verification. |
-| 3 | `instance-progress-not-computed` | **P1 HIGH** | After completing a step, instance `progress` stays 0% — dropdown and New Hires table show stale progress while detail view shows 100% | Instance-level `progress` field is not recomputed from step statuses after a step update |
+| 3 | `instance-progress-not-computed` | **FIXED** | ~~After completing a step, instance `progress` stays 0%~~ | Resolved as side effect of Zustand migration — shared store ensures progress recomputation propagates to all views |
 | 4 | `newhire-create-no-refresh` | **FIXED** | ~~New Hires table doesn't refresh after creating a hire — only shows after full page reload~~ | Fixed in commit 30a29c7 - added `_addInstance` action to Zustand store, wired `useCreateOnboarding` to push new instance instantly |
 | 5 | `manager-markdone-broken` | **P2 MEDIUM** | "Mark as Done" in manager's Employee View does nothing | `handleStatusChange` uses `employeeInstance` (always null for managers) instead of `selectedInstance` — but managers shouldn't update employee steps anyway, so this may just need the button hidden/disabled for managers |
 | 6 | `no-instance-delete` | **FIXED** | ~~No way to delete onboarding instances from New Hires table UI~~ | Fixed in commit 187b7ab - added Actions column with Trash2 delete button, DeleteConfirmationDialog, server-first delete via `_removeInstance` store action, +8 tests (443 total) |
@@ -83,11 +83,11 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | # | Bug | Priority | Symptom | Root Cause |
 |---|-----|----------|---------|------------|
 | 7 | `devauth-uuid-invalid` | **FIXED** | ~~Create User fails: `invalid input syntax for type uuid: "test-test-manager"`~~ | Fixed in commit 846f7d4 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users (`00000000-0000-4000-a000-00000000000X`), added service-layer guards, removed 'unknown' fallbacks. Testing verified all 3 roles generate valid UUIDs, user creation succeeds. |
-| 8 | `user-form-clears-on-error` | **P1 HIGH** | UserModal form clears all fields when server returns an error | `handleCreateSubmit` catches error without re-throwing; `UserModal` interprets resolved promise as success and calls `resetForm()` |
+| 8 | `user-form-clears-on-error` | **FIXED** | ~~UserModal form clears all fields when server returns an error~~ | Fixed in commit 72f5fa2 - re-throw errors in submit handlers so promise rejection prevents `resetForm()` |
 | 9 | `users-table-always-empty` | **FIXED** | ~~Users tab shows "No users" despite 8+ active onboarding instances~~ | Fixed in commit 846f7d4 - same root cause as bug 7. Valid UUIDs now allow PostgreSQL queries to succeed. Users table loads correctly and displays data. |
-| 10 | `users-error-persists` | **P2 MEDIUM** | Error banner stays visible after closing create modal | `usersError` in Zustand store not cleared on modal close; only `modalError` (local state) is cleared |
+| 10 | `users-error-persists` | **FIXED** | ~~Error banner stays visible after closing create modal~~ | Fixed in commit 72f5fa2 - clear store error on modal close via `reset()` call |
 | 11 | `users-tab-hmr-bounce` | **P2 MEDIUM** | Users tab intermittently switches to another tab | Vite HMR triggers `useAuth must be used within AuthProvider` errors, crashes component tree, resets `activeTab` state to default |
-| 12 | `users-duplicate-error-display` | **P3 LOW** | Error shown both inside modal AND behind modal simultaneously | Dual error channels — store sets `usersError` while component sets `modalError`; both rendered at same time |
+| 12 | `users-duplicate-error-display` | **FIXED** | ~~Error shown both inside modal AND behind modal simultaneously~~ | Fixed in commit 72f5fa2 - suppress store error banner while modal is open with `!showCreateModal && editingUser === null` guard |
 
 **Recommended fix order:** Bug 7 first (unblocks 9), then 8, 10, 11, 12.
 
@@ -191,6 +191,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 25 | `darkmode-suggest-edit` | 2026-02-16 | 2ab9c7e | Fixed P0 CRITICAL bug - added dark mode support to SuggestEditModal with dark: Tailwind class variants for textarea, validation banners, footer text, and Cancel button, +8 tests (474 total) |
 | 26 | `template-steps-ux` | 2026-02-16 | 6879d18 | Fixed 5 template UX bugs (#13, #14, #15, #18, #20) - removed inner scroll, added step reorder buttons (ChevronUp/ChevronDown), widened modal 31%, added step count indicators, replaced index-based React keys with stable UIDs, +10 tests (474 total) |
 | 27 | `devauth-uuid-invalid` | 2026-02-16 | 846f7d4 | Fixed P0 CRITICAL bugs #7 and #9 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users, added service-layer guards in 5 services, removed 'unknown' fallbacks in UsersPanel/NewHiresPanel, all 3 dev-auth roles now generate valid UUIDs, user creation succeeds, Users table loads correctly, +13 tests (474 total) |
+| 28 | `users-error-handling` | 2026-02-16 | 72f5fa2 | Fixed bugs #8, #10, #12 - re-throw errors in submit handlers so form fields retained on server error, clear store error on modal close via reset(), suppress duplicate error banners while modal open, +5 tests (489 total) |
 
 ---
 
