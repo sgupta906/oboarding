@@ -447,6 +447,56 @@ describe('CreateOnboardingModal Component', () => {
   // Whitespace Trimming
   // ============================================================================
 
+  // ============================================================================
+  // Form Reset on Re-Open (Bug #28)
+  // ============================================================================
+
+  it('should reset form fields when modal is closed and re-opened', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <CreateOnboardingModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
+      />
+    );
+
+    // Type into the employee name field
+    await user.type(screen.getByLabelText(/employee name/i), 'Stale Data');
+
+    // Close modal by re-rendering with isOpen=false
+    rerender(
+      <CreateOnboardingModal
+        isOpen={false}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
+      />
+    );
+
+    // Re-open modal
+    rerender(
+      <CreateOnboardingModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSubmit={mockOnSubmit}
+        roles={mockRoles}
+        templates={mockTemplates}
+      />
+    );
+
+    // Employee name field should be empty
+    const nameInput = screen.getByLabelText(/employee name/i) as HTMLInputElement;
+    expect(nameInput.value).toBe('');
+  });
+
+  // ============================================================================
+  // Whitespace Trimming
+  // ============================================================================
+
   it('should trim whitespace from form inputs', async () => {
     const user = userEvent.setup();
     render(

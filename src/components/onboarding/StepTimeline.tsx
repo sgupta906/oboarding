@@ -13,6 +13,7 @@ interface StepTimelineProps {
   onSuggestEdit: (stepId: number) => void;
   onReportStuck: (stepId: number) => void;
   loadingStepIds?: Set<number>;
+  readOnly?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export function StepTimeline({
   onSuggestEdit,
   onReportStuck,
   loadingStepIds,
+  readOnly,
 }: StepTimelineProps) {
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const stuckCount = steps.filter((s) => s.status === 'stuck').length;
@@ -54,7 +56,7 @@ export function StepTimeline({
     >
       {/* Vertical Line - Desktop only */}
       <div
-        className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-slate-200 via-slate-300 to-slate-200 -z-10 hidden md:block"
+        className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-slate-200 via-slate-300 to-slate-200 dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 -z-10 hidden md:block"
         aria-hidden="true"
       />
 
@@ -78,6 +80,7 @@ export function StepTimeline({
               onSuggestEdit={onSuggestEdit}
               onReportStuck={onReportStuck}
               isLoading={loadingStepIds?.has(step.id)}
+              readOnly={readOnly}
             />
 
             {/* Visual connectors between steps */}
@@ -90,8 +93,8 @@ export function StepTimeline({
                 <div
                   className={`absolute left-8 top-0 w-0.5 h-full ${
                     isStepCompleted
-                      ? 'bg-emerald-300'
-                      : 'bg-slate-200'
+                      ? 'bg-emerald-300 dark:bg-emerald-600'
+                      : 'bg-slate-200 dark:bg-slate-700'
                   } transition-colors duration-500`}
                 />
               </div>
@@ -107,9 +110,9 @@ export function StepTimeline({
           role="status"
           aria-live="polite"
         >
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700">
             <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm text-emerald-700 font-semibold">
+            <span className="text-sm text-emerald-700 font-semibold dark:text-emerald-300">
               Onboarding Complete
             </span>
           </div>

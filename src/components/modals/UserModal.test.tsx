@@ -226,6 +226,48 @@ describe('UserModal', () => {
       });
     });
 
+    it('should reset form fields when modal is closed and re-opened in create mode', async () => {
+      const { rerender } = render(
+        <UserModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      // Type into the email field
+      const emailInput = screen.getByLabelText('User email');
+      fireEvent.change(emailInput, { target: { value: 'stale@data.com' } });
+
+      // Close modal
+      rerender(
+        <UserModal
+          mode="create"
+          isOpen={false}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      // Re-open modal
+      rerender(
+        <UserModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      // Email field should be empty
+      const emailInputAfter = screen.getByLabelText('User email') as HTMLInputElement;
+      expect(emailInputAfter.value).toBe('');
+    });
+
     it('should trim whitespace from inputs', async () => {
       mockOnSubmit.mockResolvedValue(undefined);
 

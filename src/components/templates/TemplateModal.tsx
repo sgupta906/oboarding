@@ -66,6 +66,13 @@ export function TemplateModal({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Reset form when modal opens in create mode (defense-in-depth for Bug #28)
+  useEffect(() => {
+    if (isOpen && !isEdit) {
+      resetForm();
+    }
+  }, [isOpen, isEdit]);
+
   // Pre-fill form when template data changes (edit mode)
   useEffect(() => {
     if (isEdit && template && isOpen) {

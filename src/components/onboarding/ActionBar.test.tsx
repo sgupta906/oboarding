@@ -1,6 +1,7 @@
 /**
- * ActionBar Tests - Verify loading/disabled state behavior
- * Tests: buttons disabled when loading, spinner visible, click handlers blocked
+ * ActionBar Tests - Verify loading/disabled state behavior and readOnly mode
+ * Tests: buttons disabled when loading, spinner visible, click handlers blocked,
+ * readOnly hides buttons and shows "View Only" indicator
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -106,5 +107,99 @@ describe('ActionBar loading state', () => {
 
     const markDoneButton = screen.getByLabelText(/Mark .* as done/);
     expect(markDoneButton).not.toBeDisabled();
+  });
+});
+
+describe('ActionBar readOnly mode', () => {
+  it('hides all action buttons when readOnly is true on a pending step', () => {
+    render(
+      <ActionBar
+        step={pendingStep}
+        {...defaultHandlers}
+        readOnly={true}
+      />
+    );
+
+    // No action buttons should be rendered
+    expect(screen.queryByLabelText(/Mark .* as done/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Report stuck/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Suggest edit/)).not.toBeInTheDocument();
+  });
+
+  it('shows "View Only" indicator when readOnly is true', () => {
+    render(
+      <ActionBar
+        step={pendingStep}
+        {...defaultHandlers}
+        readOnly={true}
+      />
+    );
+
+    expect(screen.getByText('View Only')).toBeInTheDocument();
+  });
+
+  it('renders action buttons as normal when readOnly is false or undefined (regression guard)', () => {
+    render(
+      <ActionBar
+        step={pendingStep}
+        {...defaultHandlers}
+      />
+    );
+
+    expect(screen.getByLabelText(/Mark .* as done/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Report stuck/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Suggest edit/)).toBeInTheDocument();
+    expect(screen.queryByText('View Only')).not.toBeInTheDocument();
+  });
+});
+
+describe('ActionBar dark mode', () => {
+  it('border separator has dark:border-slate-700', () => {
+    const { container } = render(
+      <ActionBar
+        step={pendingStep}
+        {...defaultHandlers}
+      />
+    );
+
+    // The root div has border-t border-slate-100
+    const borderDiv = container.querySelector('.border-t');
+    expect(borderDiv).not.toBeNull();
+    expect(borderDiv!.className).toContain('dark:border-slate-700');
+  });
+
+  it('completed badge has dark mode classes', () => {
+    const { container } = render(
+      <ActionBar
+        step={completedStep}
+        {...defaultHandlers}
+      />
+    );
+
+    const completedBadge = container.querySelector('.bg-emerald-50');
+    expect(completedBadge).not.toBeNull();
+    expect(completedBadge!.className).toContain('dark:bg-emerald-900/20');
+    expect(completedBadge!.className).toContain('dark:text-emerald-400');
+  });
+
+  it('light mode classes still present (regression)', () => {
+    const { container } = render(
+      <ActionBar
+        step={pendingStep}
+        {...defaultHandlers}
+      />
+    );
+
+    // Border
+    const borderDiv = container.querySelector('.border-t');
+    expect(borderDiv!.className).toContain('border-slate-100');
+
+    // I'm Stuck button
+    const stuckButton = screen.getByLabelText(/Report stuck/);
+    expect(stuckButton.className).toContain('text-rose-600');
+
+    // Suggest Edit button
+    const suggestButton = screen.getByLabelText(/Suggest edit/);
+    expect(suggestButton.className).toContain('text-slate-500');
   });
 });

@@ -224,6 +224,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           onSuggestEdit={handleSuggestEditOpen}
           onReportStuck={handleReportStuckOpen}
           loadingStepIds={loadingStepIds}
+          readOnly={isManager && currentView === 'employee'}
         />
       )}
 

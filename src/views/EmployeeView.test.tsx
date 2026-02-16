@@ -184,4 +184,15 @@ describe('EmployeeView', () => {
     const completionFooters = screen.queryAllByText(/Onboarding Complete/i);
     expect(completionFooters.length).toBe(0);
   });
+
+  it('hides action buttons when readOnly is true (manager viewing employee)', () => {
+    renderEmployee({ readOnly: true });
+
+    // No "Mark as Done" buttons should appear when readOnly
+    expect(screen.queryByLabelText(/Mark .* as done/)).not.toBeInTheDocument();
+    // No "I'm Stuck" buttons should appear when readOnly
+    expect(screen.queryByLabelText(/Report stuck/)).not.toBeInTheDocument();
+    // "View Only" indicator should be visible instead
+    expect(screen.getAllByText('View Only').length).toBeGreaterThan(0);
+  });
 });

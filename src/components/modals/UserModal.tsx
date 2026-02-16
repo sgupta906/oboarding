@@ -52,6 +52,13 @@ export function UserModal({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
+  // Reset form when modal opens in create mode (defense-in-depth for Bug #28)
+  useEffect(() => {
+    if (isOpen && !isEdit) {
+      resetForm();
+    }
+  }, [isOpen, isEdit]);
+
   // Pre-fill form when user data changes (edit mode)
   useEffect(() => {
     if (isEdit && user && isOpen) {

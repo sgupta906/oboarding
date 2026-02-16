@@ -118,6 +118,25 @@ describe('SuggestEditModal', () => {
     expect(charCount.className).toContain('dark:text-slate-400');
   });
 
+  it('should reset text and validation when modal is closed and re-opened', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SuggestEditModal {...defaultProps} />);
+
+    // Type into the textarea
+    const textarea = screen.getByLabelText('Suggestion text');
+    await user.type(textarea, 'Some stale text data');
+
+    // Close modal
+    rerender(<SuggestEditModal {...defaultProps} isOpen={false} />);
+
+    // Re-open modal
+    rerender(<SuggestEditModal {...defaultProps} isOpen={true} />);
+
+    // Textarea should be empty
+    const textareaAfter = screen.getByLabelText('Suggestion text') as HTMLTextAreaElement;
+    expect(textareaAfter.value).toBe('');
+  });
+
   it('light mode classes are still present (regression check)', () => {
     render(<SuggestEditModal {...defaultProps} />);
     const textarea = screen.getByLabelText('Suggestion text');

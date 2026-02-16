@@ -4,7 +4,7 @@
  * Handles employee data collection, template selection, and validation
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import type { CustomRole, Template } from '../../types';
 
@@ -66,6 +66,13 @@ export function CreateOnboardingModal({
   // Validation state
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  // Reset form when modal opens (defense-in-depth for Bug #28)
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
 
   // Get selected template for preview
   const selectedTemplate = useMemo(() => {

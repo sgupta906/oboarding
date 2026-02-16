@@ -31,6 +31,14 @@ export function SuggestEditModal({
   const [text, setText] = React.useState('');
   const [showValidation, setShowValidation] = React.useState(false);
 
+  // Reset form when modal opens (defense-in-depth for Bug #28)
+  React.useEffect(() => {
+    if (isOpen) {
+      setText('');
+      setShowValidation(false);
+    }
+  }, [isOpen]);
+
   const isTooShort = text.trim().length > 0 && text.trim().length < MIN_LENGTH;
   const isValid = text.trim().length >= MIN_LENGTH && text.trim().length <= MAX_LENGTH;
   const charCount = text.length;

@@ -183,6 +183,7 @@ export interface StepCardProps {
   onSuggestEdit: (stepId: number) => void;
   onReportStuck: (stepId: number) => void;
   isLoading?: boolean;
+  readOnly?: boolean;
 }
 
 export interface WelcomeHeaderProps {
@@ -200,6 +201,7 @@ export interface ActionBarProps {
   onSuggestEdit: (stepId: number) => void;
   onReportStuck: (stepId: number) => void;
   isLoading?: boolean;
+  readOnly?: boolean;
 }
 
 /**

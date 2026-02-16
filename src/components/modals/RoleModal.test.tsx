@@ -241,6 +241,33 @@ describe('RoleModal', () => {
       });
     });
 
+    describe('Form Reset on Re-Open (Bug #28)', () => {
+      it('should reset form fields when modal is closed and re-opened in create mode', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(
+          <RoleModal mode="create" isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />
+        );
+
+        // Type into the role name field
+        const nameInput = screen.getByLabelText(/role name/i);
+        await user.type(nameInput, 'Stale Role');
+
+        // Close modal
+        rerender(
+          <RoleModal mode="create" isOpen={false} onClose={mockOnClose} onSubmit={mockOnSubmit} />
+        );
+
+        // Re-open modal
+        rerender(
+          <RoleModal mode="create" isOpen={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />
+        );
+
+        // Role name field should be empty
+        const nameInputAfter = screen.getByLabelText(/role name/i) as HTMLInputElement;
+        expect(nameInputAfter.value).toBe('');
+      });
+    });
+
     describe('Error Handling', () => {
       it('does not submit form if there are validation errors', async () => {
         const user = userEvent.setup();

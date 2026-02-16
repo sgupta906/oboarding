@@ -4,7 +4,7 @@
  * loading state, change detection (edit), and full a11y support
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import { AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { MIN_ROLE_NAME_LENGTH, MAX_ROLE_NAME_LENGTH, ROLE_NAME_PATTERN } from '../../types';
@@ -54,6 +54,19 @@ export function RoleModal({
     isEdit && currentRole ? currentRole.description || '' : ''
   );
   const [touched, setTouched] = useState({ name: false, description: false });
+
+  // Reset form when modal opens (defense-in-depth for Bug #28)
+  useEffect(() => {
+    if (isOpen) {
+      if (isEdit) {
+        setDescription(currentRole?.description || '');
+      } else {
+        setName('');
+        setDescription('');
+      }
+      setTouched({ name: false, description: false });
+    }
+  }, [isOpen, isEdit, currentRole]);
 
   // Validate role name (create mode only)
   const validateName = useCallback((value: string): { valid: boolean; error: string | null } => {
