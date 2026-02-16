@@ -1,13 +1,15 @@
 /**
- * ManagerView Component - Dashboard for onboarding managers/admins
- * Displays KPIs, documentation feedback, and live activity
+ * ManagerView Component - Self-contained dashboard for onboarding managers/admins
+ * Calls hooks directly (useSuggestions, useActivities, useOnboardingInstances)
+ * and owns all manager-specific state, computations, and handlers.
+ *
  * Features: Real-time KPI calculations, approval/rejection of suggestions,
  * onboarding instance creation, and dynamic activity feed updates
  * Layout: Responsive design with max-w-7xl for better use of large screens,
  * asymmetric grid (2fr:1fr) to prioritize suggestions over activity feed
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   ManagerDashboardHeader,
   KPISection,
@@ -18,56 +20,125 @@ import {
   UsersPanel,
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
-import { useCreateOnboarding, useRoles, useTemplates } from '../hooks';
-import type { Step, Suggestion, Activity, OnboardingInstance } from '../types';
-
-interface ManagerViewProps {
-  steps: Step[];
-  suggestions: Suggestion[];
-  activities?: Activity[];
-  stuckEmployeeNames?: string[];
-  onboardingInstances?: OnboardingInstance[];
-  onApproveSuggestion?: (id: number | string) => void;
-  onRejectSuggestion?: (id: number | string) => void;
-  onOnboardingCreated?: (employeeName: string) => void;
-  onRefreshInstances?: () => void;
-  loadingSuggestionIds?: Set<number | string>;
-}
+import {
+  useCreateOnboarding,
+  useRoles,
+  useTemplates,
+  useSuggestions,
+  useActivities,
+  useOnboardingInstances,
+} from '../hooks';
+import { useToast } from '../context/ToastContext';
+import {
+  updateSuggestionStatus,
+  deleteSuggestion,
+  logActivity,
+} from '../services/supabase';
+import type { Step } from '../types';
 
 /**
- * Renders the manager-facing dashboard
- * Shows KPIs, documentation feedback section, and activity feed
- * All metrics update in real-time as employee actions occur
- * Information hierarchy: KPIs (full width) > Suggestions (2fr) > Activity (1fr)
- * @param steps - Array of all onboarding steps
- * @param suggestions - Array of submitted suggestions
- * @param activities - Array of recent activities from employees
- * @param stuckEmployeeNames - Names of employees currently stuck
- * @param onboardingInstances - Array of onboarding instances for KPI calculations
- * @param onApproveSuggestion - Callback to approve a suggestion
- * @param onRejectSuggestion - Callback to reject a suggestion
- * @param onOnboardingCreated - Callback when onboarding instance is created successfully
- * @param onRefreshInstances - Callback to refresh onboarding instances list
+ * Renders the manager-facing dashboard.
+ * Self-contained: all data comes from hooks, all handlers are internal.
+ * Follows the same pattern as NewHiresPanel and UsersPanel.
  */
-export function ManagerView({
-  steps,
-  suggestions,
-  activities = [],
-  stuckEmployeeNames = [],
-  onboardingInstances = [],
-  onApproveSuggestion,
-  onRejectSuggestion,
-  onOnboardingCreated,
-  onRefreshInstances,
-  loadingSuggestionIds,
-}: ManagerViewProps) {
-  const [isCreateOnboardingOpen, setIsCreateOnboardingOpen] = useState(false);
+export function ManagerView() {
+  // ---------------------------------------------------------------------------
+  // Hooks: data subscriptions
+  // ---------------------------------------------------------------------------
+  const {
+    data: suggestions,
+    isLoading: suggestionsLoading,
+    optimisticUpdateStatus,
+    optimisticRemove,
+    rollback,
+  } = useSuggestions();
+  const { data: activities, isLoading: activitiesLoading } = useActivities();
+  const { data: onboardingInstances, isLoading: instancesLoading } = useOnboardingInstances();
+  const { showToast } = useToast();
+
+  // ---------------------------------------------------------------------------
+  // Hooks: existing (create onboarding, roles, templates)
+  // ---------------------------------------------------------------------------
   const { mutate: createOnboarding, isLoading: isCreating, error: creationError, reset: resetError } = useCreateOnboarding();
   const { roles, isLoading: rolesLoading } = useRoles();
   const { data: templates, isLoading: templatesLoading } = useTemplates();
+
+  // ---------------------------------------------------------------------------
+  // Local state
+  // ---------------------------------------------------------------------------
+  const [isCreateOnboardingOpen, setIsCreateOnboardingOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'roles' | 'new-hires' | 'users'>('dashboard');
+  const [loadingSuggestionIds, setLoadingSuggestionIds] = useState<Set<number | string>>(new Set());
 
+  // ---------------------------------------------------------------------------
+  // Derived data
+  // ---------------------------------------------------------------------------
+  const managerSteps = useMemo<Step[]>(
+    () => onboardingInstances.flatMap((instance) => instance.steps),
+    [onboardingInstances]
+  );
+
+  const stuckEmployeeNames = useMemo(
+    () =>
+      onboardingInstances
+        .filter((instance) => instance.steps.some((step) => step.status === 'stuck'))
+        .map((instance) => instance.employeeName),
+    [onboardingInstances]
+  );
+
+  const isDashboardLoading = suggestionsLoading || activitiesLoading || instancesLoading;
+
+  // ---------------------------------------------------------------------------
+  // Handlers: suggestion approve/reject (optimistic update pattern)
+  // ---------------------------------------------------------------------------
+  const handleApproveSuggestion = async (suggestionId: number | string) => {
+    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
+    const snapshot = optimisticUpdateStatus(suggestionId, 'reviewed');
+    try {
+      await updateSuggestionStatus(String(suggestionId), 'reviewed');
+      logActivity({
+        userInitials: 'MG',
+        action: 'approved a documentation suggestion',
+        timeAgo: 'just now',
+      }).catch(console.warn);
+    } catch {
+      rollback(snapshot);
+      showToast('Failed to approve suggestion. Please try again.', 'error');
+    } finally {
+      setLoadingSuggestionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
+      });
+    }
+  };
+
+  const handleRejectSuggestion = async (suggestionId: number | string) => {
+    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
+    const snapshot = optimisticRemove(suggestionId);
+    try {
+      await deleteSuggestion(String(suggestionId));
+      logActivity({
+        userInitials: 'MG',
+        action: 'rejected a documentation suggestion',
+        timeAgo: 'just now',
+      }).catch(console.warn);
+    } catch {
+      rollback(snapshot);
+      showToast('Failed to reject suggestion. Please try again.', 'error');
+    } finally {
+      setLoadingSuggestionIds((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestionId);
+        return next;
+      });
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Handlers: create onboarding
+  // ---------------------------------------------------------------------------
   const handleOpenCreateOnboarding = () => {
     resetError();
     setSuccessMessage(null);
@@ -87,15 +158,6 @@ export function ManagerView({
       // Show success message
       setSuccessMessage(`Onboarding created for ${formData.employeeName}`);
 
-      // Call callbacks
-      if (onOnboardingCreated) {
-        onOnboardingCreated(formData.employeeName);
-      }
-
-      if (onRefreshInstances) {
-        onRefreshInstances();
-      }
-
       // Close modal after success
       setTimeout(() => {
         handleCloseCreateOnboarding();
@@ -107,6 +169,20 @@ export function ManagerView({
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Loading state
+  // ---------------------------------------------------------------------------
+  if (isDashboardLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-slate-600">Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header with title and action button - Full width */}
@@ -176,7 +252,7 @@ export function ManagerView({
         <>
           {/* KPI Cards - Full width, real-time calculations */}
           <KPISection
-            steps={steps}
+            steps={managerSteps}
             suggestions={suggestions}
             stuckEmployeeNames={stuckEmployeeNames}
             onboardingInstances={onboardingInstances}
@@ -191,9 +267,9 @@ export function ManagerView({
             {/* Documentation Feedback Section - Primary (2fr) */}
             <SuggestionsSection
               suggestions={suggestions}
-              steps={steps}
-              onApprove={onApproveSuggestion}
-              onReject={onRejectSuggestion}
+              steps={managerSteps}
+              onApprove={handleApproveSuggestion}
+              onReject={handleRejectSuggestion}
               loadingSuggestionIds={loadingSuggestionIds}
             />
 

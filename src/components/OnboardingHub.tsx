@@ -1,11 +1,11 @@
 /**
- * OnboardingHub Component - Main application container
- * Now backed by real Supabase data via custom hooks and services.
+ * OnboardingHub Component - Main application container (thin router)
+ * Orchestrates view switching between employee and manager dashboards.
+ * Employee data management lives here; manager data is self-contained in ManagerView.
  *
  * Performance Optimizations:
- * - Conditional hook loading: Manager-only hooks are only loaded when user is a manager
- * - Loading states with timeout fallbacks prevent infinite loading
- * - React.memo on expensive child components
+ * - Conditional hook loading: Employee hooks only loaded for employees
+ * - React.memo on EmployeeView to prevent unnecessary re-renders
  */
 
 import { useMemo, useState, memo } from 'react';
@@ -18,23 +18,19 @@ import { useToast } from '../context/ToastContext';
 import {
   useEmployeeOnboarding,
   useSteps,
-  useManagerData,
+  useOnboardingInstances,
 } from '../hooks';
 import {
   createSuggestion,
-  deleteSuggestion,
   logActivity,
-  updateSuggestionStatus,
 } from '../services/supabase';
-import type { Step, StepStatus, ModalState } from '../types';
+import type { StepStatus, ModalState } from '../types';
 
 interface OnboardingHubProps {
   currentView?: 'employee' | 'manager';
   onViewChange?: (view: 'employee' | 'manager') => void;
 }
 
-// Memoized ManagerView to prevent unnecessary re-renders
-const MemoizedManagerView = memo(ManagerView);
 const MemoizedEmployeeView = memo(EmployeeView);
 
 export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) {
@@ -52,18 +48,8 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     employeeInstance?.id ?? ''
   );
 
-  const shouldLoadDashboardData = isManager && currentView === 'manager';
-  const {
-    suggestions,
-    activities,
-    onboardingInstances,
-    isDashboardLoading,
-    areInstancesLoading,
-    suggestionsOptimistic,
-  } = useManagerData({
-    enableDashboardData: shouldLoadDashboardData,
-    enableInstances: isManager,
-  });
+  // Onboarding instances for EmployeeSelector (manager viewing employee tab)
+  const { data: onboardingInstances, isLoading: areInstancesLoading } = useOnboardingInstances(isManager);
 
   // State for viewing other employees' onboarding (manager feature)
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -82,21 +68,8 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
   const [activeModal, setActiveModal] = useState<ModalState | null>(null);
   const [isSubmittingModal, setIsSubmittingModal] = useState(false);
 
-  const managerSteps = useMemo<Step[]>(() => {
-    if (!isManager) return [];
-    return onboardingInstances.flatMap((instance) => instance.steps);
-  }, [isManager, onboardingInstances]);
-
-  const stuckEmployeeNames = useMemo(() => {
-    if (!isManager) return [];
-    return onboardingInstances
-      .filter((instance) => instance.steps.some((step) => step.status === 'stuck'))
-      .map((instance) => instance.employeeName);
-  }, [isManager, onboardingInstances]);
-
   // Per-ID loading state tracking
   const [loadingStepIds, setLoadingStepIds] = useState<Set<number>>(new Set());
-  const [loadingSuggestionIds, setLoadingSuggestionIds] = useState<Set<number | string>>(new Set());
 
   const handleStatusChange = async (id: number, newStatus: StepStatus) => {
     if (!employeeInstance?.id) return;
@@ -171,50 +144,6 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       showToast('Failed to mark step as stuck. Please try again.', 'error');
     } finally {
       setIsSubmittingModal(false);
-    }
-  };
-
-  const handleApproveSuggestion = async (suggestionId: number | string) => {
-    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
-    const snapshot = suggestionsOptimistic.optimisticUpdateStatus(suggestionId, 'reviewed');
-    try {
-      await updateSuggestionStatus(String(suggestionId), 'reviewed');
-      logActivity({
-        userInitials: 'MG',
-        action: 'approved a documentation suggestion',
-        timeAgo: 'just now',
-      }).catch(console.warn);
-    } catch {
-      suggestionsOptimistic.rollback(snapshot);
-      showToast('Failed to approve suggestion. Please try again.', 'error');
-    } finally {
-      setLoadingSuggestionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(suggestionId);
-        return next;
-      });
-    }
-  };
-
-  const handleRejectSuggestion = async (suggestionId: number | string) => {
-    setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
-    const snapshot = suggestionsOptimistic.optimisticRemove(suggestionId);
-    try {
-      await deleteSuggestion(String(suggestionId));
-      logActivity({
-        userInitials: 'MG',
-        action: 'rejected a documentation suggestion',
-        timeAgo: 'just now',
-      }).catch(console.warn);
-    } catch {
-      suggestionsOptimistic.rollback(snapshot);
-      showToast('Failed to reject suggestion. Please try again.', 'error');
-    } finally {
-      setLoadingSuggestionIds((prev) => {
-        const next = new Set(prev);
-        next.delete(suggestionId);
-        return next;
-      });
     }
   };
 
@@ -298,25 +227,9 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
         />
       )}
 
-      {/* Manager Dashboard - only when manager is viewing manager tab */}
-      {isManager && currentView === 'manager' && !isDashboardLoading && (
-        <MemoizedManagerView
-          steps={managerSteps}
-          suggestions={suggestions}
-          activities={activities}
-          stuckEmployeeNames={stuckEmployeeNames}
-          onboardingInstances={onboardingInstances}
-          onApproveSuggestion={handleApproveSuggestion}
-          onRejectSuggestion={handleRejectSuggestion}
-          loadingSuggestionIds={loadingSuggestionIds}
-        />
-      )}
-
-      {/* Loading state for manager view */}
-      {isManager && currentView === 'manager' && isDashboardLoading && (
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
+      {/* Manager Dashboard - self-contained, no data props needed */}
+      {isManager && currentView === 'manager' && (
+        <ManagerView />
       )}
 
       {currentStep && employeeInstance && (
