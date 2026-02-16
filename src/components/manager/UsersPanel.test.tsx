@@ -124,11 +124,13 @@ vi.mock('../../services/supabase', () => ({
   logActivity: (...args: unknown[]) => mockLogActivity(...args),
 }));
 
-// Mock UserModal - render a stub that exposes onSubmit via a button
+// Mock UserModal - render a stub that exposes onSubmit via a button.
+// The onClick handler mirrors real UserModal.handleSubmit: awaits onSubmit
+// in a try/catch so re-thrown errors don't become unhandled rejections.
 vi.mock('../modals/UserModal', () => ({
   UserModal: ({ isOpen, onSubmit, mode, onClose, user: editUser }: {
     isOpen: boolean;
-    onSubmit: (data: unknown) => void;
+    onSubmit: (data: unknown) => Promise<void>;
     mode: string;
     onClose: () => void;
     user?: User | null;
@@ -139,9 +141,13 @@ vi.mock('../modals/UserModal', () => ({
         <span data-testid="user-modal-mode">{mode}</span>
         {editUser && <span data-testid="user-modal-user">{editUser.name}</span>}
         <button
-          onClick={() =>
-            onSubmit({ email: 'new@example.com', name: 'New User', roles: ['Manager'] })
-          }
+          onClick={async () => {
+            try {
+              await onSubmit({ email: 'new@example.com', name: 'New User', roles: ['Manager'] });
+            } catch {
+              // Error handling is done by parent component (mirrors real UserModal)
+            }
+          }}
         >
           Submit Modal
         </button>
@@ -324,6 +330,91 @@ describe('UsersPanel', () => {
       await waitFor(() => {
         expect(screen.getByText(/user created successfully/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  // ---- Error Handling Tests (Bugs #8, #10, #12) ----
+
+  describe('Error Handling', () => {
+    it('keeps create modal open when createNewUser rejects (Bug #8)', async () => {
+      mockCreateNewUser.mockRejectedValueOnce(new Error('DB error'));
+      const user = userEvent.setup();
+      render(<UsersPanel />);
+
+      // Open create modal
+      await user.click(screen.getByRole('button', { name: /new user/i }));
+      expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+
+      // Submit -- should reject
+      await user.click(screen.getByText('Submit Modal'));
+
+      // Modal should still be open (not dismissed)
+      await waitFor(() => {
+        expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+      });
+    });
+
+    it('keeps edit modal open when editUser rejects (Bug #8)', async () => {
+      mockEditUser.mockRejectedValueOnce(new Error('DB error'));
+      const user = userEvent.setup();
+      render(<UsersPanel />);
+
+      // Open edit modal for first user
+      const editButtons = screen.getAllByLabelText(/edit user/i);
+      await user.click(editButtons[0]);
+      expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+
+      // Submit -- should reject
+      await user.click(screen.getByText('Submit Modal'));
+
+      // Modal should still be open (not dismissed)
+      await waitFor(() => {
+        expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+      });
+    });
+
+    it('calls reset() when create modal is closed (Bug #10)', async () => {
+      const user = userEvent.setup();
+      render(<UsersPanel />);
+
+      // Open create modal
+      await user.click(screen.getByRole('button', { name: /new user/i }));
+      expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+
+      // Close modal
+      await user.click(screen.getByText('Close Modal'));
+
+      expect(mockUseUsersReturn.reset).toHaveBeenCalled();
+    });
+
+    it('calls reset() when edit modal is closed (Bug #10)', async () => {
+      const user = userEvent.setup();
+      render(<UsersPanel />);
+
+      // Open edit modal for first user
+      const editButtons = screen.getAllByLabelText(/edit user/i);
+      await user.click(editButtons[0]);
+      expect(screen.getByTestId('user-modal')).toBeInTheDocument();
+
+      // Close modal
+      await user.click(screen.getByText('Close Modal'));
+
+      expect(mockUseUsersReturn.reset).toHaveBeenCalled();
+    });
+
+    it('hides store error banner while create modal is open (Bug #12)', async () => {
+      mockUseUsersReturn = { ...mockUseUsersReturn, users: [], error: 'Server error' };
+      const user = userEvent.setup();
+      render(<UsersPanel />);
+
+      // Error banner should be visible when no modal is open
+      expect(screen.getByText('Server error')).toBeInTheDocument();
+
+      // Open create modal
+      await user.click(screen.getByRole('button', { name: /new user/i }));
+
+      // Error banner should be hidden while modal is open
+      expect(screen.queryByText('Server error')).not.toBeInTheDocument();
     });
   });
 });

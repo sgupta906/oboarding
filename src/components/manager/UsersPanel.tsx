@@ -21,7 +21,7 @@ import type { User, UserFormData } from '../../types';
  * Distinct from NewHiresPanel which shows onboarding instances (read-only).
  */
 export function UsersPanel() {
-  const { users, isLoading, error, createNewUser, editUser, removeUser } = useUsers();
+  const { users, isLoading, error, createNewUser, editUser, removeUser, reset } = useUsers();
   const { roles, isLoading: rolesLoading } = useRoles();
   const { user: authUser } = useAuth();
 
@@ -70,6 +70,7 @@ export function UsersPanel() {
       setShowCreateModal(false);
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to create user');
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -93,6 +94,7 @@ export function UsersPanel() {
       setEditingUser(null);
     } catch (err) {
       setModalError(err instanceof Error ? err.message : 'Failed to update user');
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -176,7 +178,7 @@ export function UsersPanel() {
       )}
 
       {/* Error State */}
-      {error && (
+      {error && !showCreateModal && editingUser === null && (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
         </div>
@@ -299,6 +301,7 @@ export function UsersPanel() {
         onClose={() => {
           setShowCreateModal(false);
           setModalError(null);
+          reset();
         }}
         onSubmit={handleCreateSubmit}
         isSubmitting={isSubmitting}
@@ -314,6 +317,7 @@ export function UsersPanel() {
         onClose={() => {
           setEditingUser(null);
           setModalError(null);
+          reset();
         }}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
