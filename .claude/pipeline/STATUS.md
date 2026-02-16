@@ -113,12 +113,12 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | # | Issue | Priority | Component | Problem |
 |---|-------|----------|-----------|---------|
 | 21 | `darkmode-suggest-edit` | **FIXED** | ~~`SuggestEditModal.tsx`~~ | Fixed in commit 2ab9c7e - added `dark:` Tailwind CSS class variants to all elements (textarea, banners, footer), +8 tests (474 total) |
-| 22 | `darkmode-kpi-select` | **P1 HIGH** | `KPISection.tsx` | Profile filter `<select>` uses `text-gray-700` with no dark variant; invisible |
-| 23 | `darkmode-report-stuck` | **P1 HIGH** | `ReportStuckModal.tsx` | Zero `dark:` classes — all text light-only (`text-rose-900`, `text-slate-900`) |
-| 24 | `darkmode-template-delete` | **P1 HIGH** | `DeleteConfirmDialog.tsx` (templates) | Zero `dark:` classes on text colors |
-| 25 | `darkmode-action-bar` | **P1 HIGH** | `ActionBar.tsx` | Light background patches on buttons (`bg-slate-100`, `bg-emerald-50`) in dark mode |
-| 26 | `darkmode-step-timeline` | **P1 HIGH** | `StepTimeline.tsx` | Timeline connector lines and completion footer invisible in dark mode |
-| 27 | `darkmode-welcome-header` | **P2 MEDIUM** | `WelcomeHeader.tsx` | Dropdown options may have white-on-white text |
+| 22 | `darkmode-kpi-select` | **FIXED** | ~~`KPISection.tsx`~~ | Fixed in commit 080d095 - added dark: Tailwind CSS class variants, normalized gray->slate palette, +4 tests (508 total) |
+| 23 | `darkmode-report-stuck` | **FIXED** | ~~`ReportStuckModal.tsx`~~ | Fixed in commit 080d095 - added dark: variants to all 16 elements (rose alert, blue info, cancel button, text), +5 tests (508 total) |
+| 24 | `darkmode-template-delete` | **FIXED** | ~~`DeleteConfirmDialog.tsx`~~ | Fixed in commit 080d095 - added dark: variants to text colors and cancel button, +3 tests (508 total) |
+| 25 | `darkmode-action-bar` | **FIXED** | ~~`ActionBar.tsx`~~ | Fixed in commit 080d095 - added dark: variants to all 9 button elements and border, +3 tests (508 total) |
+| 26 | `darkmode-step-timeline` | **FIXED** | ~~`StepTimeline.tsx`~~ | Fixed in commit 080d095 - added dark: variants to timeline connectors and completion footer, +3 tests (508 total) |
+| 27 | `darkmode-welcome-header` | **FIXED** | ~~`WelcomeHeader.tsx`~~ | Fixed in commit 080d095 - added explicit text-slate-900 bg-white to option elements, +3 tests (508 total) |
 
 ### General UI Bugs (discovered via Playwright scouting 2026-02-16)
 
@@ -193,6 +193,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 27 | `devauth-uuid-invalid` | 2026-02-16 | 846f7d4 | Fixed P0 CRITICAL bugs #7 and #9 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users, added service-layer guards in 5 services, removed 'unknown' fallbacks in UsersPanel/NewHiresPanel, all 3 dev-auth roles now generate valid UUIDs, user creation succeeds, Users table loads correctly, +13 tests (474 total) |
 | 28 | `users-error-handling` | 2026-02-16 | 72f5fa2 | Fixed bugs #8, #10, #12 - re-throw errors in submit handlers so form fields retained on server error, clear store error on modal close via reset(), suppress duplicate error banners while modal open, +5 tests (489 total) |
 | 29 | `manager-modal-fixes` | 2026-02-16 | 230b915 | Fixed bugs #5 and #28 - threaded readOnly prop through component tree for manager "View Only" mode in Employee View, added useEffect reset hooks to 5 modals for form state cleanup on re-open, +7 tests (508 total) |
+| 30 | `darkmode-batch` | 2026-02-16 | 080d095 | Fixed bugs #22-27 - added dark mode support to 6 remaining components (KPISection, ReportStuckModal, DeleteConfirmDialog, ActionBar, StepTimeline, WelcomeHeader), normalized gray->slate in KPISection, added option element styling, +21 tests (508 total) |
 
 ---
 
