@@ -9,6 +9,7 @@ import {
   createOnboardingRunFromTemplate,
   OnboardingValidationError,
 } from '../services/supabase';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import type { CreateOnboardingRunInput } from '../services/supabase';
 import type { OnboardingInstance } from '../types';
 
@@ -39,6 +40,7 @@ export function useCreateOnboarding(): UseCreateOnboardingReturn {
       try {
         const result = await createOnboardingRunFromTemplate(employeeData);
         setData(result);
+        useOnboardingStore.getState()._addInstance(result);
         setIsLoading(false);
         return result;
       } catch (err) {

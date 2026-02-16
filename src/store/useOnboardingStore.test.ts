@@ -306,6 +306,40 @@ describe('useOnboardingStore', () => {
   });
 
   // -------------------------------------------------------------------------
+  // _addInstance
+  // -------------------------------------------------------------------------
+
+  describe('_addInstance', () => {
+    it('is available as a function', () => {
+      expect(typeof useOnboardingStore.getState()._addInstance).toBe('function');
+    });
+
+    it('appends instance to existing array', () => {
+      const existing = makeInstance('inst-existing');
+      useOnboardingStore.setState({ instances: [existing] });
+
+      const newInstance = makeInstance('inst-new', 'new@example.com');
+      useOnboardingStore.getState()._addInstance(newInstance);
+
+      const { instances } = useOnboardingStore.getState();
+      expect(instances).toHaveLength(2);
+      expect(instances[0].id).toBe('inst-existing');
+      expect(instances[1].id).toBe('inst-new');
+    });
+
+    it('works on empty instances array', () => {
+      expect(useOnboardingStore.getState().instances).toHaveLength(0);
+
+      const newInstance = makeInstance('inst-first');
+      useOnboardingStore.getState()._addInstance(newInstance);
+
+      const { instances } = useOnboardingStore.getState();
+      expect(instances).toHaveLength(1);
+      expect(instances[0].id).toBe('inst-first');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // StepsSlice
   // -------------------------------------------------------------------------
 

@@ -50,6 +50,8 @@ export interface InstancesSlice {
    * and unsubscribes when no consumers remain.
    */
   _startInstancesSubscription: () => () => void;
+  /** Optimistically appends a newly created instance to the store. */
+  _addInstance: (instance: OnboardingInstance) => void;
 }
 
 /** State and actions for the steps slice (keyed by instanceId) */
@@ -273,6 +275,12 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         set({ instances: [], instancesLoading: false, instancesError: null });
       }
     };
+  },
+
+  _addInstance: (instance: OnboardingInstance) => {
+    set((state) => ({
+      instances: [...state.instances, instance],
+    }));
   },
 
   // -- StepsSlice state --
