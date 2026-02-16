@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { ModalWrapper } from '../ui';
 import { DeleteConfirmDialog } from './DeleteConfirmDialog';
 import type { Template, Step, CustomRole } from '../../types';
@@ -25,10 +25,16 @@ interface TemplateModalProps {
 
 interface TemplateStep {
   id?: number;
+  _uid: string;
   title: string;
   description: string;
   owner: string;
   expert: string;
+}
+
+let stepUidCounter = 0;
+function nextStepUid(): string {
+  return `step-${++stepUidCounter}`;
 }
 
 /**
@@ -54,7 +60,7 @@ export function TemplateModal({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [status, setStatus] = useState<'Draft' | 'Published'>('Draft');
   const [steps, setSteps] = useState<TemplateStep[]>([
-    { title: '', description: '', owner: '', expert: '' },
+    { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' },
   ]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -68,6 +74,7 @@ export function TemplateModal({
       setStatus(template.isActive ? 'Published' : 'Draft');
       setSteps(
         template.steps.map((s) => ({
+          _uid: nextStepUid(),
           id: s.id,
           title: s.title,
           description: s.description,
@@ -84,7 +91,7 @@ export function TemplateModal({
     setSelectedRoles([]);
     setStatus('Draft');
     setSteps(
-      isEdit ? [] : [{ title: '', description: '', owner: '', expert: '' }]
+      isEdit ? [] : [{ _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' }]
     );
     setValidationErrors([]);
   };
@@ -139,16 +146,30 @@ export function TemplateModal({
   };
 
   const handleAddStep = () => {
-    setSteps([...steps, { title: '', description: '', owner: '', expert: '' }]);
+    setSteps([...steps, { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' }]);
   };
 
   const handleRemoveStep = (index: number) => {
     setSteps(steps.filter((_, i) => i !== index));
   };
 
+  const handleMoveStepUp = (index: number) => {
+    if (index === 0) return;
+    const newSteps = [...steps];
+    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+    setSteps(newSteps);
+  };
+
+  const handleMoveStepDown = (index: number) => {
+    if (index === steps.length - 1) return;
+    const newSteps = [...steps];
+    [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+    setSteps(newSteps);
+  };
+
   const handleStepChange = (
     index: number,
-    field: keyof Omit<TemplateStep, 'id'>,
+    field: keyof Omit<TemplateStep, 'id' | '_uid'>,
     value: string
   ) => {
     const newSteps = [...steps];
@@ -288,7 +309,7 @@ export function TemplateModal({
       isOpen={isOpen}
       title={title}
       onClose={handleClose}
-      size="lg"
+      size="2xl"
       footer={footer}
     >
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -390,7 +411,7 @@ export function TemplateModal({
         <div>
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
-              Onboarding Steps
+              Onboarding Steps ({steps.length})
             </label>
             <button
               type="button"
@@ -403,15 +424,47 @@ export function TemplateModal({
             </button>
           </div>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-4">
             {steps.map((step, index) => (
               <div
-                key={index}
-                className="p-4 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg space-y-3 relative"
+                key={step._uid}
+                className="p-4 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg space-y-3"
               >
-                {/* Step Number */}
-                <div className="absolute top-2 right-2 text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-1 rounded">
-                  Step {index + 1}
+                {/* Step Header Row */}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-1 rounded">
+                    Step {index + 1} of {steps.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleMoveStepUp(index)}
+                      disabled={index === 0}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label={`Move step ${index + 1} up`}
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveStepDown(index)}
+                      disabled={index === steps.length - 1}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      aria-label={`Move step ${index + 1} down`}
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                    {steps.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStep(index)}
+                        className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        aria-label={`Remove step ${index + 1}`}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Title */}
@@ -496,17 +549,6 @@ export function TemplateModal({
                   </div>
                 </div>
 
-                {/* Remove Button */}
-                {steps.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveStep(index)}
-                    className="absolute top-2 right-10 p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                    aria-label={`Remove step ${index + 1}`}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
               </div>
             ))}
           </div>

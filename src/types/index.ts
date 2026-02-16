@@ -344,7 +344,7 @@ export interface ModalWrapperProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   onClose: () => void;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 /**

@@ -58,6 +58,47 @@ const mockTemplate: Template = {
   isActive: true,
 };
 
+const mockTemplateWithMultipleSteps: Template = {
+  id: 'template-multi',
+  name: 'Multi-Step Onboarding',
+  description: 'Onboarding with multiple steps',
+  role: 'Engineering',
+  steps: [
+    {
+      id: 1,
+      title: 'Step A',
+      description: 'Description A',
+      role: 'Engineering',
+      owner: 'Team Alpha',
+      expert: 'Alice',
+      status: 'pending',
+      link: '',
+    },
+    {
+      id: 2,
+      title: 'Step B',
+      description: 'Description B',
+      role: 'Engineering',
+      owner: 'Team Beta',
+      expert: 'Bob',
+      status: 'pending',
+      link: '',
+    },
+    {
+      id: 3,
+      title: 'Step C',
+      description: 'Description C',
+      role: 'Engineering',
+      owner: 'Team Gamma',
+      expert: 'Charlie',
+      status: 'pending',
+      link: '',
+    },
+  ],
+  createdAt: Date.now(),
+  isActive: true,
+};
+
 describe('TemplateModal', () => {
   const mockOnSubmit = vi.fn();
   const mockOnClose = vi.fn();
@@ -369,6 +410,259 @@ describe('TemplateModal', () => {
       await waitFor(() => {
         expect(screen.getByDisplayValue('Updated Step Title')).toBeInTheDocument();
       });
+    });
+  });
+
+  // ==========================================================================
+  // STEP REORDER
+  // ==========================================================================
+
+  describe('TemplateModal - step reorder', () => {
+    it('should move step down when clicking move-down button', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const moveDownButton = screen.getByRole('button', { name: 'Move step 1 down' });
+      await user.click(moveDownButton);
+
+      await waitFor(() => {
+        // After moving step 1 down, "Step B" should now be in position 1
+        const step1Title = screen.getByLabelText('Step 1 title') as HTMLInputElement;
+        const step2Title = screen.getByLabelText('Step 2 title') as HTMLInputElement;
+        expect(step1Title.value).toBe('Step B');
+        expect(step2Title.value).toBe('Step A');
+      });
+    });
+
+    it('should move step up when clicking move-up button', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step B')).toBeInTheDocument();
+      });
+
+      const moveUpButton = screen.getByRole('button', { name: 'Move step 2 up' });
+      await user.click(moveUpButton);
+
+      await waitFor(() => {
+        const step1Title = screen.getByLabelText('Step 1 title') as HTMLInputElement;
+        const step2Title = screen.getByLabelText('Step 2 title') as HTMLInputElement;
+        expect(step1Title.value).toBe('Step B');
+        expect(step2Title.value).toBe('Step A');
+      });
+    });
+
+    it('should disable move-up button for first step', async () => {
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const moveUpButton = screen.getByRole('button', { name: 'Move step 1 up' });
+      expect(moveUpButton).toBeDisabled();
+    });
+
+    it('should disable move-down button for last step', async () => {
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step C')).toBeInTheDocument();
+      });
+
+      const moveDownButton = screen.getByRole('button', { name: 'Move step 3 down' });
+      expect(moveDownButton).toBeDisabled();
+    });
+
+    it('should preserve step data after reorder', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const moveDownButton = screen.getByRole('button', { name: 'Move step 1 down' });
+      await user.click(moveDownButton);
+
+      await waitFor(() => {
+        // "Step A" moved to position 2 -- verify owner and expert moved with it
+        const step2Owner = screen.getByLabelText('Step 2 owner') as HTMLInputElement;
+        const step2Expert = screen.getByLabelText('Step 2 expert') as HTMLInputElement;
+        expect(step2Owner.value).toBe('Team Alpha');
+        expect(step2Expert.value).toBe('Alice');
+      });
+    });
+
+    it('should update step numbers after reorder', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const moveDownButton = screen.getByRole('button', { name: 'Move step 1 down' });
+      await user.click(moveDownButton);
+
+      await waitFor(() => {
+        // After reorder, "Step 1 of 3" should be associated with "Step B" content
+        expect(screen.getByText('Step 1 of 3')).toBeInTheDocument();
+        expect(screen.getByText('Step 2 of 3')).toBeInTheDocument();
+        expect(screen.getByText('Step 3 of 3')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
+  // STEP COUNT
+  // ==========================================================================
+
+  describe('TemplateModal - step count', () => {
+    it('should display step count in section label', () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      expect(screen.getByText('Onboarding Steps (1)')).toBeInTheDocument();
+    });
+
+    it('should update step count when adding steps', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      const addStepButton = screen.getByRole('button', { name: /add new step/i });
+      await user.click(addStepButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (2)')).toBeInTheDocument();
+      });
+    });
+
+    it('should update step count when removing steps', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step C')).toBeInTheDocument();
+      });
+
+      const removeButton = screen.getByRole('button', { name: 'Remove step 3' });
+      await user.click(removeButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (2)')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ==========================================================================
+  // MODAL SIZE
+  // ==========================================================================
+
+  describe('TemplateModal - modal size', () => {
+    it('should render modal with 2xl width', () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      const dialog = screen.getByRole('dialog');
+      expect(dialog.className).toContain('max-w-2xl');
     });
   });
 });
