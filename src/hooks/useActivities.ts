@@ -1,13 +1,13 @@
 /**
  * useActivities Hook - Subscribes to real-time activity updates
- * Manages subscription lifecycle and provides loading/error states
+ * Thin wrapper over the Zustand store's ActivitiesSlice.
  *
  * Performance: Accepts enabled parameter to conditionally enable the subscription
  */
 
-import { useEffect, useState } from 'react';
-import { subscribeToActivities } from '../services/supabase';
-import { Activity } from '../types';
+import { useEffect } from 'react';
+import { useOnboardingStore } from '../store';
+import type { Activity } from '../types';
 
 interface UseActivitiesReturn {
   data: Activity[];
@@ -22,42 +22,22 @@ interface UseActivitiesReturn {
  * @returns Object with activities data, loading state, and error state
  */
 export function useActivities(enabled: boolean = true): UseActivitiesReturn {
-  const [data, setData] = useState<Activity[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(enabled);
-  const [error, setError] = useState<Error | null>(null);
+  const data = useOnboardingStore((s) => s.activities);
+  const isLoading = useOnboardingStore((s) => s.activitiesLoading);
+  const error = useOnboardingStore((s) => s.activitiesError);
+  const startSubscription = useOnboardingStore(
+    (s) => s._startActivitiesSubscription
+  );
 
   useEffect(() => {
-    // Skip subscription if not enabled
-    if (!enabled) {
-      setData([]);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
+    if (!enabled) return;
+    const cleanup = startSubscription();
+    return cleanup;
+  }, [enabled, startSubscription]);
 
-    setIsLoading(true);
-    setError(null);
-
-    let unsubscribe: (() => void) | null = null;
-
-    try {
-      unsubscribe = subscribeToActivities((activities: Activity[]) => {
-        setData(activities);
-        setIsLoading(false);
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      setIsLoading(false);
-    }
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [enabled]);
-
+  // When disabled, return defaults (store may still have data from other consumers)
+  if (!enabled) {
+    return { data: [], isLoading: false, error: null };
+  }
   return { data, isLoading, error };
 }

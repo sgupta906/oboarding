@@ -1,12 +1,12 @@
 /**
  * useSuggestions Hook - Subscribes to real-time suggestion updates
- * Manages subscription lifecycle and provides loading/error states
+ * Thin wrapper over the Zustand store's SuggestionsSlice.
  *
  * Performance: Accepts enabled parameter to conditionally enable the subscription
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { subscribeToSuggestions } from '../services/supabase';
+import { useEffect, useCallback } from 'react';
+import { useOnboardingStore } from '../store';
 import type { Suggestion, SuggestionStatus } from '../types';
 
 interface UseSuggestionsReturn {
@@ -25,69 +25,63 @@ interface UseSuggestionsReturn {
  * @returns Object with suggestions data, loading state, and error state
  */
 export function useSuggestions(enabled: boolean = true): UseSuggestionsReturn {
-  const [data, setData] = useState<Suggestion[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(enabled);
-  const [error, setError] = useState<Error | null>(null);
+  const data = useOnboardingStore((s) => s.suggestions);
+  const isLoading = useOnboardingStore((s) => s.suggestionsLoading);
+  const error = useOnboardingStore((s) => s.suggestionsError);
+  const startSubscription = useOnboardingStore(
+    (s) => s._startSuggestionsSubscription
+  );
+  const storeOptimisticUpdate = useOnboardingStore(
+    (s) => s._optimisticUpdateSuggestionStatus
+  );
+  const storeOptimisticRemove = useOnboardingStore(
+    (s) => s._optimisticRemoveSuggestion
+  );
+  const storeRollback = useOnboardingStore((s) => s._rollbackSuggestions);
 
   useEffect(() => {
-    // Skip subscription if not enabled
-    if (!enabled) {
-      setData([]);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    let unsubscribe: (() => void) | null = null;
-
-    try {
-      unsubscribe = subscribeToSuggestions((suggestions: Suggestion[]) => {
-        setData(suggestions);
-        setIsLoading(false);
-      });
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setError(error);
-      setIsLoading(false);
-    }
-
-    // Cleanup subscription on unmount
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
-  }, [enabled]);
+    if (!enabled) return;
+    const cleanup = startSubscription();
+    return cleanup;
+  }, [enabled, startSubscription]);
 
   /**
    * Optimistically updates a suggestion's status in local state.
    * Returns the snapshot for caller to use for rollback on error.
    */
-  const optimisticUpdateStatus = useCallback((id: number | string, status: SuggestionStatus): Suggestion[] => {
-    const snapshot = data;
-    setData((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
-    return snapshot;
-  }, [data]);
+  const optimisticUpdateStatus = useCallback(
+    (id: number | string, status: SuggestionStatus) =>
+      storeOptimisticUpdate(id, status),
+    [storeOptimisticUpdate]
+  );
 
   /**
    * Optimistically removes a suggestion from local state.
    * Returns the snapshot for caller to use for rollback on error.
    */
-  const optimisticRemove = useCallback((id: number | string): Suggestion[] => {
-    const snapshot = data;
-    setData((prev) => prev.filter((s) => s.id !== id));
-    return snapshot;
-  }, [data]);
+  const optimisticRemove = useCallback(
+    (id: number | string) => storeOptimisticRemove(id),
+    [storeOptimisticRemove]
+  );
 
   /**
    * Restores previous state from a snapshot.
    */
-  const rollback = useCallback((snapshot: Suggestion[]) => {
-    setData(snapshot);
-  }, []);
+  const rollback = useCallback(
+    (snapshot: Suggestion[]) => storeRollback(snapshot),
+    [storeRollback]
+  );
 
+  // When disabled, return defaults (store may still have data from other consumers)
+  if (!enabled) {
+    return {
+      data: [],
+      isLoading: false,
+      error: null,
+      optimisticUpdateStatus,
+      optimisticRemove,
+      rollback,
+    };
+  }
   return { data, isLoading, error, optimisticUpdateStatus, optimisticRemove, rollback };
 }

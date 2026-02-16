@@ -1,13 +1,11 @@
 /**
  * useOnboardingStore - Zustand store for onboarding data
  *
- * Provides a single source of truth for onboarding instances, steps, and users,
- * replacing per-component subscriptions with ref-counted Supabase
- * Realtime subscriptions shared across all consumers.
+ * Provides a single source of truth for onboarding instances, steps, users,
+ * activities, and suggestions, replacing per-component subscriptions with
+ * ref-counted Supabase Realtime subscriptions shared across all consumers.
  *
- * Slices: InstancesSlice, StepsSlice, UsersSlice
- * Future slices (activities, suggestions) extend this store
- * via intersection types: `OnboardingStore = InstancesSlice & StepsSlice & UsersSlice & ...`
+ * Slices: InstancesSlice, StepsSlice, UsersSlice, ActivitiesSlice, SuggestionsSlice
  */
 
 import { create } from 'zustand';
@@ -17,6 +15,9 @@ import type {
   StepStatus,
   User,
   UserFormData,
+  Activity,
+  Suggestion,
+  SuggestionStatus,
 } from '../types';
 import {
   subscribeToOnboardingInstances,
@@ -27,6 +28,8 @@ import {
   updateUser,
   deleteUser,
   getUser,
+  subscribeToActivities,
+  subscribeToSuggestions,
 } from '../services/supabase';
 
 // ============================================================================
@@ -98,11 +101,63 @@ export interface UsersSlice {
   _resetUsersError: () => void;
 }
 
+/** State and actions for the activities slice (read-only, scalar ref-counting) */
+export interface ActivitiesSlice {
+  /** All activities from the realtime subscription */
+  activities: Activity[];
+  /** Whether the initial data load is in progress */
+  activitiesLoading: boolean;
+  /** Error from subscription setup */
+  activitiesError: Error | null;
+  /**
+   * Starts the ref-counted activities subscription.
+   * Returns a cleanup function that decrements the ref count
+   * and unsubscribes when no consumers remain.
+   */
+  _startActivitiesSubscription: () => () => void;
+}
+
+/** State and actions for the suggestions slice (subscription + optimistic state ops) */
+export interface SuggestionsSlice {
+  /** All suggestions from the realtime subscription */
+  suggestions: Suggestion[];
+  /** Whether the initial data load is in progress */
+  suggestionsLoading: boolean;
+  /** Error from subscription setup */
+  suggestionsError: Error | null;
+  /**
+   * Starts the ref-counted suggestions subscription.
+   * Returns a cleanup function that decrements the ref count
+   * and unsubscribes when no consumers remain.
+   */
+  _startSuggestionsSubscription: () => () => void;
+  /**
+   * Optimistically updates a suggestion's status.
+   * Returns the pre-mutation snapshot for rollback.
+   */
+  _optimisticUpdateSuggestionStatus: (
+    id: number | string,
+    status: SuggestionStatus
+  ) => Suggestion[];
+  /**
+   * Optimistically removes a suggestion.
+   * Returns the pre-mutation snapshot for rollback.
+   */
+  _optimisticRemoveSuggestion: (id: number | string) => Suggestion[];
+  /**
+   * Restores suggestions from a snapshot.
+   */
+  _rollbackSuggestions: (snapshot: Suggestion[]) => void;
+}
+
 /**
- * Combined store type. Future slices are added via intersection:
- * `type OnboardingStore = InstancesSlice & StepsSlice & UsersSlice & ...;`
+ * Combined store type. All slices are composed via intersection.
  */
-export type OnboardingStore = InstancesSlice & StepsSlice & UsersSlice;
+export type OnboardingStore = InstancesSlice &
+  StepsSlice &
+  UsersSlice &
+  ActivitiesSlice &
+  SuggestionsSlice;
 
 // ============================================================================
 // Module-level subscription lifecycle (ref-counted)
@@ -121,9 +176,20 @@ let usersRefCount = 0;
 /** Cleanup function for the active users subscription */
 let usersCleanup: (() => void) | null = null;
 
+/** Scalar ref count for the global activities subscription */
+let activitiesRefCount = 0;
+/** Cleanup function for the active activities subscription */
+let activitiesCleanup: (() => void) | null = null;
+
+/** Scalar ref count for the global suggestions subscription */
+let suggestionsRefCount = 0;
+/** Cleanup function for the active suggestions subscription */
+let suggestionsCleanup: (() => void) | null = null;
+
 /**
  * Resets module-level ref-counting state for test isolation.
- * Clears instances, steps, and users ref-counts and cleanup functions.
+ * Clears instances, steps, users, activities, and suggestions
+ * ref-counts and cleanup functions.
  * Only call this from test `beforeEach` blocks.
  */
 export function resetStoreInternals(): void {
@@ -146,6 +212,20 @@ export function resetStoreInternals(): void {
   if (usersCleanup) {
     usersCleanup();
     usersCleanup = null;
+  }
+
+  // Reset activities ref-counting
+  activitiesRefCount = 0;
+  if (activitiesCleanup) {
+    activitiesCleanup();
+    activitiesCleanup = null;
+  }
+
+  // Reset suggestions ref-counting
+  suggestionsRefCount = 0;
+  if (suggestionsCleanup) {
+    suggestionsCleanup();
+    suggestionsCleanup = null;
   }
 }
 
@@ -414,5 +494,122 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 
   _resetUsersError: () => {
     set({ usersError: null });
+  },
+
+  // -- ActivitiesSlice state --
+  activities: [],
+  activitiesLoading: false,
+  activitiesError: null,
+
+  _startActivitiesSubscription: () => {
+    activitiesRefCount++;
+
+    if (activitiesRefCount === 1) {
+      // First consumer -- start the real subscription
+      set({ activitiesLoading: true, activitiesError: null });
+
+      try {
+        activitiesCleanup = subscribeToActivities(
+          (activities: Activity[]) => {
+            set({ activities, activitiesLoading: false });
+          }
+        );
+      } catch (err) {
+        set({
+          activitiesError:
+            err instanceof Error ? err : new Error(String(err)),
+          activitiesLoading: false,
+        });
+      }
+    }
+
+    // Return a cleanup function guarded against double invocation
+    let cleaned = false;
+    return () => {
+      if (cleaned) return;
+      cleaned = true;
+      activitiesRefCount--;
+
+      if (activitiesRefCount === 0 && activitiesCleanup) {
+        activitiesCleanup();
+        activitiesCleanup = null;
+        // Reset state when no consumers remain
+        set({
+          activities: [],
+          activitiesLoading: false,
+          activitiesError: null,
+        });
+      }
+    };
+  },
+
+  // -- SuggestionsSlice state --
+  suggestions: [],
+  suggestionsLoading: false,
+  suggestionsError: null,
+
+  _startSuggestionsSubscription: () => {
+    suggestionsRefCount++;
+
+    if (suggestionsRefCount === 1) {
+      // First consumer -- start the real subscription
+      set({ suggestionsLoading: true, suggestionsError: null });
+
+      try {
+        suggestionsCleanup = subscribeToSuggestions(
+          (suggestions: Suggestion[]) => {
+            set({ suggestions, suggestionsLoading: false });
+          }
+        );
+      } catch (err) {
+        set({
+          suggestionsError:
+            err instanceof Error ? err : new Error(String(err)),
+          suggestionsLoading: false,
+        });
+      }
+    }
+
+    // Return a cleanup function guarded against double invocation
+    let cleaned = false;
+    return () => {
+      if (cleaned) return;
+      cleaned = true;
+      suggestionsRefCount--;
+
+      if (suggestionsRefCount === 0 && suggestionsCleanup) {
+        suggestionsCleanup();
+        suggestionsCleanup = null;
+        // Reset state when no consumers remain
+        set({
+          suggestions: [],
+          suggestionsLoading: false,
+          suggestionsError: null,
+        });
+      }
+    };
+  },
+
+  _optimisticUpdateSuggestionStatus: (
+    id: number | string,
+    status: SuggestionStatus
+  ) => {
+    const snapshot = get().suggestions;
+    set({
+      suggestions: snapshot.map((s) =>
+        s.id === id ? { ...s, status } : s
+      ),
+    });
+    return snapshot;
+  },
+
+  _optimisticRemoveSuggestion: (id: number | string) => {
+    const snapshot = get().suggestions;
+    set({ suggestions: snapshot.filter((s) => s.id !== id) });
+    return snapshot;
+  },
+
+  _rollbackSuggestions: (snapshot: Suggestion[]) => {
+    set({ suggestions: snapshot });
   },
 }));

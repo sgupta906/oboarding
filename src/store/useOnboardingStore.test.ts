@@ -20,6 +20,10 @@ const mockCreateUser = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockDeleteUser = vi.fn();
 const mockGetUser = vi.fn();
+const mockActivitiesUnsubscribe = vi.fn();
+const mockSubscribeToActivities = vi.fn();
+const mockSuggestionsUnsubscribe = vi.fn();
+const mockSubscribeToSuggestions = vi.fn();
 
 vi.mock('../services/supabase', () => ({
   subscribeToOnboardingInstances: (...args: unknown[]) =>
@@ -31,10 +35,20 @@ vi.mock('../services/supabase', () => ({
   updateUser: (...args: unknown[]) => mockUpdateUser(...args),
   deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
   getUser: (...args: unknown[]) => mockGetUser(...args),
+  subscribeToActivities: (...args: unknown[]) =>
+    mockSubscribeToActivities(...args),
+  subscribeToSuggestions: (...args: unknown[]) =>
+    mockSubscribeToSuggestions(...args),
 }));
 
 import { useOnboardingStore, resetStoreInternals } from './useOnboardingStore';
-import type { OnboardingInstance, Step, User } from '../types';
+import type {
+  OnboardingInstance,
+  Step,
+  User,
+  Activity,
+  Suggestion,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,6 +119,12 @@ describe('useOnboardingStore', () => {
       users: [],
       usersLoading: false,
       usersError: null,
+      activities: [],
+      activitiesLoading: false,
+      activitiesError: null,
+      suggestions: [],
+      suggestionsLoading: false,
+      suggestionsError: null,
     });
     resetStoreInternals();
     vi.clearAllMocks();
@@ -129,6 +149,16 @@ describe('useOnboardingStore', () => {
     mockUpdateUser.mockResolvedValue(undefined);
     mockDeleteUser.mockResolvedValue(undefined);
     mockGetUser.mockResolvedValue(null);
+
+    // Default activities mock
+    mockSubscribeToActivities.mockImplementation(() => {
+      return mockActivitiesUnsubscribe;
+    });
+
+    // Default suggestions mock
+    mockSubscribeToSuggestions.mockImplementation(() => {
+      return mockSuggestionsUnsubscribe;
+    });
   });
 
   it('initializes with empty state', () => {
@@ -767,6 +797,303 @@ describe('useOnboardingStore', () => {
       useOnboardingStore.getState()._resetUsersError();
 
       expect(useOnboardingStore.getState().usersError).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // ActivitiesSlice
+  // -------------------------------------------------------------------------
+
+  describe('ActivitiesSlice', () => {
+    const makeActivity = (
+      id: string,
+      action = 'test action'
+    ): Activity => ({
+      id,
+      userInitials: 'TU',
+      action,
+      timeAgo: '1m ago',
+      timestamp: Date.now(),
+    });
+
+    it('initializes with empty activities state', () => {
+      const state = useOnboardingStore.getState();
+
+      expect(state.activities).toEqual([]);
+      expect(state.activitiesLoading).toBe(false);
+      expect(state.activitiesError).toBeNull();
+      expect(typeof state._startActivitiesSubscription).toBe('function');
+    });
+
+    it('_startActivitiesSubscription calls subscribeToActivities', () => {
+      const cleanup = useOnboardingStore
+        .getState()
+        ._startActivitiesSubscription();
+
+      expect(mockSubscribeToActivities).toHaveBeenCalledTimes(1);
+      expect(typeof cleanup).toBe('function');
+
+      // Store should be in loading state
+      expect(useOnboardingStore.getState().activitiesLoading).toBe(true);
+    });
+
+    it('subscription callback updates activities and clears loading', () => {
+      // Capture the callback passed to subscribeToActivities
+      let capturedCallback: ((activities: Activity[]) => void) | null = null;
+      mockSubscribeToActivities.mockImplementation(
+        (cb: (activities: Activity[]) => void) => {
+          capturedCallback = cb;
+          return mockActivitiesUnsubscribe;
+        }
+      );
+
+      useOnboardingStore.getState()._startActivitiesSubscription();
+
+      expect(capturedCallback).not.toBeNull();
+
+      // Simulate subscription firing with data
+      const activities = [makeActivity('a-1'), makeActivity('a-2')];
+      capturedCallback!(activities);
+
+      const state = useOnboardingStore.getState();
+      expect(state.activities).toEqual(activities);
+      expect(state.activitiesLoading).toBe(false);
+    });
+
+    it('subscription error sets error and clears loading', () => {
+      const testError = new Error('Activities subscription failed');
+      mockSubscribeToActivities.mockImplementation(() => {
+        throw testError;
+      });
+
+      useOnboardingStore.getState()._startActivitiesSubscription();
+
+      const state = useOnboardingStore.getState();
+      expect(state.activitiesError).toEqual(testError);
+      expect(state.activitiesLoading).toBe(false);
+      expect(state.activities).toEqual([]);
+    });
+
+    it('second start is no-op (subscribeToActivities called once)', () => {
+      const cleanup1 = useOnboardingStore
+        .getState()
+        ._startActivitiesSubscription();
+      const cleanup2 = useOnboardingStore
+        .getState()
+        ._startActivitiesSubscription();
+
+      expect(mockSubscribeToActivities).toHaveBeenCalledTimes(1);
+      expect(typeof cleanup1).toBe('function');
+      expect(typeof cleanup2).toBe('function');
+    });
+
+    it('last cleanup unsubscribes and resets state', () => {
+      // Capture the callback to populate data
+      let capturedCallback: ((activities: Activity[]) => void) | null = null;
+      mockSubscribeToActivities.mockImplementation(
+        (cb: (activities: Activity[]) => void) => {
+          capturedCallback = cb;
+          return mockActivitiesUnsubscribe;
+        }
+      );
+
+      const cleanup = useOnboardingStore
+        .getState()
+        ._startActivitiesSubscription();
+
+      // Populate data
+      capturedCallback!([makeActivity('a-1')]);
+      expect(useOnboardingStore.getState().activities).toHaveLength(1);
+
+      // Clean up last consumer
+      cleanup();
+
+      // Unsubscribe should be called
+      expect(mockActivitiesUnsubscribe).toHaveBeenCalledTimes(1);
+
+      // State should be reset
+      const state = useOnboardingStore.getState();
+      expect(state.activities).toEqual([]);
+      expect(state.activitiesLoading).toBe(false);
+      expect(state.activitiesError).toBeNull();
+    });
+
+    it('double cleanup is safe (idempotent)', () => {
+      const cleanup = useOnboardingStore
+        .getState()
+        ._startActivitiesSubscription();
+
+      cleanup();
+      cleanup(); // Should not throw or double-decrement
+
+      // Unsubscribe called exactly once
+      expect(mockActivitiesUnsubscribe).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // SuggestionsSlice
+  // -------------------------------------------------------------------------
+
+  describe('SuggestionsSlice', () => {
+    const makeSuggestion = (
+      id: number,
+      status: 'pending' | 'reviewed' | 'implemented' = 'pending'
+    ): Suggestion => ({
+      id,
+      stepId: 1,
+      user: 'Test User',
+      text: `Suggestion ${id}`,
+      status,
+    });
+
+    it('initializes with empty suggestions state', () => {
+      const state = useOnboardingStore.getState();
+
+      expect(state.suggestions).toEqual([]);
+      expect(state.suggestionsLoading).toBe(false);
+      expect(state.suggestionsError).toBeNull();
+      expect(typeof state._startSuggestionsSubscription).toBe('function');
+      expect(typeof state._optimisticUpdateSuggestionStatus).toBe('function');
+      expect(typeof state._optimisticRemoveSuggestion).toBe('function');
+      expect(typeof state._rollbackSuggestions).toBe('function');
+    });
+
+    it('_startSuggestionsSubscription calls subscribeToSuggestions', () => {
+      const cleanup = useOnboardingStore
+        .getState()
+        ._startSuggestionsSubscription();
+
+      expect(mockSubscribeToSuggestions).toHaveBeenCalledTimes(1);
+      expect(typeof cleanup).toBe('function');
+
+      // Store should be in loading state
+      expect(useOnboardingStore.getState().suggestionsLoading).toBe(true);
+    });
+
+    it('subscription callback updates suggestions and clears loading', () => {
+      // Capture the callback passed to subscribeToSuggestions
+      let capturedCallback: ((suggestions: Suggestion[]) => void) | null =
+        null;
+      mockSubscribeToSuggestions.mockImplementation(
+        (cb: (suggestions: Suggestion[]) => void) => {
+          capturedCallback = cb;
+          return mockSuggestionsUnsubscribe;
+        }
+      );
+
+      useOnboardingStore.getState()._startSuggestionsSubscription();
+
+      expect(capturedCallback).not.toBeNull();
+
+      // Simulate subscription firing with data
+      const suggestions = [makeSuggestion(1), makeSuggestion(2)];
+      capturedCallback!(suggestions);
+
+      const state = useOnboardingStore.getState();
+      expect(state.suggestions).toEqual(suggestions);
+      expect(state.suggestionsLoading).toBe(false);
+    });
+
+    it('_optimisticUpdateSuggestionStatus changes status and returns snapshot', () => {
+      const original = [
+        makeSuggestion(1, 'pending'),
+        makeSuggestion(2, 'pending'),
+      ];
+      useOnboardingStore.setState({ suggestions: original });
+
+      const snapshot = useOnboardingStore
+        .getState()
+        ._optimisticUpdateSuggestionStatus(1, 'reviewed');
+
+      // Snapshot should be the pre-mutation state
+      expect(snapshot).toEqual(original);
+      expect(snapshot[0].status).toBe('pending');
+
+      // Store should have updated state
+      const state = useOnboardingStore.getState();
+      expect(state.suggestions[0].status).toBe('reviewed');
+      expect(state.suggestions[1].status).toBe('pending');
+    });
+
+    it('_optimisticRemoveSuggestion removes suggestion and returns snapshot', () => {
+      const original = [
+        makeSuggestion(1),
+        makeSuggestion(2),
+        makeSuggestion(3),
+      ];
+      useOnboardingStore.setState({ suggestions: original });
+
+      const snapshot = useOnboardingStore
+        .getState()
+        ._optimisticRemoveSuggestion(2);
+
+      // Snapshot should be the pre-mutation state
+      expect(snapshot).toEqual(original);
+      expect(snapshot).toHaveLength(3);
+
+      // Store should have removed the suggestion
+      const state = useOnboardingStore.getState();
+      expect(state.suggestions).toHaveLength(2);
+      expect(state.suggestions.find((s) => s.id === 2)).toBeUndefined();
+    });
+
+    it('_rollbackSuggestions restores previous state', () => {
+      const original = [
+        makeSuggestion(1, 'pending'),
+        makeSuggestion(2, 'pending'),
+      ];
+      useOnboardingStore.setState({ suggestions: original });
+
+      // Perform an optimistic update
+      const snapshot = useOnboardingStore
+        .getState()
+        ._optimisticUpdateSuggestionStatus(1, 'reviewed');
+
+      // Verify state changed
+      expect(useOnboardingStore.getState().suggestions[0].status).toBe(
+        'reviewed'
+      );
+
+      // Rollback
+      useOnboardingStore.getState()._rollbackSuggestions(snapshot);
+
+      // Verify state restored
+      const state = useOnboardingStore.getState();
+      expect(state.suggestions[0].status).toBe('pending');
+      expect(state.suggestions).toEqual(original);
+    });
+
+    it('last cleanup unsubscribes and resets state', () => {
+      // Capture the callback to populate data
+      let capturedCallback: ((suggestions: Suggestion[]) => void) | null =
+        null;
+      mockSubscribeToSuggestions.mockImplementation(
+        (cb: (suggestions: Suggestion[]) => void) => {
+          capturedCallback = cb;
+          return mockSuggestionsUnsubscribe;
+        }
+      );
+
+      const cleanup = useOnboardingStore
+        .getState()
+        ._startSuggestionsSubscription();
+
+      // Populate data
+      capturedCallback!([makeSuggestion(1)]);
+      expect(useOnboardingStore.getState().suggestions).toHaveLength(1);
+
+      // Clean up last consumer
+      cleanup();
+
+      // Unsubscribe should be called
+      expect(mockSuggestionsUnsubscribe).toHaveBeenCalledTimes(1);
+
+      // State should be reset
+      const state = useOnboardingStore.getState();
+      expect(state.suggestions).toEqual([]);
+      expect(state.suggestionsLoading).toBe(false);
+      expect(state.suggestionsError).toBeNull();
     });
   });
 });
