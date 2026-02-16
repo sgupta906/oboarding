@@ -73,6 +73,7 @@ export {
   createOnboardingInstance,
   updateOnboardingInstance,
   updateStepStatus,
+  deleteOnboardingInstance,
   createOnboardingRunFromTemplate,
   OnboardingValidationError,
   subscribeToOnboardingInstance,

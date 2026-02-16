@@ -15,6 +15,7 @@ interface UseOnboardingInstancesReturn {
   data: OnboardingInstance[];
   isLoading: boolean;
   error: Error | null;
+  removeInstance: (id: string) => Promise<void>;
 }
 
 /**
@@ -35,9 +36,14 @@ export function useOnboardingInstances(enabled: boolean = true): UseOnboardingIn
     return unsub;
   }, [enabled]);
 
+  const removeInstance = async (id: string): Promise<void> => {
+    await useOnboardingStore.getState()._removeInstance(id);
+  };
+
   return {
     data: enabled ? instances : [],
     isLoading: enabled ? isLoading : false,
     error: enabled ? error : null,
+    removeInstance,
   };
 }

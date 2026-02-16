@@ -18,6 +18,7 @@ const mockUsersUnsubscribe = vi.fn();
 const mockSubscribeToUsers = vi.fn();
 const mockCreateUser = vi.fn();
 const mockUpdateUser = vi.fn();
+const mockDeleteOnboardingInstance = vi.fn();
 const mockDeleteUser = vi.fn();
 const mockGetUser = vi.fn();
 const mockActivitiesUnsubscribe = vi.fn();
@@ -30,6 +31,8 @@ vi.mock('../services/supabase', () => ({
     mockSubscribeToOnboardingInstances(...args),
   subscribeToSteps: (...args: unknown[]) => mockSubscribeToSteps(...args),
   updateStepStatus: (...args: unknown[]) => mockUpdateStepStatus(...args),
+  deleteOnboardingInstance: (...args: unknown[]) =>
+    mockDeleteOnboardingInstance(...args),
   subscribeToUsers: (...args: unknown[]) => mockSubscribeToUsers(...args),
   createUser: (...args: unknown[]) => mockCreateUser(...args),
   updateUser: (...args: unknown[]) => mockUpdateUser(...args),
@@ -140,6 +143,7 @@ describe('useOnboardingStore', () => {
     });
 
     mockUpdateStepStatus.mockResolvedValue(undefined);
+    mockDeleteOnboardingInstance.mockResolvedValue(undefined);
 
     // Default users mocks
     mockSubscribeToUsers.mockImplementation(() => {
@@ -336,6 +340,49 @@ describe('useOnboardingStore', () => {
       const { instances } = useOnboardingStore.getState();
       expect(instances).toHaveLength(1);
       expect(instances[0].id).toBe('inst-first');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // _removeInstance
+  // -------------------------------------------------------------------------
+
+  describe('_removeInstance', () => {
+    it('is available as a function', () => {
+      expect(typeof useOnboardingStore.getState()._removeInstance).toBe('function');
+    });
+
+    it('removes from array after server call', async () => {
+      const inst1 = makeInstance('inst-1', 'alice@example.com');
+      const inst2 = makeInstance('inst-2', 'bob@example.com');
+      useOnboardingStore.setState({ instances: [inst1, inst2] });
+
+      mockDeleteOnboardingInstance.mockResolvedValue(undefined);
+
+      await useOnboardingStore.getState()._removeInstance('inst-1');
+
+      expect(mockDeleteOnboardingInstance).toHaveBeenCalledWith('inst-1');
+      const state = useOnboardingStore.getState();
+      expect(state.instances).toHaveLength(1);
+      expect(state.instances[0].id).toBe('inst-2');
+    });
+
+    it('throws and does not remove on server error', async () => {
+      const inst1 = makeInstance('inst-1', 'alice@example.com');
+      const inst2 = makeInstance('inst-2', 'bob@example.com');
+      useOnboardingStore.setState({ instances: [inst1, inst2] });
+
+      mockDeleteOnboardingInstance.mockRejectedValue(new Error('Delete failed'));
+
+      await expect(
+        useOnboardingStore.getState()._removeInstance('inst-1')
+      ).rejects.toThrow('Delete failed');
+
+      // Array should be unchanged
+      const state = useOnboardingStore.getState();
+      expect(state.instances).toHaveLength(2);
+      expect(state.instances[0].id).toBe('inst-1');
+      expect(state.instances[1].id).toBe('inst-2');
     });
   });
 

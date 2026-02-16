@@ -60,6 +60,7 @@ const crud = createCrudService<OnboardingInstance>({
 export const listOnboardingInstances = crud.list;
 export const getOnboardingInstance = crud.get;
 export const subscribeToOnboardingInstances = crud.subscribe;
+export const deleteOnboardingInstance = crud.remove;
 
 // ============================================================================
 // CRUD Operations (Custom)

@@ -1,13 +1,18 @@
 /**
- * NewHiresPanel Component - Read-only view of employees going through onboarding
- * Displays onboarding instances in a table with status filter, progress bars, and status badges
+ * NewHiresPanel Component - View of employees going through onboarding with delete actions
+ * Displays onboarding instances in a table with status filter, progress bars, status badges,
+ * and per-row delete actions with confirmation dialog.
  * Self-contained: uses useOnboardingInstances() directly, no props needed
  */
 
 import { useState, useMemo } from 'react';
-import { Users } from 'lucide-react';
+import { Users, Trash2 } from 'lucide-react';
 import { useOnboardingInstances } from '../../hooks';
+import { useAuth } from '../../config/authContext';
+import { logActivity } from '../../services/supabase';
 import { ProgressBar } from '../ui/ProgressBar';
+import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
+import type { OnboardingInstance } from '../../types';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'on_hold';
 
@@ -64,8 +69,52 @@ function getEmptyMessage(filter: StatusFilter): string {
  * Includes a four-option status filter (All / Active / Completed / On Hold).
  */
 export function NewHiresPanel() {
-  const { data, isLoading, error } = useOnboardingInstances();
+  const { data, isLoading, error, removeInstance } = useOnboardingInstances();
+  const { user: authUser } = useAuth();
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [instanceToDelete, setInstanceToDelete] = useState<OnboardingInstance | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  /** Helper to get initials for activity logging */
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  /** Show a success toast that auto-dismisses after 3 seconds */
+  const showSuccess = (message: string) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  /** Handle confirming an instance deletion */
+  const handleDeleteConfirm = async () => {
+    if (!instanceToDelete) return;
+    setIsDeleting(true);
+    try {
+      await removeInstance(instanceToDelete.id);
+      // Fire-and-forget activity log
+      const currentUserId = authUser?.uid ?? 'unknown';
+      logActivity({
+        userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        action: `Deleted onboarding for ${instanceToDelete.employeeName}`,
+        timeAgo: 'just now',
+        userId: currentUserId,
+      }).catch(() => {});
+      showSuccess('Onboarding instance deleted successfully');
+      setInstanceToDelete(null);
+    } catch (err) {
+      // Error is handled by the store; just close the dialog
+      setInstanceToDelete(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const filteredInstances = useMemo(
     () => (filter === 'all' ? data : data.filter((inst) => inst.status === filter)),
@@ -147,6 +196,15 @@ export function NewHiresPanel() {
         </div>
       )}
 
+      {/* Success Toast */}
+      {successMessage && (
+        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+          <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+            {successMessage}
+          </p>
+        </div>
+      )}
+
       {/* Empty State */}
       {!isLoading && !error && filteredInstances.length === 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-8 text-center">
@@ -189,6 +247,9 @@ export function NewHiresPanel() {
                   </th>
                   <th className="px-6 py-3 text-left font-semibold text-slate-700 dark:text-slate-200">
                     Start Date
+                  </th>
+                  <th className="px-6 py-3 text-right font-semibold text-slate-700 dark:text-slate-200">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -237,6 +298,16 @@ export function NewHiresPanel() {
                         {formatDate(instance.startDate)}
                       </span>
                     </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => setInstanceToDelete(instance)}
+                        className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        aria-label={`Delete onboarding for ${instance.employeeName}`}
+                        title="Delete onboarding instance"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -244,6 +315,23 @@ export function NewHiresPanel() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        isOpen={instanceToDelete !== null}
+        title="Delete Onboarding Instance"
+        message={
+          instanceToDelete
+            ? `Are you sure you want to delete the onboarding for "${instanceToDelete.employeeName}"? This will remove all associated steps and data. This action cannot be undone.`
+            : ''
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setInstanceToDelete(null)}
+        isLoading={isDeleting}
+        isDangerous
+      />
     </div>
   );
 }

@@ -59,14 +59,37 @@ const mockInstances: OnboardingInstance[] = [
 // Mocks
 // ---------------------------------------------------------------------------
 
-let mockReturn: { data: OnboardingInstance[]; isLoading: boolean; error: Error | null } = {
+const mockRemoveInstance = vi.fn();
+const mockLogActivity = vi.fn();
+
+let mockReturn: {
+  data: OnboardingInstance[];
+  isLoading: boolean;
+  error: Error | null;
+  removeInstance: ReturnType<typeof vi.fn>;
+} = {
   data: mockInstances,
   isLoading: false,
   error: null,
+  removeInstance: mockRemoveInstance,
 };
 
 vi.mock('../../hooks', () => ({
   useOnboardingInstances: () => mockReturn,
+}));
+
+vi.mock('../../config/authContext', () => ({
+  useAuth: () => ({
+    user: { uid: 'test-manager', email: 'manager@example.com', role: 'manager' },
+    role: 'manager',
+    loading: false,
+    isAuthenticated: true,
+    signOut: vi.fn(),
+  }),
+}));
+
+vi.mock('../../services/supabase', () => ({
+  logActivity: (...args: unknown[]) => mockLogActivity(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -76,7 +99,14 @@ vi.mock('../../hooks', () => ({
 describe('NewHiresPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockReturn = { data: mockInstances, isLoading: false, error: null };
+    mockRemoveInstance.mockResolvedValue(undefined);
+    mockLogActivity.mockResolvedValue(undefined);
+    mockReturn = {
+      data: mockInstances,
+      isLoading: false,
+      error: null,
+      removeInstance: mockRemoveInstance,
+    };
   });
 
   // ---- Rendering Tests ----
@@ -191,21 +221,21 @@ describe('NewHiresPanel', () => {
 
   describe('States', () => {
     it('shows loading spinner when isLoading is true', () => {
-      mockReturn = { data: [], isLoading: true, error: null };
+      mockReturn = { data: [], isLoading: true, error: null, removeInstance: mockRemoveInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText('Loading onboarding data...')).toBeInTheDocument();
     });
 
     it('shows error message when error is present', () => {
-      mockReturn = { data: [], isLoading: false, error: new Error('Failed to fetch') };
+      mockReturn = { data: [], isLoading: false, error: new Error('Failed to fetch'), removeInstance: mockRemoveInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText('Failed to fetch')).toBeInTheDocument();
     });
 
     it('shows empty state when no instances', () => {
-      mockReturn = { data: [], isLoading: false, error: null };
+      mockReturn = { data: [], isLoading: false, error: null, removeInstance: mockRemoveInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText(/no new hires/i)).toBeInTheDocument();
@@ -217,6 +247,7 @@ describe('NewHiresPanel', () => {
         data: [mockInstances[0]], // Only Alice (active)
         isLoading: false,
         error: null,
+        removeInstance: mockRemoveInstance,
       };
       const user = userEvent.setup();
       render(<NewHiresPanel />);
@@ -224,6 +255,80 @@ describe('NewHiresPanel', () => {
       await user.click(screen.getByRole('button', { name: /completed/i }));
 
       expect(screen.getByText(/no completed new hires/i)).toBeInTheDocument();
+    });
+  });
+
+  // ---- Delete Tests ----
+
+  describe('Delete', () => {
+    it('renders delete button for each row', () => {
+      render(<NewHiresPanel />);
+
+      expect(
+        screen.getByRole('button', { name: /delete onboarding for alice smith/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /delete onboarding for bob johnson/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /delete onboarding for charlie brown/i })
+      ).toBeInTheDocument();
+    });
+
+    it('renders Actions column header', () => {
+      render(<NewHiresPanel />);
+
+      expect(screen.getByText('Actions')).toBeInTheDocument();
+    });
+
+    it('opens confirmation dialog on delete button click', async () => {
+      const user = userEvent.setup();
+      render(<NewHiresPanel />);
+
+      await user.click(
+        screen.getByRole('button', { name: /delete onboarding for alice smith/i })
+      );
+
+      // Dialog should be visible with the employee name
+      expect(screen.getByText('Delete Onboarding Instance')).toBeInTheDocument();
+      expect(screen.getByText(/alice smith/i, { selector: '#dialog-description' })).toBeInTheDocument();
+    });
+
+    it('calls removeInstance on confirm and shows success toast', async () => {
+      const user = userEvent.setup();
+      render(<NewHiresPanel />);
+
+      // Open the dialog
+      await user.click(
+        screen.getByRole('button', { name: /delete onboarding for alice smith/i })
+      );
+
+      // Click confirm
+      await user.click(screen.getByRole('button', { name: /^delete$/i }));
+
+      expect(mockRemoveInstance).toHaveBeenCalledWith('inst-1');
+      expect(screen.getByText('Onboarding instance deleted successfully')).toBeInTheDocument();
+    });
+
+    it('closes dialog on cancel without calling removeInstance', async () => {
+      const user = userEvent.setup();
+      render(<NewHiresPanel />);
+
+      // Open the dialog
+      await user.click(
+        screen.getByRole('button', { name: /delete onboarding for alice smith/i })
+      );
+
+      // Verify dialog is open
+      expect(screen.getByText('Delete Onboarding Instance')).toBeInTheDocument();
+
+      // Click cancel
+      await user.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+      // Dialog should be closed
+      expect(screen.queryByText('Delete Onboarding Instance')).not.toBeInTheDocument();
+      // removeInstance should NOT have been called
+      expect(mockRemoveInstance).not.toHaveBeenCalled();
     });
   });
 });
