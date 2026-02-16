@@ -153,6 +153,7 @@ describe('toInstance', () => {
       progress: 50,
       status: 'active',
       created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-15T00:00:00.000Z',
       start_date: '2026-02-01T00:00:00.000Z',
       completed_at: null,
       template_snapshots: null,
@@ -170,6 +171,7 @@ describe('toInstance', () => {
     expect(inst.templateId).toBe('tpl-1');
     expect(inst.progress).toBe(50);
     expect(inst.status).toBe('active');
+    expect(inst.updatedAt).toBe(new Date('2026-01-15T00:00:00.000Z').getTime());
     expect(inst.startDate).toBe(new Date('2026-02-01T00:00:00.000Z').getTime());
     expect(inst.completedAt).toBeUndefined();
     expect(inst.steps).toHaveLength(2);

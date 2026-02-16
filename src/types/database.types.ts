@@ -201,6 +201,7 @@ export interface Database {
           progress: number;
           status: string;
           created_at: string;
+          updated_at: string;
           start_date: string | null;
           completed_at: string | null;
           template_snapshots: Json | null;
@@ -215,6 +216,7 @@ export interface Database {
           progress?: number;
           status?: string;
           created_at?: string;
+          updated_at?: string;
           start_date?: string | null;
           completed_at?: string | null;
           template_snapshots?: Json | null;
@@ -229,6 +231,7 @@ export interface Database {
           progress?: number;
           status?: string;
           created_at?: string;
+          updated_at?: string;
           start_date?: string | null;
           completed_at?: string | null;
           template_snapshots?: Json | null;

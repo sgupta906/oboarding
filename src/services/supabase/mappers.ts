@@ -161,6 +161,7 @@ export function toInstance(row: InstanceRow, stepRows: InstanceStepRow[]): Onboa
       .sort((a, b) => a.position - b.position)
       .map(toStep),
     createdAt: toUnixMs(row.created_at),
+    updatedAt: toOptionalUnixMs(row.updated_at),
     startDate: toOptionalUnixMs(row.start_date),
     completedAt: toOptionalUnixMs(row.completed_at),
     progress: row.progress,

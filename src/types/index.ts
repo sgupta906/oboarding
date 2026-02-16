@@ -267,6 +267,7 @@ export interface OnboardingInstance {
   templateId: string;
   steps: Step[];
   createdAt: number; // Unix timestamp
+  updatedAt?: number; // Unix timestamp, set by DB trigger on every update
   startDate?: number; // Unix timestamp for employee's start date, optional
   completedAt?: number; // Unix timestamp when onboarding was completed
   progress: number; // 0-100 percentage
