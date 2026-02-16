@@ -1,14 +1,16 @@
 /**
  * useOnboardingInstances Hook - Subscribes to all onboarding instances
- * Manages subscription lifecycle and provides loading/error states
+ * Reads from the shared Zustand store, ensuring all consumers share
+ * a single Supabase Realtime subscription via ref-counting.
  *
  * Performance: Accepts enabled parameter to conditionally enable the subscription
  */
 
-import { useEffect, useState } from 'react';
-import { subscribeToOnboardingInstances } from '../services/supabase';
+import { useEffect } from 'react';
+import { useOnboardingStore } from '../store';
 import type { OnboardingInstance } from '../types';
 
+/** Return type for the useOnboardingInstances hook */
 interface UseOnboardingInstancesReturn {
   data: OnboardingInstance[];
   isLoading: boolean;
@@ -16,46 +18,26 @@ interface UseOnboardingInstancesReturn {
 }
 
 /**
- * Custom hook for subscribing to all onboarding instances
- * Automatically manages subscription and cleanup on unmount
+ * Custom hook for subscribing to all onboarding instances.
+ * Reads from the shared Zustand store -- multiple consumers share
+ * a single underlying Supabase Realtime subscription.
  * @param enabled - Whether to enable the subscription (default: true)
  * @returns Object with instances data, loading state, and error state
  */
 export function useOnboardingInstances(enabled: boolean = true): UseOnboardingInstancesReturn {
-  const [data, setData] = useState<OnboardingInstance[]>([]);
-  const [isLoading, setIsLoading] = useState(enabled);
-  const [error, setError] = useState<Error | null>(null);
+  const instances = useOnboardingStore((s) => s.instances);
+  const isLoading = useOnboardingStore((s) => s.instancesLoading);
+  const error = useOnboardingStore((s) => s.instancesError);
 
   useEffect(() => {
-    // Skip subscription if not enabled
-    if (!enabled) {
-      setData([]);
-      setIsLoading(false);
-      setError(null);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    let unsubscribe: (() => void) | null = null;
-
-    try {
-      unsubscribe = subscribeToOnboardingInstances((instances) => {
-        setData(instances);
-        setIsLoading(false);
-      });
-    } catch (err) {
-      const normalized = err instanceof Error ? err : new Error(String(err));
-      setError(normalized);
-      setIsLoading(false);
-    }
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
+    if (!enabled) return;
+    const unsub = useOnboardingStore.getState()._startInstancesSubscription();
+    return unsub;
   }, [enabled]);
 
-  return { data, isLoading, error };
+  return {
+    data: enabled ? instances : [],
+    isLoading: enabled ? isLoading : false,
+    error: enabled ? error : null,
+  };
 }
