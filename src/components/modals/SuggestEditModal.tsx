@@ -63,12 +63,12 @@ export function SuggestEditModal({
 
   const footer = (
     <div className="flex justify-between items-center gap-3">
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         {charCount > 0 && (
           <>
             {charCount}/{MAX_LENGTH} characters
             {isTooShort && (
-              <span className="text-amber-600 ml-2">
+              <span className="text-amber-600 dark:text-amber-400 ml-2">
                 (minimum {MIN_LENGTH} required)
               </span>
             )}
@@ -79,7 +79,7 @@ export function SuggestEditModal({
         <button
           onClick={handleClose}
           disabled={isSubmitting}
-          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+          className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-600 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
           aria-label="Cancel and close modal"
         >
           Cancel
@@ -118,7 +118,7 @@ export function SuggestEditModal({
       onClose={handleClose}
       footer={footer}
     >
-      <p className="text-sm text-slate-600 mb-4">
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
         Found an issue with <strong>"{step.title}"</strong>? Help us improve it for the next hire!
       </p>
 
@@ -127,10 +127,10 @@ export function SuggestEditModal({
           <textarea
             className={`w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 min-h-[120px] transition-colors duration-200 resize-none ${
               showValidation && isTooShort
-                ? 'border-amber-300 bg-amber-50 focus:ring-amber-500'
+                ? 'border-amber-300 bg-amber-50 focus:ring-amber-500 dark:border-amber-500 dark:bg-amber-900/20'
                 : isValid || text.length === 0
-                  ? 'border-slate-200 focus:ring-brand-500 focus:border-transparent'
-                  : 'border-slate-200 focus:ring-brand-500 focus:border-transparent'
+                  ? 'border-slate-200 focus:ring-brand-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400'
+                  : 'border-slate-200 focus:ring-brand-500 focus:border-transparent dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-400'
             }`}
             placeholder="e.g., The screenshot is outdated, the button is actually green... (minimum 10 characters)"
             value={text}
@@ -152,9 +152,9 @@ export function SuggestEditModal({
 
         {/* Validation feedback */}
         {showValidation && isTooShort && text.trim().length > 0 && (
-          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-            <AlertCircle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-            <p id="suggestion-help" className="text-sm text-amber-700">
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700 rounded-lg flex items-start gap-2">
+            <AlertCircle size={16} className="text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p id="suggestion-help" className="text-sm text-amber-700 dark:text-amber-300">
               Please provide at least {MIN_LENGTH} characters (currently{' '}
               <strong>{text.trim().length}</strong>)
             </p>
@@ -163,9 +163,9 @@ export function SuggestEditModal({
 
         {/* Success state when valid */}
         {isValid && text.trim().length > 0 && (
-          <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-2">
-            <CheckCircle size={16} className="text-emerald-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-emerald-700">
+          <div className="mb-3 p-3 bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700 rounded-lg flex items-start gap-2">
+            <CheckCircle size={16} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">
               Looks good! Your suggestion will help improve onboarding. (Tip: Press Ctrl+Enter to submit)
             </p>
           </div>
