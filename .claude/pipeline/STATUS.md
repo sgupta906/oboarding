@@ -6,16 +6,16 @@
 
 ## Current State
 
-**Current Feature:** None (bugfix-round in progress)
-**Current Phase:** Ready for next feature
-**Next Command:** Select next bug to fix (see Known Bugs section)
+**Current Feature:** devauth-uuid-invalid (Bugs #7, #9)
+**Current Phase:** COMPLETE
+**Next Command:** Continue with remaining bugs from zustand-migration-bugfixes branch (Bug #8: user-form-clears-on-error)
 
 ### Pipeline Progress
-- [ ] /research
-- [ ] /plan
-- [ ] /implement
-- [ ] /test
-- [ ] /finalize
+- [x] /research
+- [x] /plan
+- [x] /implement
+- [x] /test
+- [x] /finalize
 
 ---
 
@@ -82,14 +82,59 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 
 | # | Bug | Priority | Symptom | Root Cause |
 |---|-----|----------|---------|------------|
-| 7 | `devauth-uuid-invalid` | **P0 CRITICAL** | Create User fails: `invalid input syntax for type uuid: "test-test-manager"` | Dev-auth generates non-UUID IDs (`test-${email.split('@')[0]}`), but `users.created_by` column requires UUID. Blocks ALL user creation in dev mode. Also causes BUG 9. |
+| 7 | `devauth-uuid-invalid` | **FIXED** | ~~Create User fails: `invalid input syntax for type uuid: "test-test-manager"`~~ | Fixed in commit 846f7d4 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users (`00000000-0000-4000-a000-00000000000X`), added service-layer guards, removed 'unknown' fallbacks. Testing verified all 3 roles generate valid UUIDs, user creation succeeds. |
 | 8 | `user-form-clears-on-error` | **P1 HIGH** | UserModal form clears all fields when server returns an error | `handleCreateSubmit` catches error without re-throwing; `UserModal` interprets resolved promise as success and calls `resetForm()` |
-| 9 | `users-table-always-empty` | **P1 HIGH** | Users tab shows "No users" despite 8+ active onboarding instances | Same root cause as bug 7 — dev-auth UIDs fail DB validation, so `users` table has no valid rows; REST query returns 400 |
+| 9 | `users-table-always-empty` | **FIXED** | ~~Users tab shows "No users" despite 8+ active onboarding instances~~ | Fixed in commit 846f7d4 - same root cause as bug 7. Valid UUIDs now allow PostgreSQL queries to succeed. Users table loads correctly and displays data. |
 | 10 | `users-error-persists` | **P2 MEDIUM** | Error banner stays visible after closing create modal | `usersError` in Zustand store not cleared on modal close; only `modalError` (local state) is cleared |
 | 11 | `users-tab-hmr-bounce` | **P2 MEDIUM** | Users tab intermittently switches to another tab | Vite HMR triggers `useAuth must be used within AuthProvider` errors, crashes component tree, resets `activeTab` state to default |
 | 12 | `users-duplicate-error-display` | **P3 LOW** | Error shown both inside modal AND behind modal simultaneously | Dual error channels — store sets `usersError` while component sets `modalError`; both rendered at same time |
 
 **Recommended fix order:** Bug 7 first (unblocks 9), then 8, 10, 11, 12.
+
+### Template UI Enhancements (discovered via Playwright scouting 2026-02-16)
+
+> Full report: `.claude/active-work/template-ui-scouting/bug-report.md`
+
+| # | Issue | Priority | Symptom | Root Cause / Fix |
+|---|-------|----------|---------|------------------|
+| 13 | `template-steps-cramped` | **FIXED** | ~~Steps area shows only ~1.5 steps at a time with real content~~ | Fixed in commit 6879d18 - removed `max-h-96` inner scroll, single ModalWrapper scroll surface |
+| 14 | `template-no-step-reorder` | **FIXED** | ~~Cannot insert step between existing steps or reorder~~ | Fixed in commit 6879d18 - added ChevronUp/ChevronDown buttons with boundary conditions |
+| 15 | `template-modal-too-narrow` | **FIXED** | ~~Modal cramped for complex templates~~ | Fixed in commit 6879d18 - widened from max-w-lg (512px) to max-w-2xl (672px), 31% wider |
+| 16 | `template-description-tiny` | **P2 MEDIUM** | Step description textarea too small and not resizable | `rows={2}` with `resize-none`; needs larger default + resizable |
+| 17 | `template-delete-overlap` | **P2 MEDIUM** | Trash icon overlaps step number badge, no delete confirmation | `absolute top-2 right-10` only 24px from badge at `right-2` |
+| 18 | `template-no-step-count` | **FIXED** | ~~No "Step X of Y" indicator~~ | Fixed in commit 6879d18 - added step count to section label "Onboarding Steps (N)" and badge per step |
+| 19 | `template-no-autoscroll` | **P3 LOW** | New steps added offscreen with no scroll-into-view | Missing `scrollIntoView()` after push |
+| 20 | `template-index-as-key` | **FIXED** | ~~Array index used as React key for steps~~ | Fixed in commit 6879d18 - replaced with stable _uid keys from incrementing counter |
+
+### Dark Mode Bugs (discovered via Playwright scouting 2026-02-16)
+
+> Full report: `.claude/active-work/darkmode-scouting/bug-report.md`
+
+| # | Issue | Priority | Component | Problem |
+|---|-------|----------|-----------|---------|
+| 21 | `darkmode-suggest-edit` | **FIXED** | ~~`SuggestEditModal.tsx`~~ | Fixed in commit 2ab9c7e - added `dark:` Tailwind CSS class variants to all elements (textarea, banners, footer), +8 tests (474 total) |
+| 22 | `darkmode-kpi-select` | **P1 HIGH** | `KPISection.tsx` | Profile filter `<select>` uses `text-gray-700` with no dark variant; invisible |
+| 23 | `darkmode-report-stuck` | **P1 HIGH** | `ReportStuckModal.tsx` | Zero `dark:` classes — all text light-only (`text-rose-900`, `text-slate-900`) |
+| 24 | `darkmode-template-delete` | **P1 HIGH** | `DeleteConfirmDialog.tsx` (templates) | Zero `dark:` classes on text colors |
+| 25 | `darkmode-action-bar` | **P1 HIGH** | `ActionBar.tsx` | Light background patches on buttons (`bg-slate-100`, `bg-emerald-50`) in dark mode |
+| 26 | `darkmode-step-timeline` | **P1 HIGH** | `StepTimeline.tsx` | Timeline connector lines and completion footer invisible in dark mode |
+| 27 | `darkmode-welcome-header` | **P2 MEDIUM** | `WelcomeHeader.tsx` | Dropdown options may have white-on-white text |
+
+### General UI Bugs (discovered via Playwright scouting 2026-02-16)
+
+> Full report: `.claude/active-work/ui-general-scouting/bug-report.md`
+
+| # | Issue | Priority | Symptom | Root Cause |
+|---|-------|----------|---------|------------|
+| 28 | `modal-stale-form-data` | **P1 HIGH** | Modal forms retain stale data from previous open/close cycles | Modal always mounted in React tree; useState persists across open/close. Need useEffect reset or conditional render |
+| 29 | `navbar-breaks-at-mobile` | **P2 MEDIUM** | At 375px, navbar loses brand name, templates button, dark mode toggle | No hamburger menu or responsive collapse |
+| 30 | `employee-selector-exposed` | **P2 MEDIUM** | Employee selector dropdown visible in Employee View + duplicate Sign Out buttons | Manager impersonation tool leaking into employee view |
+| 31 | `kpi-count-stale` | **P2 MEDIUM** | KPI "Active Onboardings" shows inconsistent counts between views | Caching or recomputation issue |
+| 32 | `dashboard-layout-imbalance` | **P3 LOW** | Documentation Feedback and Live Activity sections unbalanced | Layout proportions off |
+| 33 | `activity-initials-only` | **P3 LOW** | Activity feed shows only 2-letter initials, uniform blue — no full names | Missing name display |
+| 34 | `template-delete-no-label` | **P3 LOW** | Template delete button has no text label, only icon | Inconsistent with Edit/Duplicate which have labels |
+| 35 | `completed-step-strikethrough` | **P3 LOW** | Completed step description uses hard-to-read strikethrough | Poor readability |
+| 36 | `no-loading-skeleton` | **P3 LOW** | Plain text "Loading dashboard..." instead of skeleton/spinner | Missing loading state components |
 
 ### Low-Priority Cleanup (do incrementally, no dedicated pipeline run)
 
@@ -143,6 +188,9 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 22 | `realtime-websocket-fail` | 2026-02-16 | [pending] | Fixed P0 CRITICAL bug - dual-track auth for WebSocket (real Supabase session + mock auth coexist), added channel status logging to all Realtime subscriptions, +7 tests (432 total). Server-side config (enable Realtime, apply publication) needs manual verification. |
 | 23 | `newhire-create-no-refresh` | 2026-02-16 | 30a29c7 | Fixed P1 HIGH bug - added `_addInstance` action to Zustand store so newly created onboarding instances appear instantly in New Hires table without page reload, +3 tests (435 total) |
 | 24 | `no-instance-delete` | 2026-02-16 | 187b7ab | Fixed P3 LOW bug - added delete onboarding instance feature to New Hires table with Actions column, Trash2 button, DeleteConfirmationDialog, server-first delete pattern, success toast, fire-and-forget activity logging, +8 tests (443 total) |
+| 25 | `darkmode-suggest-edit` | 2026-02-16 | 2ab9c7e | Fixed P0 CRITICAL bug - added dark mode support to SuggestEditModal with dark: Tailwind class variants for textarea, validation banners, footer text, and Cancel button, +8 tests (474 total) |
+| 26 | `template-steps-ux` | 2026-02-16 | 6879d18 | Fixed 5 template UX bugs (#13, #14, #15, #18, #20) - removed inner scroll, added step reorder buttons (ChevronUp/ChevronDown), widened modal 31%, added step count indicators, replaced index-based React keys with stable UIDs, +10 tests (474 total) |
+| 27 | `devauth-uuid-invalid` | 2026-02-16 | 846f7d4 | Fixed P0 CRITICAL bugs #7 and #9 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users, added service-layer guards in 5 services, removed 'unknown' fallbacks in UsersPanel/NewHiresPanel, all 3 dev-auth roles now generate valid UUIDs, user creation succeeds, Users table loads correctly, +13 tests (474 total) |
 
 ---
 
