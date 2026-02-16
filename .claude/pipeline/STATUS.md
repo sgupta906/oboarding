@@ -6,14 +6,14 @@
 
 ## Current State
 
-**Current Feature:** darkmode-batch (Bugs #22-27)
-**Current Phase:** IMPLEMENTATION COMPLETE
-**Next Command:** `/test darkmode-batch`
+**Current Feature:** None — awaiting next assignment
+**Current Phase:** IDLE
+**Next Command:** Choose next bug from roadmap
 
 ### Pipeline Progress
-- [x] /research
-- [x] /plan
-- [x] /implement
+- [ ] /research
+- [ ] /plan
+- [ ] /implement
 - [ ] /test
 - [ ] /finalize
 
@@ -71,7 +71,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 2 | `realtime-websocket-fail` | **FIXED** | ~~Supabase Realtime WebSocket closes before connecting~~ | Fixed in commit [pending] - implemented dual-track auth so WebSocket receives JWT, added channel status logging for observability. Server-side Realtime config still needs manual verification. |
 | 3 | `instance-progress-not-computed` | **FIXED** | ~~After completing a step, instance `progress` stays 0%~~ | Resolved as side effect of Zustand migration — shared store ensures progress recomputation propagates to all views |
 | 4 | `newhire-create-no-refresh` | **FIXED** | ~~New Hires table doesn't refresh after creating a hire — only shows after full page reload~~ | Fixed in commit 30a29c7 - added `_addInstance` action to Zustand store, wired `useCreateOnboarding` to push new instance instantly |
-| 5 | `manager-markdone-broken` | **P2 MEDIUM** | "Mark as Done" in manager's Employee View does nothing | `handleStatusChange` uses `employeeInstance` (always null for managers) instead of `selectedInstance` — but managers shouldn't update employee steps anyway, so this may just need the button hidden/disabled for managers |
+| 5 | `manager-markdone-broken` | **FIXED** | ~~"Mark as Done" in manager's Employee View does nothing~~ | Fixed in commit 230b915 - threaded `readOnly` prop through OnboardingHub → EmployeeView → StepTimeline → StepCard → ActionBar. When true, ActionBar shows "View Only" with Eye icon instead of action buttons. |
 | 6 | `no-instance-delete` | **FIXED** | ~~No way to delete onboarding instances from New Hires table UI~~ | Fixed in commit 187b7ab - added Actions column with Trash2 delete button, DeleteConfirmationDialog, server-first delete via `_removeInstance` store action, +8 tests (443 total) |
 
 **Priority order:** P0 bugs (1-2) make the entire app non-functional. P1 bugs (3-4) break key workflows. P2-P3 are UX gaps.
@@ -126,7 +126,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 
 | # | Issue | Priority | Symptom | Root Cause |
 |---|-------|----------|---------|------------|
-| 28 | `modal-stale-form-data` | **P1 HIGH** | Modal forms retain stale data from previous open/close cycles | Modal always mounted in React tree; useState persists across open/close. Need useEffect reset or conditional render |
+| 28 | `modal-stale-form-data` | **FIXED** | ~~Modal forms retain stale data from previous open/close cycles~~ | Fixed in commit 230b915 - added useEffect reset hooks to 5 modals (CreateOnboardingModal, UserModal, RoleModal, TemplateModal, SuggestEditModal) that reset form state when isOpen becomes true. |
 | 29 | `navbar-breaks-at-mobile` | **P2 MEDIUM** | At 375px, navbar loses brand name, templates button, dark mode toggle | No hamburger menu or responsive collapse |
 | 30 | `employee-selector-exposed` | **P2 MEDIUM** | Employee selector dropdown visible in Employee View + duplicate Sign Out buttons | Manager impersonation tool leaking into employee view |
 | 31 | `kpi-count-stale` | **P2 MEDIUM** | KPI "Active Onboardings" shows inconsistent counts between views | Caching or recomputation issue |
@@ -192,6 +192,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 26 | `template-steps-ux` | 2026-02-16 | 6879d18 | Fixed 5 template UX bugs (#13, #14, #15, #18, #20) - removed inner scroll, added step reorder buttons (ChevronUp/ChevronDown), widened modal 31%, added step count indicators, replaced index-based React keys with stable UIDs, +10 tests (474 total) |
 | 27 | `devauth-uuid-invalid` | 2026-02-16 | 846f7d4 | Fixed P0 CRITICAL bugs #7 and #9 - created `src/utils/uuid.ts` with deterministic UUID generation for dev-auth users, added service-layer guards in 5 services, removed 'unknown' fallbacks in UsersPanel/NewHiresPanel, all 3 dev-auth roles now generate valid UUIDs, user creation succeeds, Users table loads correctly, +13 tests (474 total) |
 | 28 | `users-error-handling` | 2026-02-16 | 72f5fa2 | Fixed bugs #8, #10, #12 - re-throw errors in submit handlers so form fields retained on server error, clear store error on modal close via reset(), suppress duplicate error banners while modal open, +5 tests (489 total) |
+| 29 | `manager-modal-fixes` | 2026-02-16 | 230b915 | Fixed bugs #5 and #28 - threaded readOnly prop through component tree for manager "View Only" mode in Employee View, added useEffect reset hooks to 5 modals for form state cleanup on re-open, +7 tests (508 total) |
 
 ---
 
