@@ -1,16 +1,13 @@
 /**
  * useUsers Hook - Custom hook for user management
- * Provides CRUD operations for users with loading states and error handling
+ *
+ * Thin wrapper over the Zustand UsersSlice. Reads state via selectors
+ * and delegates CRUD operations to store actions. The realtime subscription
+ * is ref-counted in the store so multiple consumers share one channel.
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import {
-  getUser,
-  createUser,
-  updateUser,
-  deleteUser,
-  subscribeToUsers,
-} from '../services/supabase';
+import { useEffect, useCallback } from 'react';
+import { useOnboardingStore } from '../store';
 import type { User, UserFormData } from '../types';
 
 interface UseUsersReturn {
@@ -29,97 +26,42 @@ interface UseUsersReturn {
  * @returns Object with users list, loading state, error state, and CRUD functions
  */
 export function useUsers(): UseUsersReturn {
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const users = useOnboardingStore((s) => s.users);
+  const isLoading = useOnboardingStore((s) => s.usersLoading);
+  const error = useOnboardingStore((s) => s.usersError);
 
-  // Subscribe to real-time user updates
+  // Start the ref-counted subscription on mount, clean up on unmount
   useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-
-    const unsubscribe = subscribeToUsers((updatedUsers) => {
-      setUsers(updatedUsers);
-      setIsLoading(false);
-    });
-
-    return () => {
-      unsubscribe();
-    };
+    const unsub = useOnboardingStore.getState()._startUsersSubscription();
+    return unsub;
   }, []);
 
-  // Create a new user
-  const createNewUser = useCallback(async (data: UserFormData, createdBy: string): Promise<User> => {
-    setError(null);
-    try {
-      const newUser = await createUser({ ...data, createdBy }, createdBy);
-      // Immediately update local state to ensure UI reflects the new user
-      // The subscription will also fire, but this ensures immediate feedback
-      setUsers((prevUsers) => [...prevUsers, newUser]);
-      return newUser;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create user';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, []);
+  const createNewUser = useCallback(
+    (data: UserFormData, createdBy: string) =>
+      useOnboardingStore.getState()._createUser(data, createdBy),
+    []
+  );
 
-  // Update an existing user (with optimistic update and rollback)
-  const editUser = useCallback(async (userId: string, data: Partial<UserFormData>): Promise<void> => {
-    setError(null);
-    const snapshot = users;
-    // Optimistic update: apply patch to matching user immediately
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, ...data } : u)));
-    try {
-      await updateUser(userId, data);
-    } catch (err) {
-      // Rollback on error
-      setUsers(snapshot);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update user';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, [users]);
+  const editUser = useCallback(
+    (userId: string, data: Partial<UserFormData>) =>
+      useOnboardingStore.getState()._editUser(userId, data),
+    []
+  );
 
-  // Delete a user
-  const removeUser = useCallback(async (userId: string): Promise<void> => {
-    setError(null);
-    try {
-      await deleteUser(userId);
-      // Immediately update local state to remove the user from the list
-      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete user';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, []);
+  const removeUser = useCallback(
+    (userId: string) => useOnboardingStore.getState()._removeUser(userId),
+    []
+  );
 
-  // Fetch a single user by ID
-  const fetchUser = useCallback(async (userId: string): Promise<User | null> => {
-    setError(null);
-    try {
-      return await getUser(userId);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch user';
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }, []);
+  const fetchUser = useCallback(
+    (userId: string) => useOnboardingStore.getState()._fetchUser(userId),
+    []
+  );
 
-  // Reset error state
-  const reset = useCallback(() => {
-    setError(null);
-  }, []);
+  const reset = useCallback(
+    () => useOnboardingStore.getState()._resetUsersError(),
+    []
+  );
 
-  return {
-    users,
-    isLoading,
-    error,
-    createNewUser,
-    editUser,
-    removeUser,
-    fetchUser,
-    reset,
-  };
+  return { users, isLoading, error, createNewUser, editUser, removeUser, fetchUser, reset };
 }

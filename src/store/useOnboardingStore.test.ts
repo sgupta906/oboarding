@@ -14,16 +14,27 @@ const mockSubscribeToOnboardingInstances = vi.fn();
 const mockStepsUnsubscribe = vi.fn();
 const mockSubscribeToSteps = vi.fn();
 const mockUpdateStepStatus = vi.fn();
+const mockUsersUnsubscribe = vi.fn();
+const mockSubscribeToUsers = vi.fn();
+const mockCreateUser = vi.fn();
+const mockUpdateUser = vi.fn();
+const mockDeleteUser = vi.fn();
+const mockGetUser = vi.fn();
 
 vi.mock('../services/supabase', () => ({
   subscribeToOnboardingInstances: (...args: unknown[]) =>
     mockSubscribeToOnboardingInstances(...args),
   subscribeToSteps: (...args: unknown[]) => mockSubscribeToSteps(...args),
   updateStepStatus: (...args: unknown[]) => mockUpdateStepStatus(...args),
+  subscribeToUsers: (...args: unknown[]) => mockSubscribeToUsers(...args),
+  createUser: (...args: unknown[]) => mockCreateUser(...args),
+  updateUser: (...args: unknown[]) => mockUpdateUser(...args),
+  deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
+  getUser: (...args: unknown[]) => mockGetUser(...args),
 }));
 
 import { useOnboardingStore, resetStoreInternals } from './useOnboardingStore';
-import type { OnboardingInstance, Step } from '../types';
+import type { OnboardingInstance, Step, User } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -60,6 +71,21 @@ const makeStep = (
   link: '',
 });
 
+const makeUser = (
+  id: string,
+  name = 'Test User',
+  email = 'test@example.com'
+): User => ({
+  id,
+  email,
+  name,
+  roles: ['employee'],
+  profiles: ['Engineering'],
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  createdBy: 'admin-1',
+});
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -76,6 +102,9 @@ describe('useOnboardingStore', () => {
       stepsByInstance: {},
       stepsLoadingByInstance: {},
       stepsErrorByInstance: {},
+      users: [],
+      usersLoading: false,
+      usersError: null,
     });
     resetStoreInternals();
     vi.clearAllMocks();
@@ -91,6 +120,15 @@ describe('useOnboardingStore', () => {
     });
 
     mockUpdateStepStatus.mockResolvedValue(undefined);
+
+    // Default users mocks
+    mockSubscribeToUsers.mockImplementation(() => {
+      return mockUsersUnsubscribe;
+    });
+    mockCreateUser.mockResolvedValue(undefined);
+    mockUpdateUser.mockResolvedValue(undefined);
+    mockDeleteUser.mockResolvedValue(undefined);
+    mockGetUser.mockResolvedValue(null);
   });
 
   it('initializes with empty state', () => {
@@ -480,6 +518,255 @@ describe('useOnboardingStore', () => {
       // Starting again should create a new subscription (not be a no-op)
       useOnboardingStore.getState()._startStepsSubscription('inst-1');
       expect(mockSubscribeToSteps).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // UsersSlice
+  // -------------------------------------------------------------------------
+
+  describe('UsersSlice', () => {
+    it('initializes with empty users state', () => {
+      const state = useOnboardingStore.getState();
+
+      expect(state.users).toEqual([]);
+      expect(state.usersLoading).toBe(false);
+      expect(state.usersError).toBeNull();
+      expect(typeof state._startUsersSubscription).toBe('function');
+      expect(typeof state._createUser).toBe('function');
+      expect(typeof state._editUser).toBe('function');
+      expect(typeof state._removeUser).toBe('function');
+      expect(typeof state._fetchUser).toBe('function');
+      expect(typeof state._resetUsersError).toBe('function');
+    });
+
+    it('_startUsersSubscription calls subscribeToUsers', () => {
+      const cleanup = useOnboardingStore.getState()._startUsersSubscription();
+
+      expect(mockSubscribeToUsers).toHaveBeenCalledTimes(1);
+      expect(typeof cleanup).toBe('function');
+
+      // Store should be in loading state
+      expect(useOnboardingStore.getState().usersLoading).toBe(true);
+    });
+
+    it('subscription callback updates users and clears loading', () => {
+      // Capture the callback passed to subscribeToUsers
+      let capturedCallback: ((users: User[]) => void) | null = null;
+      mockSubscribeToUsers.mockImplementation(
+        (cb: (users: User[]) => void) => {
+          capturedCallback = cb;
+          return mockUsersUnsubscribe;
+        }
+      );
+
+      useOnboardingStore.getState()._startUsersSubscription();
+
+      expect(capturedCallback).not.toBeNull();
+
+      // Simulate subscription firing with data
+      const users = [makeUser('u-1', 'Alice'), makeUser('u-2', 'Bob')];
+      capturedCallback!(users);
+
+      const state = useOnboardingStore.getState();
+      expect(state.users).toEqual(users);
+      expect(state.usersLoading).toBe(false);
+    });
+
+    it('subscription error sets error string and clears loading', () => {
+      const testError = new Error('Users subscription failed');
+      mockSubscribeToUsers.mockImplementation(() => {
+        throw testError;
+      });
+
+      useOnboardingStore.getState()._startUsersSubscription();
+
+      const state = useOnboardingStore.getState();
+      expect(state.usersError).toBe('Users subscription failed');
+      expect(state.usersLoading).toBe(false);
+      expect(state.users).toEqual([]);
+    });
+
+    it('second start is no-op (subscribeToUsers called once)', () => {
+      const cleanup1 = useOnboardingStore.getState()._startUsersSubscription();
+      const cleanup2 = useOnboardingStore.getState()._startUsersSubscription();
+
+      expect(mockSubscribeToUsers).toHaveBeenCalledTimes(1);
+      expect(typeof cleanup1).toBe('function');
+      expect(typeof cleanup2).toBe('function');
+    });
+
+    it('cleanup decrements ref count', () => {
+      // Start two consumers
+      const cleanup1 = useOnboardingStore.getState()._startUsersSubscription();
+      const cleanup2 = useOnboardingStore.getState()._startUsersSubscription();
+
+      // First consumer cleans up
+      cleanup1();
+
+      // Unsubscribe should NOT have been called (still 1 consumer)
+      expect(mockUsersUnsubscribe).not.toHaveBeenCalled();
+
+      // Clean up second consumer
+      cleanup2();
+
+      // NOW unsubscribe should be called (last consumer)
+      expect(mockUsersUnsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('last cleanup unsubscribes and resets state', () => {
+      // Capture the callback to populate data
+      let capturedCallback: ((users: User[]) => void) | null = null;
+      mockSubscribeToUsers.mockImplementation(
+        (cb: (users: User[]) => void) => {
+          capturedCallback = cb;
+          return mockUsersUnsubscribe;
+        }
+      );
+
+      const cleanup = useOnboardingStore.getState()._startUsersSubscription();
+
+      // Populate data
+      capturedCallback!([makeUser('u-1')]);
+      expect(useOnboardingStore.getState().users).toHaveLength(1);
+
+      // Clean up last consumer
+      cleanup();
+
+      // Unsubscribe should be called
+      expect(mockUsersUnsubscribe).toHaveBeenCalledTimes(1);
+
+      // State should be reset
+      const state = useOnboardingStore.getState();
+      expect(state.users).toEqual([]);
+      expect(state.usersLoading).toBe(false);
+      expect(state.usersError).toBeNull();
+    });
+
+    it('double cleanup is safe (idempotent)', () => {
+      const cleanup = useOnboardingStore.getState()._startUsersSubscription();
+
+      cleanup();
+      cleanup(); // Should not throw or double-decrement
+
+      // Unsubscribe called exactly once
+      expect(mockUsersUnsubscribe).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-subscribe after full cleanup works', () => {
+      // First subscription cycle
+      const cleanup1 = useOnboardingStore.getState()._startUsersSubscription();
+      cleanup1();
+
+      expect(mockSubscribeToUsers).toHaveBeenCalledTimes(1);
+      expect(mockUsersUnsubscribe).toHaveBeenCalledTimes(1);
+
+      // Second subscription cycle
+      const cleanup2 = useOnboardingStore.getState()._startUsersSubscription();
+
+      // Should start a new subscription
+      expect(mockSubscribeToUsers).toHaveBeenCalledTimes(2);
+      expect(useOnboardingStore.getState().usersLoading).toBe(true);
+
+      cleanup2();
+      expect(mockUsersUnsubscribe).toHaveBeenCalledTimes(2);
+    });
+
+    it('_createUser appends to array and returns user', async () => {
+      const newUser = makeUser('u-new', 'New User', 'new@example.com');
+      mockCreateUser.mockResolvedValue(newUser);
+
+      // Pre-populate store with one user
+      useOnboardingStore.setState({
+        users: [makeUser('u-1', 'Existing', 'existing@example.com')],
+      });
+
+      const result = await useOnboardingStore
+        .getState()
+        ._createUser(
+          { email: 'new@example.com', name: 'New User', roles: ['employee'] },
+          'admin-1'
+        );
+
+      expect(result).toEqual(newUser);
+      expect(useOnboardingStore.getState().users).toHaveLength(2);
+      expect(useOnboardingStore.getState().users[1]).toEqual(newUser);
+      expect(mockCreateUser).toHaveBeenCalledWith(
+        {
+          email: 'new@example.com',
+          name: 'New User',
+          roles: ['employee'],
+          createdBy: 'admin-1',
+        },
+        'admin-1'
+      );
+    });
+
+    it('_createUser sets error string on failure', async () => {
+      mockCreateUser.mockRejectedValue(new Error('Email already exists'));
+
+      await expect(
+        useOnboardingStore
+          .getState()
+          ._createUser(
+            { email: 'dup@example.com', name: 'Dup', roles: ['employee'] },
+            'admin-1'
+          )
+      ).rejects.toThrow('Email already exists');
+
+      expect(useOnboardingStore.getState().usersError).toBe(
+        'Email already exists'
+      );
+    });
+
+    it('_editUser applies optimistic update and rolls back on error', async () => {
+      const user1 = makeUser('u-1', 'Alice', 'alice@example.com');
+      const user2 = makeUser('u-2', 'Bob', 'bob@example.com');
+      useOnboardingStore.setState({ users: [user1, user2] });
+
+      // Server will fail
+      mockUpdateUser.mockRejectedValue(new Error('Update failed'));
+
+      const promise = useOnboardingStore
+        .getState()
+        ._editUser('u-1', { name: 'Alice Updated' });
+
+      // Optimistic update should be applied synchronously
+      expect(useOnboardingStore.getState().users[0].name).toBe(
+        'Alice Updated'
+      );
+      // Other user unchanged
+      expect(useOnboardingStore.getState().users[1].name).toBe('Bob');
+
+      // Wait for server error and rollback
+      await expect(promise).rejects.toThrow('Update failed');
+
+      // Should have rolled back
+      expect(useOnboardingStore.getState().users[0].name).toBe('Alice');
+      expect(useOnboardingStore.getState().usersError).toBe('Update failed');
+    });
+
+    it('_removeUser removes from array after server call', async () => {
+      const user1 = makeUser('u-1', 'Alice', 'alice@example.com');
+      const user2 = makeUser('u-2', 'Bob', 'bob@example.com');
+      useOnboardingStore.setState({ users: [user1, user2] });
+
+      mockDeleteUser.mockResolvedValue(undefined);
+
+      await useOnboardingStore.getState()._removeUser('u-1');
+
+      expect(mockDeleteUser).toHaveBeenCalledWith('u-1');
+      const state = useOnboardingStore.getState();
+      expect(state.users).toHaveLength(1);
+      expect(state.users[0].id).toBe('u-2');
+    });
+
+    it('_resetUsersError clears error', () => {
+      useOnboardingStore.setState({ usersError: 'Some error' });
+
+      useOnboardingStore.getState()._resetUsersError();
+
+      expect(useOnboardingStore.getState().usersError).toBeNull();
     });
   });
 });

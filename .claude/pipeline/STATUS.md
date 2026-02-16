@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** `zustand-users`
+**Current Feature:** `zustand-activities`
 **Current Phase:** Awaiting /research
-**Next Command:** `/research zustand-users`
+**Next Command:** `/research zustand-activities`
 
 ### Pipeline Progress
 - [ ] /research
@@ -37,8 +37,8 @@ Each slice is its own pipeline run (`/research → /plan → /implement → /tes
 |---|---------|-------|---------------|--------|
 | 1 | `zustand-store` | Store setup + instances slice | Install Zustand, create store with `instances` slice, migrate `useOnboardingInstances` + `useEmployeeOnboarding`. Fixes `realtime-status-sync` and `employee-dropdown-sync`. | **Complete** |
 | 2 | `zustand-steps` | Steps slice | Add `steps` slice to store, migrate `useSteps`. Fixes `step-button-fix` (optimistic update race). | **Complete** |
-| 3 | `zustand-users` | Users slice | Add `users` slice, migrate `useUsers`. Eliminates duplicate user subscriptions. | **Next** |
-| 4 | `zustand-activities` | Activities + suggestions slices | Add remaining slices, migrate `useActivities`, `useSuggestions`. Eliminates prop drilling for suggestions. | Queued |
+| 3 | `zustand-users` | Users slice | Add `users` slice, migrate `useUsers`. Eliminates duplicate user subscriptions. | **Complete** |
+| 4 | `zustand-activities` | Activities + suggestions slices | Add remaining slices, migrate `useActivities`, `useSuggestions`. Eliminates prop drilling for suggestions. | **Next** |
 | 5 | `zustand-cleanup` | Remove old hooks + slim OnboardingHub | Delete migrated hooks, slim god component to thin router. Final cleanup pass. | Queued |
 
 After each slice: old hooks that aren't migrated yet keep working unchanged. Only the migrated slice uses the store.
@@ -121,6 +121,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 15 | `restore-users-tab` | 2026-02-15 | 6bb3343 | Restored Users tab as 4th tab in manager dashboard, UsersPanel component (346 lines) with CRUD operations, +12 tests (350 total) |
 | 16 | `zustand-store` | 2026-02-15 | [pending] | Zustand store with instances slice, migrated useOnboardingInstances + useEmployeeOnboarding, fixes realtime-status-sync and employee-dropdown-sync bugs, +20 tests (370 total) |
 | 17 | `zustand-steps` | 2026-02-16 | [pending] | Steps slice migration, migrated useSteps hook, fixes step-button-fix race condition, per-instanceId subscriptions, +14 tests (384 total) |
+| 18 | `zustand-users` | 2026-02-16 | [pending] | Users slice migration, migrated useUsers hook with ref-counted subscriptions, optimistic edit + server-first delete, -58 lines in hook, +14 tests (398 total) |
 
 ---
 

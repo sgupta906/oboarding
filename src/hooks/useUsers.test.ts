@@ -8,6 +8,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useUsers } from './useUsers';
 import * as userOps from '../services/supabase';
 import type { User, UserFormData } from '../types';
+import { useOnboardingStore, resetStoreInternals } from '../store';
 
 // Mock the supabase service module
 vi.mock('../services/supabase', () => ({
@@ -45,6 +46,13 @@ describe('useUsers Hook', () => {
   ];
 
   beforeEach(() => {
+    // Reset store state and module-level ref-counting for test isolation
+    useOnboardingStore.setState({
+      users: [],
+      usersLoading: false,
+      usersError: null,
+    });
+    resetStoreInternals();
     vi.clearAllMocks();
   });
 

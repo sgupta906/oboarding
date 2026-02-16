@@ -1,20 +1,32 @@
 /**
- * useOnboardingStore - Zustand store for onboarding instance data
+ * useOnboardingStore - Zustand store for onboarding data
  *
- * Provides a single source of truth for all onboarding instances,
- * replacing per-component subscriptions with one ref-counted Supabase
- * Realtime subscription shared across all consumers.
+ * Provides a single source of truth for onboarding instances, steps, and users,
+ * replacing per-component subscriptions with ref-counted Supabase
+ * Realtime subscriptions shared across all consumers.
  *
- * Future slices (steps, users, activities) extend this store
- * via intersection types: `OnboardingStore = InstancesSlice & StepsSlice & ...`
+ * Slices: InstancesSlice, StepsSlice, UsersSlice
+ * Future slices (activities, suggestions) extend this store
+ * via intersection types: `OnboardingStore = InstancesSlice & StepsSlice & UsersSlice & ...`
  */
 
 import { create } from 'zustand';
-import type { OnboardingInstance, Step, StepStatus } from '../types';
+import type {
+  OnboardingInstance,
+  Step,
+  StepStatus,
+  User,
+  UserFormData,
+} from '../types';
 import {
   subscribeToOnboardingInstances,
   subscribeToSteps,
   updateStepStatus,
+  subscribeToUsers,
+  createUser,
+  updateUser,
+  deleteUser,
+  getUser,
 } from '../services/supabase';
 
 // ============================================================================
@@ -63,11 +75,34 @@ export interface StepsSlice {
   ) => Promise<void>;
 }
 
+/** State and actions for the users slice (flat array, scalar ref-counting) */
+export interface UsersSlice {
+  /** All system users from the realtime subscription */
+  users: User[];
+  /** Whether the initial data load is in progress */
+  usersLoading: boolean;
+  /** Error from subscription setup or CRUD operations (string, not Error) */
+  usersError: string | null;
+
+  /** Starts the ref-counted users subscription. Returns cleanup function. */
+  _startUsersSubscription: () => () => void;
+  /** Creates a user, appends to local state. Re-throws on error. */
+  _createUser: (data: UserFormData, createdBy: string) => Promise<User>;
+  /** Optimistic update + rollback on error. Re-throws on error. */
+  _editUser: (userId: string, data: Partial<UserFormData>) => Promise<void>;
+  /** Deletes via server, then removes from local state. Re-throws on error. */
+  _removeUser: (userId: string) => Promise<void>;
+  /** Fetches single user from server. Does not modify store state. Re-throws on error. */
+  _fetchUser: (userId: string) => Promise<User | null>;
+  /** Clears usersError. */
+  _resetUsersError: () => void;
+}
+
 /**
  * Combined store type. Future slices are added via intersection:
- * `type OnboardingStore = InstancesSlice & StepsSlice & UsersSlice;`
+ * `type OnboardingStore = InstancesSlice & StepsSlice & UsersSlice & ...;`
  */
-export type OnboardingStore = InstancesSlice & StepsSlice;
+export type OnboardingStore = InstancesSlice & StepsSlice & UsersSlice;
 
 // ============================================================================
 // Module-level subscription lifecycle (ref-counted)
@@ -81,8 +116,14 @@ const stepsRefCounts: Map<string, number> = new Map();
 /** Per-instanceId cleanup functions for steps subscriptions */
 const stepsCleanups: Map<string, () => void> = new Map();
 
+/** Scalar ref count for the global users subscription */
+let usersRefCount = 0;
+/** Cleanup function for the active users subscription */
+let usersCleanup: (() => void) | null = null;
+
 /**
  * Resets module-level ref-counting state for test isolation.
+ * Clears instances, steps, and users ref-counts and cleanup functions.
  * Only call this from test `beforeEach` blocks.
  */
 export function resetStoreInternals(): void {
@@ -99,6 +140,13 @@ export function resetStoreInternals(): void {
   }
   stepsRefCounts.clear();
   stepsCleanups.clear();
+
+  // Reset users ref-counting
+  usersRefCount = 0;
+  if (usersCleanup) {
+    usersCleanup();
+    usersCleanup = null;
+  }
 }
 
 // ============================================================================
@@ -262,5 +310,109 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       }));
       throw err;
     }
+  },
+
+  // -- UsersSlice state --
+  users: [],
+  usersLoading: false,
+  usersError: null,
+
+  _startUsersSubscription: () => {
+    usersRefCount++;
+
+    if (usersRefCount === 1) {
+      // First consumer -- start the real subscription
+      set({ usersLoading: true, usersError: null });
+
+      try {
+        usersCleanup = subscribeToUsers((users: User[]) => {
+          set({ users, usersLoading: false });
+        });
+      } catch (err) {
+        set({
+          usersError: err instanceof Error ? err.message : String(err),
+          usersLoading: false,
+        });
+      }
+    }
+
+    // Return a cleanup function guarded against double invocation
+    let cleaned = false;
+    return () => {
+      if (cleaned) return;
+      cleaned = true;
+      usersRefCount--;
+
+      if (usersRefCount === 0 && usersCleanup) {
+        usersCleanup();
+        usersCleanup = null;
+        // Reset state when no consumers remain
+        set({ users: [], usersLoading: false, usersError: null });
+      }
+    };
+  },
+
+  _createUser: async (data: UserFormData, createdBy: string) => {
+    set({ usersError: null });
+    try {
+      const newUser = await createUser({ ...data, createdBy }, createdBy);
+      set((state) => ({ users: [...state.users, newUser] }));
+      return newUser;
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to create user';
+      set({ usersError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  _editUser: async (userId: string, data: Partial<UserFormData>) => {
+    set({ usersError: null });
+    const snapshot = get().users;
+    // Optimistic update
+    set((state) => ({
+      users: state.users.map((u) =>
+        u.id === userId ? { ...u, ...data } : u
+      ),
+    }));
+    try {
+      await updateUser(userId, data);
+    } catch (err) {
+      // Rollback on error
+      set({ users: snapshot });
+      const msg =
+        err instanceof Error ? err.message : 'Failed to update user';
+      set({ usersError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  _removeUser: async (userId: string) => {
+    set({ usersError: null });
+    try {
+      await deleteUser(userId);
+      set((state) => ({ users: state.users.filter((u) => u.id !== userId) }));
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to delete user';
+      set({ usersError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  _fetchUser: async (userId: string) => {
+    set({ usersError: null });
+    try {
+      return await getUser(userId);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to fetch user';
+      set({ usersError: msg });
+      throw new Error(msg);
+    }
+  },
+
+  _resetUsersError: () => {
+    set({ usersError: null });
   },
 }));

@@ -10,4 +10,5 @@ export type {
   OnboardingStore,
   InstancesSlice,
   StepsSlice,
+  UsersSlice,
 } from './useOnboardingStore';
