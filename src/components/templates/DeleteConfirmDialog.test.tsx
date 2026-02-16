@@ -90,3 +90,54 @@ describe('DeleteConfirmDialog Component', () => {
     }
   });
 });
+
+describe('DeleteConfirmDialog dark mode', () => {
+  const mockOnConfirm = vi.fn();
+  const mockOnCancel = vi.fn();
+
+  it('cancel button has dark mode classes', () => {
+    render(
+      <DeleteConfirmDialog
+        isOpen={true}
+        templateName="Test Template"
+        onConfirm={mockOnConfirm}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    expect(cancelButton.className).toContain('dark:text-slate-300');
+    expect(cancelButton.className).toContain('dark:hover:bg-slate-600');
+  });
+
+  it('message text has dark:text-slate-200', () => {
+    render(
+      <DeleteConfirmDialog
+        isOpen={true}
+        templateName="Test Template"
+        onConfirm={mockOnConfirm}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    const message = screen.getByText(/Are you sure you want to delete/);
+    expect(message.className).toContain('dark:text-slate-200');
+  });
+
+  it('light mode classes still present (regression)', () => {
+    render(
+      <DeleteConfirmDialog
+        isOpen={true}
+        templateName="Test Template"
+        onConfirm={mockOnConfirm}
+        onCancel={mockOnCancel}
+      />
+    );
+
+    const cancelButton = screen.getByRole('button', { name: /cancel/i });
+    expect(cancelButton.className).toContain('text-slate-700');
+
+    const subText = screen.getByText(/This action cannot be undone/);
+    expect(subText.className).toContain('text-slate-500');
+  });
+});

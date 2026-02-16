@@ -65,9 +65,9 @@ export function WelcomeHeader({
               className="bg-white/20 text-white border border-white/30 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 backdrop-blur-sm"
               aria-label="Filter steps by profile"
             >
-              <option value="all">All Roles</option>
+              <option value="all" className="text-slate-900 bg-white">All Roles</option>
               {profiles.map((profile) => (
-                <option key={profile.id} value={profile.id}>
+                <option key={profile.id} value={profile.id} className="text-slate-900 bg-white">
                   {profile.name}
                 </option>
               ))}

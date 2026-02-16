@@ -86,7 +86,7 @@ export function KPISection({
       {/* Profile Filter Dropdown */}
       {profiles.length > 0 && onProfileChange && (
         <div className="flex items-center gap-3">
-          <label htmlFor="kpi-profile-selector" className="font-medium text-gray-700">
+          <label htmlFor="kpi-profile-selector" className="font-medium text-slate-700 dark:text-slate-200">
             Filter by Profile:
           </label>
           <select
@@ -97,7 +97,7 @@ export function KPISection({
                 onProfileChange(e.target.value);
               }
             }}
-            className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="border border-slate-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
             aria-label="Filter KPIs by profile"
           >
             <option value="all">All Profiles</option>

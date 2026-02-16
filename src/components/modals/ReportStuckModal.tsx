@@ -33,7 +33,7 @@ export function ReportStuckModal({
       <button
         onClick={onClose}
         disabled={isSubmitting}
-        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+        className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 dark:text-slate-300 dark:hover:text-slate-100 dark:hover:bg-slate-600"
         aria-label="Cancel without reporting"
       >
         Cancel
@@ -71,30 +71,30 @@ export function ReportStuckModal({
       footer={footer}
     >
       <div className="space-y-4">
-        <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg">
+        <div className="flex items-start gap-3 p-3 bg-rose-50 border border-rose-200 rounded-lg dark:bg-rose-900/20 dark:border-rose-800">
           <AlertTriangle
             size={20}
-            className="text-rose-600 flex-shrink-0 mt-0.5"
+            className="text-rose-600 flex-shrink-0 mt-0.5 dark:text-rose-400"
             aria-hidden="true"
           />
           <div>
-            <p className="text-sm font-semibold text-rose-900">You're stuck on a step</p>
-            <p className="text-sm text-rose-700 mt-1">
+            <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">You're stuck on a step</p>
+            <p className="text-sm text-rose-700 mt-1 dark:text-rose-300">
               We understand this can be frustrating. Let's get you the help you need.
             </p>
           </div>
         </div>
 
-        <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+        <div className="border border-slate-200 rounded-lg p-4 space-y-3 dark:border-slate-600">
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">
               Step
             </p>
-            <p className="text-sm font-medium text-slate-900 mt-1">{step.title}</p>
+            <p className="text-sm font-medium text-slate-900 mt-1 dark:text-white">{step.title}</p>
           </div>
 
-          <div className="pt-3 border-t border-slate-200">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-600">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide dark:text-slate-400">
               Expert Being Notified
             </p>
             <div className="flex items-center gap-2 mt-2">
@@ -102,26 +102,26 @@ export function ReportStuckModal({
                 {step.expert.charAt(0)}
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900">{step.expert}</p>
-                <p className="text-xs text-slate-600">Subject Matter Expert</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">{step.expert}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400">Subject Matter Expert</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
           <Clock
             size={16}
-            className="text-blue-600 flex-shrink-0 mt-0.5"
+            className="text-blue-600 flex-shrink-0 mt-0.5 dark:text-blue-400"
             aria-hidden="true"
           />
-          <p className="text-sm text-blue-700">
+          <p className="text-sm text-blue-700 dark:text-blue-300">
             <strong>{step.expert}</strong> will be notified immediately and will reach
             out to you within the next 2 hours.
           </p>
         </div>
 
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-slate-600 dark:text-slate-400">
           By confirming, you acknowledge that you have reviewed the step content and are
           unable to proceed without expert assistance.
         </p>
