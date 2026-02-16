@@ -13,9 +13,11 @@ const mockUpdateStepStatus = vi.fn();
 vi.mock('../services/supabase', () => ({
   subscribeToSteps: (...args: any[]) => mockSubscribeToSteps(...args),
   updateStepStatus: (...args: any[]) => mockUpdateStepStatus(...args),
+  subscribeToOnboardingInstances: vi.fn(() => () => {}),
 }));
 
 import { useSteps } from './useSteps';
+import { resetStoreInternals, useOnboardingStore } from '../store';
 import type { Step } from '../types';
 
 const makeStep = (id: number, status: 'pending' | 'completed' | 'stuck' = 'pending'): Step => ({
@@ -31,6 +33,13 @@ const makeStep = (id: number, status: 'pending' | 'completed' | 'stuck' = 'pendi
 
 describe('useSteps', () => {
   beforeEach(() => {
+    // Reset store state and ref-counting before clearing mocks
+    useOnboardingStore.setState({
+      stepsByInstance: {},
+      stepsLoadingByInstance: {},
+      stepsErrorByInstance: {},
+    });
+    resetStoreInternals();
     vi.clearAllMocks();
 
     mockSubscribeToSteps.mockImplementation((_id: string, cb: (steps: Step[]) => void) => {

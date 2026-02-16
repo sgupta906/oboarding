@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** `zustand-steps`
+**Current Feature:** `zustand-users`
 **Current Phase:** Awaiting /research
-**Next Command:** `/research zustand-steps`
+**Next Command:** `/research zustand-users`
 
 ### Pipeline Progress
 - [ ] /research
@@ -36,8 +36,8 @@ Each slice is its own pipeline run (`/research → /plan → /implement → /tes
 | # | Feature | Slice | What Migrates | Status |
 |---|---------|-------|---------------|--------|
 | 1 | `zustand-store` | Store setup + instances slice | Install Zustand, create store with `instances` slice, migrate `useOnboardingInstances` + `useEmployeeOnboarding`. Fixes `realtime-status-sync` and `employee-dropdown-sync`. | **Complete** |
-| 2 | `zustand-steps` | Steps slice | Add `steps` slice to store, migrate `useSteps`. Fixes `step-button-fix` (optimistic update race). | **Next** |
-| 3 | `zustand-users` | Users slice | Add `users` slice, migrate `useUsers`. Eliminates duplicate user subscriptions. | Queued |
+| 2 | `zustand-steps` | Steps slice | Add `steps` slice to store, migrate `useSteps`. Fixes `step-button-fix` (optimistic update race). | **Complete** |
+| 3 | `zustand-users` | Users slice | Add `users` slice, migrate `useUsers`. Eliminates duplicate user subscriptions. | **Next** |
 | 4 | `zustand-activities` | Activities + suggestions slices | Add remaining slices, migrate `useActivities`, `useSuggestions`. Eliminates prop drilling for suggestions. | Queued |
 | 5 | `zustand-cleanup` | Remove old hooks + slim OnboardingHub | Delete migrated hooks, slim god component to thin router. Final cleanup pass. | Queued |
 
@@ -60,6 +60,21 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | Duplicate subscriptions | NewHiresPanel and OnboardingHub both subscribe to instances independently | One subscription per table in the store |
 | OnboardingHub god component (343 lines) | State management, event handlers, modal state, derived data all in one file | State + handlers move to store; OnboardingHub becomes thin router |
 | Prop drilling (4 levels deep) | Suggestions/callbacks threaded through OnboardingHub → ManagerView → Section → Card | Components call `useStore(s => s.action)` directly |
+
+### Known Bugs — FIX BEFORE CONTINUING ZUSTAND MIGRATION
+
+> **These bugs block the app from being functional. Fix them as `bugfix-round` before `zustand-steps`.**
+
+| # | Bug | Priority | Symptom | Root Cause |
+|---|-----|----------|---------|------------|
+| 1 | `step-update-400` | **P0 CRITICAL** | Employee "Mark as Done" fails with HTTP 400 on PATCH to Supabase — step changes never persist to database | RLS policy or column mismatch on `onboarding_instances` / `instance_steps` table — PATCH payload rejected by Supabase |
+| 2 | `realtime-websocket-fail` | **P0 CRITICAL** | Supabase Realtime WebSocket closes before connecting — zero push updates work across sessions | Supabase project Realtime not enabled for tables, or auth/RLS blocking the WS channel |
+| 3 | `instance-progress-not-computed` | **P1 HIGH** | After completing a step, instance `progress` stays 0% — dropdown and New Hires table show stale progress while detail view shows 100% | Instance-level `progress` field is not recomputed from step statuses after a step update |
+| 4 | `newhire-create-no-refresh` | **P1 HIGH** | New Hires table doesn't refresh after creating a hire — only shows after full page reload | `onRefreshInstances` callback not passed from `OnboardingHub` to `ManagerView` |
+| 5 | `manager-markdone-broken` | **P2 MEDIUM** | "Mark as Done" in manager's Employee View does nothing | `handleStatusChange` uses `employeeInstance` (always null for managers) instead of `selectedInstance` — but managers shouldn't update employee steps anyway, so this may just need the button hidden/disabled for managers |
+| 6 | `no-instance-delete` | **P3 LOW** | No way to delete onboarding instances from New Hires table UI | Missing feature — no delete button/action exists |
+
+**Priority order:** P0 bugs (1-2) make the entire app non-functional. P1 bugs (3-4) break key workflows. P2-P3 are UX gaps.
 
 ### Low-Priority Cleanup (do incrementally, no dedicated pipeline run)
 
@@ -105,6 +120,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 14 | `new-hires-view` | 2026-02-15 | 45c2555 | Replaced Users tab (636 lines) with New Hires onboarding table (249 lines), status filters, -350 lines, +12 tests (338 total) |
 | 15 | `restore-users-tab` | 2026-02-15 | 6bb3343 | Restored Users tab as 4th tab in manager dashboard, UsersPanel component (346 lines) with CRUD operations, +12 tests (350 total) |
 | 16 | `zustand-store` | 2026-02-15 | [pending] | Zustand store with instances slice, migrated useOnboardingInstances + useEmployeeOnboarding, fixes realtime-status-sync and employee-dropdown-sync bugs, +20 tests (370 total) |
+| 17 | `zustand-steps` | 2026-02-16 | [pending] | Steps slice migration, migrated useSteps hook, fixes step-button-fix race condition, per-instanceId subscriptions, +14 tests (384 total) |
 
 ---
 

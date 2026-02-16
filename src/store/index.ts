@@ -6,4 +6,8 @@
  */
 
 export { useOnboardingStore, resetStoreInternals } from './useOnboardingStore';
-export type { OnboardingStore, InstancesSlice } from './useOnboardingStore';
+export type {
+  OnboardingStore,
+  InstancesSlice,
+  StepsSlice,
+} from './useOnboardingStore';
