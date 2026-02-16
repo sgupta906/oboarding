@@ -216,20 +216,23 @@ export async function signInWithEmailLink(email: string): Promise<void> {
       }
     }
 
-    if (!useSupabaseAuth) {
-      // Use localStorage for development without live Supabase
-      localStorage.setItem(
-        'mockAuthUser',
-        JSON.stringify({ uid, email: trimmedEmail, role: mockRole })
-      );
+    // Dual-track auth: when Supabase Auth succeeded, write mockAuthUser to
+    // localStorage so the AuthProvider immediately picks up the user for
+    // role-based UI routing. The real Supabase session (stored internally
+    // by supabase-js) provides the JWT for Realtime WebSocket auth.
+    // When Supabase Auth failed, write mockAuthUser as a fallback so the
+    // app still works without a live Supabase instance.
+    localStorage.setItem(
+      'mockAuthUser',
+      JSON.stringify({ uid, email: trimmedEmail, role: mockRole })
+    );
 
-      // Notify AuthProvider so it can pick up the mock auth change immediately
-      window.dispatchEvent(
-        new CustomEvent('authStorageChange', {
-          detail: { key: 'mockAuthUser' },
-        })
-      );
-    }
+    // Notify AuthProvider so it can pick up the mock auth change immediately
+    window.dispatchEvent(
+      new CustomEvent('authStorageChange', {
+        detail: { key: 'mockAuthUser' },
+      })
+    );
   } catch (error) {
     console.error('Error signing in with email link:', error);
     throw error;

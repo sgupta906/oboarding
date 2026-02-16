@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** `realtime-websocket-fail` (Bug #2 of 6 in bugfix-round)
-**Current Phase:** Ready to start
-**Next Command:** `/research realtime-websocket-fail`
+**Current Feature:** `instance-progress-not-computed` (Bug #3 of 6 in bugfix-round)
+**Current Phase:** Awaiting /research
+**Next Command:** `/research instance-progress-not-computed`
 
 ### Pipeline Progress
 - [ ] /research
@@ -68,7 +68,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | # | Bug | Priority | Symptom | Root Cause |
 |---|-----|----------|---------|------------|
 | 1 | `step-update-400` | **FIXED** | ~~Employee "Mark as Done" fails with HTTP 400~~ | Fixed in commit [pending] - added missing `updated_at` column to `onboarding_instances` table |
-| 2 | `realtime-websocket-fail` | **P0 CRITICAL** | Supabase Realtime WebSocket closes before connecting — zero push updates work across sessions | Supabase project Realtime not enabled for tables, or auth/RLS blocking the WS channel |
+| 2 | `realtime-websocket-fail` | **FIXED** | ~~Supabase Realtime WebSocket closes before connecting~~ | Fixed in commit [pending] - implemented dual-track auth so WebSocket receives JWT, added channel status logging for observability. Server-side Realtime config still needs manual verification. |
 | 3 | `instance-progress-not-computed` | **P1 HIGH** | After completing a step, instance `progress` stays 0% — dropdown and New Hires table show stale progress while detail view shows 100% | Instance-level `progress` field is not recomputed from step statuses after a step update |
 | 4 | `newhire-create-no-refresh` | **P1 HIGH** | New Hires table doesn't refresh after creating a hire — only shows after full page reload | `onRefreshInstances` callback not passed from `OnboardingHub` to `ManagerView` |
 | 5 | `manager-markdone-broken` | **P2 MEDIUM** | "Mark as Done" in manager's Employee View does nothing | `handleStatusChange` uses `employeeInstance` (always null for managers) instead of `selectedInstance` — but managers shouldn't update employee steps anyway, so this may just need the button hidden/disabled for managers |
@@ -125,6 +125,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 19 | `zustand-activities` | 2026-02-16 | [pending] | Activities and suggestions slices, migrated useActivities + useSuggestions hooks, all 5 store slices complete, +14 tests (412 total) |
 | 20 | `zustand-cleanup` | 2026-02-16 | [pending] | Make ManagerView self-contained, delete useManagerData, slim OnboardingHub from 343 to 256 lines (-25%), complete Zustand migration (all 5 slices), +13 tests (425 total) |
 | 21 | `step-update-400` | 2026-02-16 | [pending] | Fixed P0 CRITICAL bug - added missing `updated_at` column to `onboarding_instances` table, migration 00008 with backfill, fixes HTTP 400 on step updates (PostgreSQL error 42703) |
+| 22 | `realtime-websocket-fail` | 2026-02-16 | [pending] | Fixed P0 CRITICAL bug - dual-track auth for WebSocket (real Supabase session + mock auth coexist), added channel status logging to all Realtime subscriptions, +7 tests (432 total). Server-side config (enable Realtime, apply publication) needs manual verification. |
 
 ---
 

@@ -163,7 +163,17 @@ export function createCrudService<TApp>(config: CrudServiceConfig<TApp>): CrudSe
       });
     }
 
-    channel.subscribe();
+    channel.subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.debug(`[Realtime] Channel ${subConfig.channelName} subscribed`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel ${subConfig.channelName} error`);
+      } else if (status === 'TIMED_OUT') {
+        console.error(`[Realtime] Channel ${subConfig.channelName} timed out`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel ${subConfig.channelName} closed`);
+      }
+    });
 
     // Return cleanup
     return () => {

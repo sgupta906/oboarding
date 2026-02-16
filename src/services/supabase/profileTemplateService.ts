@@ -245,7 +245,17 @@ export function subscribeToProfileTemplates(
         debouncedRefetch();
       }
     )
-    .subscribe();
+    .subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.debug(`[Realtime] Channel profile-templates-${profileId} subscribed`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel profile-templates-${profileId} error`);
+      } else if (status === 'TIMED_OUT') {
+        console.error(`[Realtime] Channel profile-templates-${profileId} timed out`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel profile-templates-${profileId} closed`);
+      }
+    });
 
   // 3. Return cleanup
   return () => {

@@ -137,12 +137,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(mockUser);
       setRole(mockUser.role);
       setLoading(false);
-      return; // Don't listen to Supabase if using mock auth
+      // DO NOT return early -- fall through to set up onAuthStateChange below.
+      // Even when mock auth is active, we need supabase-js to maintain its
+      // internal session so Realtime WebSocket has a valid JWT for auth.
     }
 
-    // Listen to Supabase auth state changes
+    // Always listen to Supabase auth state changes.
+    // When mock auth is active, the listener lets supabase-js manage its
+    // internal session for Realtime. The callback guards against overwriting
+    // mock auth state (mock auth takes precedence for UI role routing).
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // If mock auth is active, don't overwrite app-level user/role state.
+        // The onAuthStateChange listener is only here so supabase-js can
+        // maintain its internal session for Realtime WebSocket auth.
+        const currentMockUser = loadMockAuthFromStorage();
+        if (currentMockUser) {
+          return; // Mock auth takes precedence for UI state
+        }
+
         try {
           if (session?.user?.email) {
             // User is authenticated, fetch their role from Supabase

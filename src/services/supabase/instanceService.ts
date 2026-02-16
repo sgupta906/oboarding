@@ -427,7 +427,17 @@ export function subscribeToOnboardingInstance(
         debouncedRefetch();
       }
     )
-    .subscribe();
+    .subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.debug(`[Realtime] Channel instance-${instanceId} subscribed`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel instance-${instanceId} error`);
+      } else if (status === 'TIMED_OUT') {
+        console.error(`[Realtime] Channel instance-${instanceId} timed out`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel instance-${instanceId} closed`);
+      }
+    });
 
   return () => {
     debouncedRefetch.cancel();
@@ -481,7 +491,17 @@ export function subscribeToSteps(
         debouncedRefetch();
       }
     )
-    .subscribe();
+    .subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.debug(`[Realtime] Channel instance-steps-${instanceId} subscribed`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel instance-steps-${instanceId} error`);
+      } else if (status === 'TIMED_OUT') {
+        console.error(`[Realtime] Channel instance-steps-${instanceId} timed out`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel instance-steps-${instanceId} closed`);
+      }
+    });
 
   return () => {
     debouncedRefetch.cancel();
@@ -547,7 +567,17 @@ export function subscribeToEmployeeInstance(
         debouncedRefetch();
       }
     )
-    .subscribe();
+    .subscribe((status: string) => {
+      if (status === 'SUBSCRIBED') {
+        console.debug(`[Realtime] Channel employee-instance-${normalizedEmail} subscribed`);
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error(`[Realtime] Channel employee-instance-${normalizedEmail} error`);
+      } else if (status === 'TIMED_OUT') {
+        console.error(`[Realtime] Channel employee-instance-${normalizedEmail} timed out`);
+      } else if (status === 'CLOSED') {
+        console.warn(`[Realtime] Channel employee-instance-${normalizedEmail} closed`);
+      }
+    });
 
   return () => {
     debouncedRefetch.cancel();

@@ -497,6 +497,76 @@ describe('createCrudService', () => {
   });
 
   // ========================================================================
+  // subscribe() channel status callback
+  // ========================================================================
+
+  describe('subscribe() channel status callback', () => {
+    it('should pass a status callback to channel.subscribe()', () => {
+      currentQuery = {
+        select: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      };
+
+      const channelObj = {
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn().mockReturnThis(),
+      };
+      (supabase.channel as any) = vi.fn().mockReturnValue(channelObj);
+
+      const service = createTestService({
+        subscription: {
+          channelName: 'test-status',
+          tables: [{ table: 'test_table' }],
+        },
+      });
+
+      service.subscribe(vi.fn());
+
+      // subscribe should have been called with a function argument (status callback)
+      expect(channelObj.subscribe).toHaveBeenCalledWith(expect.any(Function));
+    });
+
+    it('status callback logs error on CHANNEL_ERROR', () => {
+      currentQuery = {
+        select: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      };
+
+      const channelObj = {
+        on: vi.fn().mockReturnThis(),
+        subscribe: vi.fn().mockReturnThis(),
+      };
+      (supabase.channel as any) = vi.fn().mockReturnValue(channelObj);
+
+      const service = createTestService({
+        subscription: {
+          channelName: 'test-error-channel',
+          tables: [{ table: 'test_table' }],
+        },
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      service.subscribe(vi.fn());
+
+      // Extract the status callback from channel.subscribe call
+      const statusCallback = channelObj.subscribe.mock.calls[0][0];
+      expect(typeof statusCallback).toBe('function');
+
+      // Call it with CHANNEL_ERROR
+      statusCallback('CHANNEL_ERROR');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('test-error-channel')
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  // ========================================================================
   // shared subscription
   // ========================================================================
 

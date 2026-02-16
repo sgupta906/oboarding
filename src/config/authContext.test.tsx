@@ -384,6 +384,99 @@ describe('AuthContext and useAuth Hook', () => {
     });
   });
 
+  describe('AuthProvider - Mock Auth + onAuthStateChange Coexistence', () => {
+    it('should still set up onAuthStateChange listener when mock auth exists', () => {
+      const mockUnsubscribe = vi.fn();
+
+      mockOnAuthStateChange.mockReturnValue({
+        data: { subscription: { unsubscribe: mockUnsubscribe } },
+      });
+
+      const mockAuthData = {
+        uid: 'mock-uid-123',
+        email: 'test-employee@example.com',
+        role: 'employee' as const,
+      };
+      localStorage.setItem('mockAuthUser', JSON.stringify(mockAuthData));
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      const { unmount } = renderHook(() => useAuth(), { wrapper });
+
+      // onAuthStateChange should have been called even though mock auth is present
+      expect(mockOnAuthStateChange).toHaveBeenCalled();
+
+      // Cleanup should call unsubscribe
+      unmount();
+      expect(mockUnsubscribe).toHaveBeenCalled();
+    });
+
+    it('should not overwrite mock auth state when onAuthStateChange fires with session', async () => {
+      const mockAuthData = {
+        uid: 'mock-uid-123',
+        email: 'test-employee@example.com',
+        role: 'employee' as const,
+      };
+      localStorage.setItem('mockAuthUser', JSON.stringify(mockAuthData));
+
+      // Configure onAuthStateChange to fire with a different session
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'supabase-uid-999', email: 'different@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Mock auth should take precedence -- not overwritten by onAuthStateChange session
+      expect(result.current.user).toEqual(mockAuthData);
+      expect(result.current.role).toBe('employee');
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    it('should use session data when mock auth is cleared and onAuthStateChange fires', async () => {
+      // Start with no mock auth
+      vi.mocked(authService.getUserRole).mockResolvedValue('manager');
+
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: { id: 'supabase-uid-456', email: 'manager@example.com' },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Session data should be used since no mock auth exists
+      expect(result.current.user).toEqual({
+        uid: 'supabase-uid-456',
+        email: 'manager@example.com',
+        role: 'manager',
+      });
+      expect(result.current.role).toBe('manager');
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+  });
+
   describe('AuthProvider - Storage Event Listener', () => {
     it('should update auth state when custom authStorageChange event is dispatched', async () => {
       // Start with no auth

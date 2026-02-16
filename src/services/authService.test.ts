@@ -393,6 +393,58 @@ describe('Auth Service', () => {
     });
   });
 
+  describe('signInWithEmailLink - Mock Auth Write on Supabase Auth Success', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('should write mockAuthUser to localStorage when signUp succeeds', async () => {
+      // signUp returns a new user with identities
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'supabase-new-uid', identities: [{ id: '1' }] } },
+        error: null,
+      });
+
+      await signInWithEmailLink('test-employee@example.com');
+
+      // Should have written mockAuthUser to localStorage
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        expect(parsed.uid).toBe('supabase-new-uid');
+        expect(parsed.email).toBe('test-employee@example.com');
+        expect(parsed.role).toBe('employee');
+      }
+    });
+
+    it('should write mockAuthUser to localStorage when signInWithPassword succeeds', async () => {
+      // signUp returns user with empty identities (existing user)
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'existing-uid', identities: [] } },
+        error: null,
+      });
+
+      // signInWithPassword succeeds
+      mockSupabaseAuth.signInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: 'existing-uid' } },
+        error: null,
+      });
+
+      await signInWithEmailLink('test-employee@example.com');
+
+      // Should have written mockAuthUser to localStorage
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        expect(parsed.uid).toBe('existing-uid');
+        expect(parsed.email).toBe('test-employee@example.com');
+        expect(parsed.role).toBe('employee');
+      }
+    });
+  });
+
   describe('signOut', () => {
     it('should clear localStorage mock auth', async () => {
       const mockRemoveItem = vi.fn();
