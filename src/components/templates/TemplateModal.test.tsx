@@ -577,6 +577,55 @@ describe('TemplateModal', () => {
         expect(screen.getByText('Step 3 of 3')).toBeInTheDocument();
       });
     });
+
+    it('should submit correct step IDs after reorder', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      // Reorder: move step 1 down so [A, B, C] becomes [B, A, C]
+      const moveDownButton = screen.getByRole('button', { name: 'Move step 1 down' });
+      await user.click(moveDownButton);
+
+      await waitFor(() => {
+        const step1Title = screen.getByLabelText('Step 1 title') as HTMLInputElement;
+        expect(step1Title.value).toBe('Step B');
+      });
+
+      // Submit the form
+      const saveButton = screen.getByRole('button', { name: /save template changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+      });
+
+      const submittedData = mockOnSubmit.mock.calls[0][0];
+      const submittedSteps = submittedData.steps;
+
+      // After reorder [B, A, C], step IDs should be new positions [1, 2, 3]
+      expect(submittedSteps[0].id).toBe(1);
+      expect(submittedSteps[1].id).toBe(2);
+      expect(submittedSteps[2].id).toBe(3);
+
+      // Verify titles match the reordered sequence
+      expect(submittedSteps[0].title).toBe('Step B');
+      expect(submittedSteps[1].title).toBe('Step A');
+      expect(submittedSteps[2].title).toBe('Step C');
+    });
   });
 
   // ==========================================================================

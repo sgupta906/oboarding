@@ -202,7 +202,7 @@ export function TemplateModal({
       : steps.filter((s) => s.title.trim() || s.description.trim());
 
     const templateSteps: Step[] = stepsToProcess.map((s, index) => ({
-      id: s.id || index + 1,
+      id: index + 1,
       title: s.title,
       description: s.description,
       role: selectedRoles[0] || selectedRoles.join(', '),
