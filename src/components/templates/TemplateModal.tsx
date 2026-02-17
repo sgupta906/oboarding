@@ -21,6 +21,10 @@ interface TemplateModalProps {
   roles?: CustomRole[];
   rolesLoading?: boolean;
   template?: Template | null;
+  /** Pre-filled steps from PDF import (create mode only) */
+  initialSteps?: Array<{ title: string; description: string }>;
+  /** Source PDF filename for info banner display */
+  pdfFileName?: string;
 }
 
 interface TemplateStep {
@@ -53,6 +57,8 @@ export function TemplateModal({
   roles = [],
   rolesLoading = false,
   template,
+  initialSteps,
+  pdfFileName,
 }: TemplateModalProps) {
   const isEdit = mode === 'edit';
 
@@ -67,11 +73,23 @@ export function TemplateModal({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Reset form when modal opens in create mode (defense-in-depth for Bug #28)
+  // If initialSteps are provided (from PDF import), pre-fill the steps
   useEffect(() => {
     if (isOpen && !isEdit) {
       resetForm();
+      if (initialSteps && initialSteps.length > 0) {
+        setSteps(
+          initialSteps.map((s) => ({
+            _uid: nextStepUid(),
+            title: s.title,
+            description: s.description,
+            owner: '',
+            expert: '',
+          }))
+        );
+      }
     }
-  }, [isOpen, isEdit]);
+  }, [isOpen, isEdit, initialSteps]);
 
   // Pre-fill form when template data changes (edit mode)
   useEffect(() => {
@@ -338,6 +356,15 @@ export function TemplateModal({
           </div>
         )}
 
+        {/* PDF Import Info Banner */}
+        {pdfFileName && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
+              {steps.length} steps imported from {pdfFileName}
+            </p>
+          </div>
+        )}
+
         {/* Template Name */}
         <div>
           <label
@@ -508,8 +535,8 @@ export function TemplateModal({
                       handleStepChange(index, 'description', e.target.value)
                     }
                     placeholder="Step description"
-                    rows={2}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-none"
+                    rows={4}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-y"
                     aria-label={`Step ${index + 1} description`}
                   />
                 </div>

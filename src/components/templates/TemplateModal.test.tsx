@@ -714,4 +714,144 @@ describe('TemplateModal', () => {
       expect(dialog.className).toContain('max-w-2xl');
     });
   });
+
+  // ==========================================================================
+  // INITIAL STEPS (PDF IMPORT)
+  // ==========================================================================
+
+  describe('TemplateModal - initialSteps prop (PDF import)', () => {
+    const importedSteps = [
+      { title: 'Setup laptop', description: '' },
+      { title: 'Install IDE', description: '' },
+      { title: 'Configure VPN', description: '' },
+    ];
+
+    it('should pre-fill step titles from initialSteps when in create mode', async () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Setup laptop')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Install IDE')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('Configure VPN')).toBeInTheDocument();
+      });
+    });
+
+    it('should pre-fill empty descriptions for imported steps', async () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+        />
+      );
+
+      await waitFor(() => {
+        const desc1 = screen.getByLabelText('Step 1 description') as HTMLTextAreaElement;
+        const desc2 = screen.getByLabelText('Step 2 description') as HTMLTextAreaElement;
+        const desc3 = screen.getByLabelText('Step 3 description') as HTMLTextAreaElement;
+        expect(desc1.value).toBe('');
+        expect(desc2.value).toBe('');
+        expect(desc3.value).toBe('');
+      });
+    });
+
+    it('should show info banner with step count and filename when pdfFileName is provided', async () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+          pdfFileName="onboarding-checklist.pdf"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/3 steps imported from onboarding-checklist\.pdf/i)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should not show info banner when pdfFileName is not provided', () => {
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+        />
+      );
+
+      expect(
+        screen.queryByText(/steps imported from/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should still validate form (name, role required) even with pre-filled steps', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+        />
+      );
+
+      const saveButton = screen.getByRole('button', { name: /save template/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Template name is required')).toBeInTheDocument();
+        expect(screen.getByText('At least one role must be selected')).toBeInTheDocument();
+      });
+
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+    });
+
+    it('should allow editing pre-filled step titles before saving', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+          initialSteps={importedSteps}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Setup laptop')).toBeInTheDocument();
+      });
+
+      const step1Title = screen.getByDisplayValue('Setup laptop');
+      await user.clear(step1Title);
+      await user.type(step1Title, 'Setup MacBook Pro');
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Setup MacBook Pro')).toBeInTheDocument();
+      });
+    });
+  });
 });

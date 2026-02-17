@@ -4,8 +4,8 @@
  * Uses real-time subscription via useTemplates hook with optimistic updates
  */
 
-import { useState } from 'react';
-import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy, FileUp } from 'lucide-react';
 import { useTemplates, useRoles } from '../hooks';
 import { TemplateModal } from '../components/templates/TemplateModal';
 import { Badge } from '../components/ui';
@@ -28,6 +28,13 @@ export function TemplatesView() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // PDF import state
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importedSteps, setImportedSteps] = useState<Array<{ title: string; description: string }> | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showSuccessMessage = (message: string) => {
     setSuccessMessage(message);
@@ -106,6 +113,47 @@ export function TemplatesView() {
     setEditModalOpen(true);
   };
 
+  const handlePdfImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10 MB limit)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      setImportError('File is too large. Maximum size is 10 MB.');
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setImportLoading(true);
+    setImportError(null);
+
+    try {
+      const { extractTextFromPdf, parseBulletsToSteps } = await import('../utils/pdfParser');
+      const rawText = await extractTextFromPdf(file);
+      const steps = parseBulletsToSteps(rawText);
+
+      if (steps.length === 0) {
+        throw new Error(
+          'No steps could be extracted from this PDF. The PDF may contain only images or no recognizable bullet points.'
+        );
+      }
+
+      setImportedSteps(steps);
+      setPdfFileName(file.name);
+      setCreateModalOpen(true);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Failed to import PDF. Please try a different file.';
+      setImportError(message);
+    } finally {
+      setImportLoading(false);
+      // Reset file input so the same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const formatDate = (timestamp: number): string => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       month: 'short',
@@ -127,19 +175,41 @@ export function TemplatesView() {
               Create and manage templates for different roles
             </p>
           </div>
-          <button
-            onClick={() => setCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
-            aria-label="Create new template"
-          >
-            <Plus size={20} />
-            Create Template
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={importLoading}
+              className="flex items-center gap-2 px-4 py-2 border border-brand-600 text-brand-600 hover:bg-brand-50 dark:border-brand-400 dark:text-brand-400 dark:hover:bg-brand-950 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Import template from PDF"
+            >
+              {importLoading ? (
+                <Loader2 size={20} className="animate-spin" />
+              ) : (
+                <FileUp size={20} />
+              )}
+              Import from PDF
+            </button>
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 dark:focus:ring-offset-slate-950"
+              aria-label="Create new template"
+            >
+              <Plus size={20} />
+              Create Template
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Import Error Message */}
+        {importError && (
+          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-800 dark:text-red-300" role="alert">
+            {importError}
+          </div>
+        )}
+
         {/* Success Message */}
         {successMessage && (
           <div className="mb-4 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg text-green-800 dark:text-green-200">
@@ -302,6 +372,17 @@ export function TemplatesView() {
         )}
       </div>
 
+      {/* Hidden file input for PDF import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        onChange={handlePdfImport}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+      />
+
       {/* Create Template Modal */}
       <TemplateModal
         mode="create"
@@ -309,12 +390,16 @@ export function TemplatesView() {
         onClose={() => {
           setCreateModalOpen(false);
           setCreateError(null);
+          setImportedSteps(null);
+          setPdfFileName(null);
         }}
         onSubmit={handleCreateTemplate}
         isSubmitting={isCreating}
         error={createError}
         roles={roles}
         rolesLoading={rolesLoading}
+        initialSteps={importedSteps ?? undefined}
+        pdfFileName={pdfFileName ?? undefined}
       />
 
       {/* Edit Template Modal */}
