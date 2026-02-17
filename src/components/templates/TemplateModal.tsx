@@ -22,7 +22,7 @@ interface TemplateModalProps {
   rolesLoading?: boolean;
   template?: Template | null;
   /** Pre-filled steps from PDF import (create mode only) */
-  initialSteps?: Array<{ title: string; description: string }>;
+  initialSteps?: Array<{ title: string; description: string; link?: string }>;
   /** Source PDF filename for info banner display */
   pdfFileName?: string;
 }
@@ -34,6 +34,7 @@ interface TemplateStep {
   description: string;
   owner: string;
   expert: string;
+  link: string;
 }
 
 let stepUidCounter = 0;
@@ -66,7 +67,7 @@ export function TemplateModal({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [status, setStatus] = useState<'Draft' | 'Published'>('Draft');
   const [steps, setSteps] = useState<TemplateStep[]>([
-    { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' },
+    { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '', link: '' },
   ]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -85,6 +86,7 @@ export function TemplateModal({
             description: s.description,
             owner: '',
             expert: '',
+            link: s.link || '',
           }))
         );
       }
@@ -105,6 +107,7 @@ export function TemplateModal({
           description: s.description,
           owner: s.owner,
           expert: s.expert,
+          link: s.link || '',
         }))
       );
       setValidationErrors([]);
@@ -116,7 +119,7 @@ export function TemplateModal({
     setSelectedRoles([]);
     setStatus('Draft');
     setSteps(
-      isEdit ? [] : [{ _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' }]
+      isEdit ? [] : [{ _uid: nextStepUid(), title: '', description: '', owner: '', expert: '', link: '' }]
     );
     setValidationErrors([]);
   };
@@ -171,7 +174,7 @@ export function TemplateModal({
   };
 
   const handleAddStep = () => {
-    setSteps([...steps, { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '' }]);
+    setSteps([...steps, { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '', link: '' }]);
   };
 
   const handleRemoveStep = (index: number) => {
@@ -227,7 +230,7 @@ export function TemplateModal({
       owner: s.owner,
       expert: s.expert,
       status: 'pending' as const,
-      link: '',
+      link: s.link || '',
     }));
 
     const templateData: Omit<Template, 'id' | 'createdAt'> = {
@@ -582,6 +585,29 @@ export function TemplateModal({
                     />
                   </div>
                 </div>
+
+                {/* Link */}
+                {(step.link || mode === 'edit') && (
+                  <div>
+                    <label
+                      htmlFor={`step-link-${index}`}
+                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
+                    >
+                      Link
+                    </label>
+                    <input
+                      id={`step-link-${index}`}
+                      type="url"
+                      value={step.link}
+                      onChange={(e) =>
+                        handleStepChange(index, 'link', e.target.value)
+                      }
+                      placeholder="https://..."
+                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
+                      aria-label={`Step ${index + 1} link`}
+                    />
+                  </div>
+                )}
 
               </div>
             ))}

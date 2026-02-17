@@ -138,14 +138,19 @@ describe('parseBulletsToSteps', () => {
       'Preferred Location:',
     ].join('\n');
     const result = parseBulletsToSteps(input);
-    expect(result).toHaveLength(4);
+    // 4 verb steps + 1 header step, "The Lincoln..." becomes description
+    expect(result).toHaveLength(5);
     expect(result[0].title).toContain('Work with Haley');
     expect(result[1].title).toContain('Signature Block');
     expect(result[2].title).toContain('Coordinate');
     expect(result[3].title).toContain('Slack channels');
+    // "The Lincoln..." becomes description of previous step
+    expect(result[3].description).toContain('Lincoln location');
+    // "Preferred Location:" header becomes a step
+    expect(result[4].title).toBe('Preferred Location');
   });
 
-  it('skips imperative verb lines ending with colon (section headers)', () => {
+  it('converts header-with-colon lines into steps', () => {
     const input = [
       'Complete these first few trainings:',
       'Complete the New Hire Survey',
@@ -153,9 +158,12 @@ describe('parseBulletsToSteps', () => {
       'Review BCBS in Gusto.',
     ].join('\n');
     const result = parseBulletsToSteps(input);
-    expect(result).toHaveLength(2);
-    expect(result[0].title).toBe('Complete the New Hire Survey');
-    expect(result[1].title).toBe('Review BCBS in Gusto.');
+    // Headers become steps now (they're things employees need to read/do)
+    expect(result).toHaveLength(4);
+    expect(result[0].title).toBe('Complete these first few trainings');
+    expect(result[1].title).toBe('Complete the New Hire Survey');
+    expect(result[2].title).toBe('Review your benefits package');
+    expect(result[3].title).toBe('Review BCBS in Gusto.');
   });
 
   it('combines bullet items and imperative verb items without duplicates', () => {

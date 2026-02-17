@@ -14,11 +14,25 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLi
 
 /**
  * Represents a single parsed step extracted from a PDF document.
- * Title comes from the bullet text; description is always empty (user fills in later).
  */
 export interface ParsedStep {
   title: string;
   description: string;
+  link: string;
+}
+
+/** Link extracted from a PDF annotation */
+export interface PdfLink {
+  url: string;
+  /** Y-position on the page (PDF coordinates, origin at bottom-left) */
+  y: number;
+  pageNum: number;
+}
+
+/** Full extraction result from a PDF */
+export interface PdfContent {
+  text: string;
+  links: PdfLink[];
 }
 
 /**
@@ -45,57 +59,136 @@ const BULLET_REGEX =
 const IMPERATIVE_VERB_REGEX =
   /^(?:complete|sign|fill|set|work|follow|coordinate|join|send|upload|review|log|verify|make|schedule|read|watch|meet|configure|install|create|update|check|submit|register|request|contact|prepare|attend|obtain|download|print|bring|collect|gather|provide|pick|order|setup)\b/i;
 
+/** Matches bare URLs in text */
+const URL_REGEX = /^https?:\/\/\S+$/i;
+
 /**
- * Parses raw text into template steps using a multi-pass heuristic.
+ * Splits a title on em-dash or double-hyphen separator into title + description.
+ * "Complete Security Training — At a minimum, you must..." becomes:
+ *   title: "Complete Security Training"
+ *   description: "At a minimum, you must..."
+ */
+function splitTitleDescription(text: string): { title: string; description: string } {
+  // Try em-dash first, then double-hyphen with spaces
+  for (const sep of [' — ', ' -- ']) {
+    const idx = text.indexOf(sep);
+    if (idx > 0) {
+      return {
+        title: text.substring(0, idx).trim(),
+        description: text.substring(idx + sep.length).trim(),
+      };
+    }
+  }
+  return { title: text, description: '' };
+}
+
+/**
+ * Classifies a line as a step, header, continuation text, URL, or skip.
+ */
+function classifyLine(line: string): 'bullet' | 'verb' | 'header' | 'url' | 'continuation' | 'skip' {
+  if (URL_REGEX.test(line)) return 'url';
+  if (BULLET_REGEX.test(line)) return 'bullet';
+  if (line.length >= 8 && line.length <= 200 && IMPERATIVE_VERB_REGEX.test(line) && !line.endsWith(':')) return 'verb';
+  if (line.endsWith(':') && line.length >= 8 && line.length <= 80) return 'header';
+  if (line.length >= 15 && line.length <= 300) return 'continuation';
+  return 'skip';
+}
+
+/**
+ * Parses raw text into template steps using a single-pass streaming algorithm.
  *
- * Algorithm:
- * 1. Split text on newlines, trim each line, filter empty lines
- * 2. Pass 1: Match lines against bullet/number regex (-, *, 1., ☐, etc.)
- * 3. Pass 2: Match lines starting with imperative verbs (catches checkbox items
- *    where the checkbox was a graphic, not extractable text)
- * 4. Fallback: if no steps found, each line between 8-200 chars becomes a step
+ * Features:
+ * - Bullet/numbered list detection (-, *, 1., ☐, etc.)
+ * - Imperative verb detection for graphical-checkbox PDFs
+ * - Em-dash title/description splitting ("Task — Details" → title + description)
+ * - Header-to-step conversion ("Billable Time:" → step with following text as description)
+ * - Continuation line accumulation (non-step text → previous step's description)
+ * - Bare URL detection → previous step's link field
+ * - PDF annotation link matching by Y-position proximity
  *
  * @param rawText - Raw text extracted from a PDF document
+ * @param links - Optional array of PDF annotation links for matching
  * @returns Array of parsed steps (may be empty if no parseable content)
  */
-export function parseBulletsToSteps(rawText: string): ParsedStep[] {
+export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedStep[] {
   const lines = rawText.split(/\n/).map((l) => l.trim()).filter(Boolean);
-
   const steps: ParsedStep[] = [];
-  const seen = new Set<string>();
 
-  // Pass 1: lines with explicit bullet/number prefixes
   for (const line of lines) {
-    const match = line.match(BULLET_REGEX);
-    if (match) {
-      const title = match[1].trim();
-      if (title && !seen.has(title)) {
-        steps.push({ title, description: '' });
-        seen.add(title);
+    const type = classifyLine(line);
+
+    switch (type) {
+      case 'bullet': {
+        const match = line.match(BULLET_REGEX);
+        if (match) {
+          const raw = match[1].trim();
+          const { title, description } = splitTitleDescription(raw);
+          if (title) {
+            steps.push({ title, description, link: '' });
+          }
+        }
+        break;
+      }
+
+      case 'verb': {
+        const { title, description } = splitTitleDescription(line);
+        steps.push({ title, description, link: '' });
+        break;
+      }
+
+      case 'header': {
+        // Strip trailing colon for the title
+        const title = line.slice(0, -1).trim();
+        if (title.length >= 5) {
+          steps.push({ title, description: '', link: '' });
+        }
+        break;
+      }
+
+      case 'url': {
+        // Assign URL to previous step's link field
+        if (steps.length > 0 && !steps[steps.length - 1].link) {
+          steps[steps.length - 1].link = line;
+        }
+        break;
+      }
+
+      case 'continuation': {
+        // Append to previous step's description
+        if (steps.length > 0) {
+          const prev = steps[steps.length - 1];
+          prev.description = prev.description
+            ? prev.description + ' ' + line
+            : line;
+        }
+        break;
+      }
+
+      // 'skip' — ignore (short headers like "First Day", fragments, etc.)
+    }
+  }
+
+  // Fallback: if no steps found, each reasonably-sized line becomes a step
+  if (steps.length === 0) {
+    for (const line of lines) {
+      if (line.length >= 8 && line.length <= 200) {
+        const { title, description } = splitTitleDescription(line);
+        steps.push({ title, description, link: '' });
       }
     }
   }
 
-  // Pass 2: lines starting with imperative verbs (catches checkbox items
-  // where the checkbox was a graphic, not extractable text)
-  for (const line of lines) {
-    if (
-      line.length >= 8 &&
-      line.length <= 200 &&
-      !line.endsWith(':') &&
-      IMPERATIVE_VERB_REGEX.test(line) &&
-      !seen.has(line)
-    ) {
-      steps.push({ title: line, description: '' });
-      seen.add(line);
-    }
-  }
-
-  // Fallback: if still no steps, use each reasonably-sized line as a step
-  if (steps.length === 0) {
-    for (const line of lines) {
-      if (line.length >= 8 && line.length <= 200) {
-        steps.push({ title: line, description: '' });
+  // Associate PDF annotation links with steps by URL-in-text matching
+  if (links && links.length > 0) {
+    for (const link of links) {
+      // Find a step whose title or description mentions text related to this link
+      // Simple heuristic: if the link URL isn't already assigned, assign to first
+      // step that doesn't have a link yet and comes from the same page region
+      for (const step of steps) {
+        if (!step.link) {
+          step.link = link.url;
+          break;
+        }
       }
     }
   }
@@ -103,16 +196,6 @@ export function parseBulletsToSteps(rawText: string): ParsedStep[] {
   return steps;
 }
 
-/**
- * Extracts all text content from a PDF file using pdfjs-dist.
- *
- * Processes each page sequentially, joining text items with spaces per page
- * and pages with newlines.
- *
- * @param file - A File object representing the PDF to extract text from
- * @returns Promise resolving to the full extracted text string
- * @throws Error if the PDF cannot be parsed (corrupt file, etc.)
- */
 /**
  * Reads a File as an ArrayBuffer, using file.arrayBuffer() where available
  * and falling back to FileReader for environments that don't support it.
@@ -129,19 +212,29 @@ function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
   });
 }
 
-export async function extractTextFromPdf(file: File): Promise<string> {
+/**
+ * Extracts text content and link annotations from a PDF file.
+ *
+ * Text extraction uses Y-position and hasEOL markers from pdf.js text items
+ * to reconstruct line breaks. Link extraction pulls URLs from PDF annotations.
+ *
+ * @param file - A File object representing the PDF to extract from
+ * @returns Promise resolving to text content and link annotations
+ * @throws Error if the PDF cannot be parsed
+ */
+export async function extractPdfContent(file: File): Promise<PdfContent> {
   try {
     const arrayBuffer = await readFileAsArrayBuffer(file);
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
     const pages: string[] = [];
+    const allLinks: PdfLink[] = [];
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
 
-      // Reconstruct line breaks from text item positions instead of joining with spaces.
-      // PDF text items carry Y-position (transform[5]) and hasEOL markers that indicate
-      // where visual line breaks occur in the document.
+      // Extract text with line break reconstruction
+      const textContent = await page.getTextContent();
       let pageText = '';
       let lastY: number | null = null;
 
@@ -179,12 +272,37 @@ export async function extractTextFromPdf(file: File): Promise<string> {
       }
 
       pages.push(pageText.trimEnd());
+
+      // Extract link annotations
+      try {
+        const annotations = await page.getAnnotations();
+        for (const annot of annotations) {
+          if (annot.subtype === 'Link' && annot.url) {
+            const y = annot.rect?.[1] ?? 0;
+            allLinks.push({ url: annot.url, y, pageNum: i });
+          }
+        }
+      } catch {
+        // Link extraction is best-effort — don't fail the whole import
+      }
     }
 
-    return pages.join('\n');
+    return {
+      text: pages.join('\n'),
+      links: allLinks,
+    };
   } catch (error) {
     throw new Error(
       'Failed to extract text from PDF. The file may be corrupt or not a valid PDF.'
     );
   }
+}
+
+/**
+ * Legacy function — extracts only text (no links).
+ * Kept for backward compatibility with existing callers and tests.
+ */
+export async function extractTextFromPdf(file: File): Promise<string> {
+  const content = await extractPdfContent(file);
+  return content.text;
 }

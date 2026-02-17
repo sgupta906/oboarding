@@ -32,7 +32,7 @@ export function TemplatesView() {
   // PDF import state
   const [importLoading, setImportLoading] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importedSteps, setImportedSteps] = useState<Array<{ title: string; description: string }> | null>(null);
+  const [importedSteps, setImportedSteps] = useState<Array<{ title: string; description: string; link: string }> | null>(null);
   const [pdfFileName, setPdfFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -130,9 +130,9 @@ export function TemplatesView() {
     setImportError(null);
 
     try {
-      const { extractTextFromPdf, parseBulletsToSteps } = await import('../utils/pdfParser');
-      const rawText = await extractTextFromPdf(file);
-      const steps = parseBulletsToSteps(rawText);
+      const { extractPdfContent, parseBulletsToSteps } = await import('../utils/pdfParser');
+      const { text, links } = await extractPdfContent(file);
+      const steps = parseBulletsToSteps(text, links);
 
       if (steps.length === 0) {
         throw new Error(
