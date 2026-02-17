@@ -71,8 +71,7 @@ export function StepCard({
                 <span>{index + 1}</span>
               )}
             </div>
-            {/* Visual progress connector line below (hidden for last step on mobile) */}
-            <div className="hidden md:block w-0.5 h-6 mt-1 bg-slate-200 dark:bg-slate-600" aria-hidden="true" />
+            {/* Connector line removed — StepTimeline provides the vertical timeline line */}
           </div>
 
           {/* Content */}
