@@ -116,6 +116,106 @@ describe('parseBulletsToSteps', () => {
     expect(result[1].title).toBe('Complete benefits enrollment');
   });
 
+  it('parses period-prefix bullets (common PDF glyph rendering)', () => {
+    const input =
+      '. Complete Security Training\n. Sign SF312\n. Employee Paperwork';
+    const result = parseBulletsToSteps(input);
+    expect(result).toHaveLength(3);
+    expect(result[0].title).toBe('Complete Security Training');
+    expect(result[1].title).toBe('Sign SF312');
+    expect(result[2].title).toBe('Employee Paperwork');
+  });
+
+  it('captures lines starting with imperative verbs (graphical checkbox items)', () => {
+    const input = [
+      'Onboarding Checklist',
+      'First Day',
+      'Work with Haley to get all of your accounts set up',
+      'Set up your Signature Block',
+      'Coordinate with Haley to get your company photo taken',
+      'Join some Slack channels (#company_announcements, #dev_lounge)',
+      'The Lincoln location is recommended for your convenience.',
+      'Preferred Location:',
+    ].join('\n');
+    const result = parseBulletsToSteps(input);
+    expect(result).toHaveLength(4);
+    expect(result[0].title).toContain('Work with Haley');
+    expect(result[1].title).toContain('Signature Block');
+    expect(result[2].title).toContain('Coordinate');
+    expect(result[3].title).toContain('Slack channels');
+  });
+
+  it('skips imperative verb lines ending with colon (section headers)', () => {
+    const input = [
+      'Complete these first few trainings:',
+      'Complete the New Hire Survey',
+      'Review your benefits package:',
+      'Review BCBS in Gusto.',
+    ].join('\n');
+    const result = parseBulletsToSteps(input);
+    expect(result).toHaveLength(2);
+    expect(result[0].title).toBe('Complete the New Hire Survey');
+    expect(result[1].title).toBe('Review BCBS in Gusto.');
+  });
+
+  it('combines bullet items and imperative verb items without duplicates', () => {
+    const input = [
+      '1. Complete Security Training',
+      '2. Sign SF-312',
+      'Work with Haley to get all of your accounts set up',
+      'Upload course certificates in training tracker profile',
+      'The drive time to Lincoln is considered billable.',
+    ].join('\n');
+    const result = parseBulletsToSteps(input);
+    expect(result).toHaveLength(4);
+    expect(result[0].title).toBe('Complete Security Training');
+    expect(result[1].title).toBe('Sign SF-312');
+    expect(result[2].title).toContain('Work with Haley');
+    expect(result[3].title).toContain('Upload course certificates');
+  });
+
+  it('parses BB-Shyft onboarding format (mixed bullets + graphical checkboxes)', () => {
+    const input = [
+      'Shyft Onboarding',
+      'First Day',
+      'First Things First (G&A Onboarding)',
+      // These lines had graphical checkboxes (not text) in the PDF:
+      'Work with Haley to get all of your accounts set up (except Guideline)',
+      'Follow along on the Handy Links page',
+      'Set up your Signature Block',
+      'Coordinate with Haley to get your company photo taken',
+      'Join some Slack channels (#company_announcements, #dev_lounge)',
+      'Send your supervisor a direct message in Slack',
+      // These have text bullet prefixes:
+      '1. Complete Security Training',
+      '2. Sign SF-312',
+      'Fill Out Forms (G&A Onboarding)',
+      'Complete the New Hire Survey',
+      'Complete the Media Release',
+      'Upload course certificates in training tracker profile',
+      'Review the Timesheet Cheat Sheet',
+      'Log your time in Unanet for the day',
+    ].join('\n');
+    const result = parseBulletsToSteps(input);
+    // Should capture numbered items + imperative verb items
+    expect(result.length).toBeGreaterThanOrEqual(14);
+    // Numbered items (Pass 1)
+    expect(result.some((s) => s.title.includes('Security Training'))).toBe(
+      true
+    );
+    expect(result.some((s) => s.title.includes('SF-312'))).toBe(true);
+    // Imperative verb items (Pass 2)
+    expect(result.some((s) => s.title.includes('Work with Haley'))).toBe(true);
+    expect(result.some((s) => s.title.includes('Signature Block'))).toBe(true);
+    expect(result.some((s) => s.title.includes('New Hire Survey'))).toBe(true);
+    expect(result.some((s) => s.title.includes('Timesheet Cheat Sheet'))).toBe(
+      true
+    );
+    // Headers should NOT be included
+    expect(result.some((s) => s.title === 'First Day')).toBe(false);
+    expect(result.some((s) => s.title === 'Shyft Onboarding')).toBe(false);
+  });
+
   // =========================================================================
   // Filtering and edge cases
   // =========================================================================
@@ -169,7 +269,7 @@ describe('parseBulletsToSteps', () => {
     expect(result[2].title).toBe('Configure your VPN access');
   });
 
-  it('fallback ignores very short lines (< 6 chars)', () => {
+  it('fallback ignores very short lines (< 8 chars)', () => {
     const input = 'Hi\nOK\nSetup your development environment\nConfigure your email';
     const result = parseBulletsToSteps(input);
     expect(result).toHaveLength(2);
@@ -220,13 +320,21 @@ describe('extractTextFromPdf', () => {
     return new File([blob], name, { type: 'application/pdf' });
   }
 
-  function createMockPdfDocument(pages: string[][]) {
+  interface MockTextItem {
+    str: string;
+    transform?: number[];
+    hasEOL?: boolean;
+  }
+
+  function createMockPdfDocument(pages: (string[] | MockTextItem[])[]) {
     return {
       numPages: pages.length,
       getPage: vi.fn().mockImplementation((pageNum: number) =>
         Promise.resolve({
           getTextContent: vi.fn().mockResolvedValue({
-            items: pages[pageNum - 1].map((str) => ({ str })),
+            items: pages[pageNum - 1].map((item) =>
+              typeof item === 'string' ? { str: item } : item
+            ),
           }),
         })
       ),
@@ -241,7 +349,7 @@ describe('extractTextFromPdf', () => {
 
     const file = createMockFile();
     const result = await extractTextFromPdf(file);
-    expect(result).toBe('Hello   World');
+    expect(result).toBe('Hello World');
   });
 
   it('returns text from multi-page PDF joined by newlines', async () => {
@@ -280,6 +388,62 @@ describe('extractTextFromPdf', () => {
     await expect(extractTextFromPdf(file)).rejects.toThrow(
       'Failed to extract text from PDF'
     );
+  });
+
+  it('preserves line breaks using hasEOL markers', async () => {
+    const mockDoc = createMockPdfDocument([
+      [
+        { str: '☐ Work with Haley', hasEOL: true },
+        { str: '☐ Set up Signature Block', hasEOL: true },
+        { str: '☐ Join Slack channels', hasEOL: true },
+      ] as MockTextItem[],
+    ]);
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(mockDoc),
+    } as any);
+
+    const file = createMockFile();
+    const result = await extractTextFromPdf(file);
+    expect(result).toContain('☐ Work with Haley\n');
+    expect(result).toContain('☐ Set up Signature Block\n');
+    expect(result).toContain('☐ Join Slack channels');
+  });
+
+  it('preserves line breaks using Y-position changes', async () => {
+    const mockDoc = createMockPdfDocument([
+      [
+        { str: '☐ First item', transform: [0, 0, 0, 0, 50, 700] },
+        { str: '☐ Second item', transform: [0, 0, 0, 0, 50, 680] },
+        { str: '☐ Third item', transform: [0, 0, 0, 0, 50, 660] },
+      ] as MockTextItem[],
+    ]);
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(mockDoc),
+    } as any);
+
+    const file = createMockFile();
+    const result = await extractTextFromPdf(file);
+    const lines = result.split('\n').filter(Boolean);
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toBe('☐ First item');
+    expect(lines[1]).toBe('☐ Second item');
+    expect(lines[2]).toBe('☐ Third item');
+  });
+
+  it('concatenates items on the same Y-position', async () => {
+    const mockDoc = createMockPdfDocument([
+      [
+        { str: 'Hello ', transform: [0, 0, 0, 0, 50, 700] },
+        { str: 'World', transform: [0, 0, 0, 0, 100, 700] },
+      ] as MockTextItem[],
+    ]);
+    mockGetDocument.mockReturnValue({
+      promise: Promise.resolve(mockDoc),
+    } as any);
+
+    const file = createMockFile();
+    const result = await extractTextFromPdf(file);
+    expect(result).toBe('Hello World');
   });
 
   it('configures worker source', () => {

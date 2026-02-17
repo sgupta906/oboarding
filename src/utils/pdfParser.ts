@@ -31,18 +31,29 @@ export interface ParsedStep {
  * - Numbered lists: 1. or 1)
  * - Lettered lists: a. or a)
  * - Checkbox markers: ballot box, checked ballot box, crossed ballot box, white/black square
+ * - Period bullets: . (period followed by space — common PDF rendering of bullet glyphs)
  */
 const BULLET_REGEX =
-  /^(?:[\u2022\u2023\u25E6\u2043\u2219\-\*\+>]|\d+[.)]\s|[a-zA-Z][.)]\s|[\u2610\u2611\u2612\u25A1\u25A0])\s*(.+)/;
+  /^(?:[\u2022\u2023\u25E6\u2043\u2219\-\*\+>]|\d+[.)]\s|[a-zA-Z][.)]\s|\.\s|[\u2610\u2611\u2612\u25A1\u25A0])\s*(.+)/;
 
 /**
- * Parses raw text into template steps by detecting bullet and numbered list patterns.
+ * Common imperative verbs that start onboarding task items.
+ * Used as a secondary heuristic to capture checkbox/task items where the
+ * checkbox was rendered as a graphic (not extractable text) rather than
+ * a Unicode character.
+ */
+const IMPERATIVE_VERB_REGEX =
+  /^(?:complete|sign|fill|set|work|follow|coordinate|join|send|upload|review|log|verify|make|schedule|read|watch|meet|configure|install|create|update|check|submit|register|request|contact|prepare|attend|obtain|download|print|bring|collect|gather|provide|pick|order|setup)\b/i;
+
+/**
+ * Parses raw text into template steps using a multi-pass heuristic.
  *
  * Algorithm:
  * 1. Split text on newlines, trim each line, filter empty lines
- * 2. Match each line against the bullet regex
- * 3. If bullets found, return them as ParsedStep[] with empty descriptions
- * 4. Fallback: if no bullets detected, each line between 6-200 chars becomes a step
+ * 2. Pass 1: Match lines against bullet/number regex (-, *, 1., ☐, etc.)
+ * 3. Pass 2: Match lines starting with imperative verbs (catches checkbox items
+ *    where the checkbox was a graphic, not extractable text)
+ * 4. Fallback: if no steps found, each line between 8-200 chars becomes a step
  *
  * @param rawText - Raw text extracted from a PDF document
  * @returns Array of parsed steps (may be empty if no parseable content)
@@ -51,21 +62,39 @@ export function parseBulletsToSteps(rawText: string): ParsedStep[] {
   const lines = rawText.split(/\n/).map((l) => l.trim()).filter(Boolean);
 
   const steps: ParsedStep[] = [];
+  const seen = new Set<string>();
 
+  // Pass 1: lines with explicit bullet/number prefixes
   for (const line of lines) {
     const match = line.match(BULLET_REGEX);
     if (match) {
       const title = match[1].trim();
-      if (title) {
+      if (title && !seen.has(title)) {
         steps.push({ title, description: '' });
+        seen.add(title);
       }
     }
   }
 
-  // Fallback: if no bullets found, use each reasonably-sized line as a step
+  // Pass 2: lines starting with imperative verbs (catches checkbox items
+  // where the checkbox was a graphic, not extractable text)
+  for (const line of lines) {
+    if (
+      line.length >= 8 &&
+      line.length <= 200 &&
+      !line.endsWith(':') &&
+      IMPERATIVE_VERB_REGEX.test(line) &&
+      !seen.has(line)
+    ) {
+      steps.push({ title: line, description: '' });
+      seen.add(line);
+    }
+  }
+
+  // Fallback: if still no steps, use each reasonably-sized line as a step
   if (steps.length === 0) {
     for (const line of lines) {
-      if (line.length >= 6 && line.length <= 200) {
+      if (line.length >= 8 && line.length <= 200) {
         steps.push({ title: line, description: '' });
       }
     }
@@ -109,10 +138,47 @@ export async function extractTextFromPdf(file: File): Promise<string> {
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item) => ('str' in item ? (item as { str: string }).str : ''))
-        .join(' ');
-      pages.push(pageText);
+
+      // Reconstruct line breaks from text item positions instead of joining with spaces.
+      // PDF text items carry Y-position (transform[5]) and hasEOL markers that indicate
+      // where visual line breaks occur in the document.
+      let pageText = '';
+      let lastY: number | null = null;
+
+      for (const item of textContent.items) {
+        if (!('str' in item)) continue;
+        const textItem = item as {
+          str: string;
+          transform?: number[];
+          hasEOL?: boolean;
+        };
+        const str = textItem.str;
+        const currentY = textItem.transform?.[5];
+
+        // Y-position changed significantly → new line
+        if (
+          lastY !== null &&
+          currentY !== undefined &&
+          Math.abs(currentY - lastY) > 2
+        ) {
+          if (pageText.length > 0 && !pageText.endsWith('\n')) {
+            pageText += '\n';
+          }
+        }
+
+        pageText += str;
+
+        if (currentY !== undefined) {
+          lastY = currentY;
+        }
+
+        // Explicit end-of-line marker from pdf.js
+        if (textItem.hasEOL && !pageText.endsWith('\n')) {
+          pageText += '\n';
+        }
+      }
+
+      pages.push(pageText.trimEnd());
     }
 
     return pages.join('\n');
