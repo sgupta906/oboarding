@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useState, memo } from 'react';
-import { User, LogOut } from 'lucide-react';
+import { User } from 'lucide-react';
 import { EmployeeView, ManagerView } from '../views';
 import { SuggestEditModal, ReportStuckModal } from '../components/modals';
 import { EmployeeSelector } from './onboarding';
@@ -227,13 +227,6 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             Your manager will set up your onboarding. Check back soon!
           </p>
-          <button
-            onClick={() => { window.location.hash = '#/sign-out'; }}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
         </div>
       </div>
     );

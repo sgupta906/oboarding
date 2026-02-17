@@ -205,4 +205,25 @@ describe('EmployeeView', () => {
     // The "Feedback Sent" badge should appear for step 2
     expect(screen.getByText('Feedback Sent')).toBeInTheDocument();
   });
+
+  /**
+   * REGRESSION TESTS: No duplicate header/sign-out (Bug #30)
+   * NavBar (rendered by App.tsx) already provides sign-out and view identification.
+   * EmployeeView must NOT render its own sign-out button or redundant header labels.
+   */
+
+  it('does NOT render a duplicate sign-out button', () => {
+    renderEmployee();
+
+    // EmployeeView should not contain any sign-out button -- NavBar handles it
+    const signOutButton = screen.queryByRole('button', { name: /sign out/i });
+    expect(signOutButton).not.toBeInTheDocument();
+  });
+
+  it('does NOT render duplicate "Active Onboarding" header text', () => {
+    renderEmployee();
+
+    // EmployeeView should not contain the redundant "Active Onboarding" label
+    expect(screen.queryByText('Active Onboarding')).not.toBeInTheDocument();
+  });
 });
