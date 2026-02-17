@@ -281,7 +281,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
  * return (
  *   <>
  *     {role === 'employee' && <EmployeeView />}
- *     {(role === 'manager' || role === 'admin') && <ManagerView />}
+ *     {hasManagerAccess(role) && <ManagerView />}
  *   </>
  * );
  * ```

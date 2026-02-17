@@ -241,7 +241,7 @@ describe('Auth Service', () => {
     });
 
     it('should return different roles correctly', async () => {
-      const testRoles: Array<'employee' | 'manager' | 'admin'> = [
+      const testRoles: string[] = [
         'employee',
         'manager',
         'admin',

@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Lock, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../config/authContext';
+import { hasManagerAccess } from '../../config/authTypes';
 import { useDarkMode } from '../../context/DarkModeContext';
 import type { NavBarProps } from '../../types';
 
@@ -36,8 +37,8 @@ export function NavBar({ currentView, onViewChange }: NavBarProps) {
   }, []);
 
   // Determine if user can access manager view
-  // Only manager and admin roles can access manager view
-  const canAccessManagerView = role === 'manager' || role === 'admin';
+  // Any non-employee role can access manager view (supports custom roles)
+  const canAccessManagerView = hasManagerAccess(role);
 
   const handleViewChange = (view: 'employee' | 'manager') => {
     // Update the view state

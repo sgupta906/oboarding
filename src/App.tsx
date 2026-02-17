@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { DarkModeProvider } from './context/DarkModeContext';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider, useAuth } from './config/authContext';
+import { hasManagerAccess } from './config/authTypes';
 import { OnboardingHub } from './components/OnboardingHub';
 import { TemplatesView } from './views/TemplatesView';
 import { SignInView } from './views/SignInView';
@@ -18,7 +19,7 @@ function AppContent() {
 
   // Initialize currentView based on user role: managers/admins start with manager view, employees with employee view
   const getInitialView = (): 'employee' | 'manager' => {
-    return role === 'manager' || role === 'admin' ? 'manager' : 'employee';
+    return hasManagerAccess(role) ? 'manager' : 'employee';
   };
 
   const [currentView, setCurrentView] = useState<'employee' | 'manager'>(getInitialView);
@@ -30,7 +31,7 @@ function AppContent() {
     // Only act when role transitions from null/undefined to an actual value
     if (role !== null && previousRoleRef.current !== role) {
       previousRoleRef.current = role;
-      if (role === 'manager' || role === 'admin') {
+      if (hasManagerAccess(role)) {
         setCurrentView('manager');
       } else {
         setCurrentView('employee');
@@ -85,7 +86,7 @@ function AppContent() {
   }
 
   // Check if user can access templates route
-  const canAccessTemplates = role === 'manager' || role === 'admin';
+  const canAccessTemplates = hasManagerAccess(role);
 
   // Redirect to onboarding if non-manager tries to access templates
   if (currentRoute === 'templates' && !canAccessTemplates) {

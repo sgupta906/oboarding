@@ -14,6 +14,7 @@ import { EmployeeView, ManagerView } from '../views';
 import { SuggestEditModal, ReportStuckModal } from '../components/modals';
 import { EmployeeSelector } from './onboarding';
 import { useAuth } from '../config/authContext';
+import { hasManagerAccess } from '../config/authTypes';
 import { useToast } from '../context/ToastContext';
 import {
   useEmployeeOnboarding,
@@ -36,7 +37,7 @@ const MemoizedEmployeeView = memo(EmployeeView);
 export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) {
   const { user, role } = useAuth();
   const { showToast } = useToast();
-  const isManager = role === 'manager' || role === 'admin';
+  const isManager = hasManagerAccess(role);
 
   // Employee-specific data (only load for employees OR when manager views employee tab)
   const employeeEmail = !isManager ? user?.email ?? null : null;
