@@ -6,16 +6,14 @@
 
 ## Current State
 
-**Current Feature:** suggestion-improvements (Bugs #41, #42, #43)
-**Current Phase:** RESEARCH COMPLETE
-**Next Command:** `/plan suggestion-improvements`
+**Current Feature:** None (ready for next bug fix)
+**Current Phase:** Idle
+**Next Command:** Select a bug from the roadmap and run `/research <feature>`
 
-### Pipeline Progress
-- [x] /research
-- [ ] /plan
-- [ ] /implement
-- [ ] /test
-- [ ] /finalize
+### Last Completed Feature
+- Feature: hire-email-signin (Bug #11)
+- Finalized: 2026-02-17
+- Commit: 4b7cd90
 
 ---
 
@@ -86,7 +84,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 8 | `user-form-clears-on-error` | **FIXED** | ~~UserModal form clears all fields when server returns an error~~ | Fixed in commit 72f5fa2 - re-throw errors in submit handlers so promise rejection prevents `resetForm()` |
 | 9 | `users-table-always-empty` | **FIXED** | ~~Users tab shows "No users" despite 8+ active onboarding instances~~ | Fixed in commit 846f7d4 - same root cause as bug 7. Valid UUIDs now allow PostgreSQL queries to succeed. Users table loads correctly and displays data. |
 | 10 | `users-error-persists` | **FIXED** | ~~Error banner stays visible after closing create modal~~ | Fixed in commit 72f5fa2 - clear store error on modal close via `reset()` call |
-| 11 | `users-tab-hmr-bounce` | **P2 MEDIUM** | Users tab intermittently switches to another tab | Vite HMR triggers `useAuth must be used within AuthProvider` errors, crashes component tree, resets `activeTab` state to default |
+| 11 | `hire-email-signin` | **FIXED** | ~~Hires created via New Hires panel cannot sign in with their email~~ | Fixed in commit 4b7cd90 - added getInstanceByEmployeeEmail() to query instances by employee_email, inserted hire check in signInWithEmailLink() between Users panel credentials and MOCK_EMAIL_ROLES |
 | 12 | `users-duplicate-error-display` | **FIXED** | ~~Error shown both inside modal AND behind modal simultaneously~~ | Fixed in commit 72f5fa2 - suppress store error banner while modal is open with `!showCreateModal && editingUser === null` guard |
 
 **Recommended fix order:** Bug 7 first (unblocks 9), then 8, 10, 11, 12.
@@ -128,7 +126,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 |---|-------|----------|---------|------------|
 | 28 | `modal-stale-form-data` | **FIXED** | ~~Modal forms retain stale data from previous open/close cycles~~ | Fixed in commit 230b915 - added useEffect reset hooks to 5 modals (CreateOnboardingModal, UserModal, RoleModal, TemplateModal, SuggestEditModal) that reset form state when isOpen becomes true. |
 | 29 | `navbar-breaks-at-mobile` | **P2 MEDIUM** | At 375px, navbar loses brand name, templates button, dark mode toggle | No hamburger menu or responsive collapse |
-| 30 | `employee-selector-exposed` | **P2 MEDIUM** | Employee selector dropdown visible in Employee View + duplicate Sign Out buttons | Manager impersonation tool leaking into employee view |
+| 30 | `employee-header-cleanup` | **FIXED** | ~~Employee selector dropdown visible in Employee View + duplicate Sign Out buttons~~ | Fixed in commit 49b0bfb - removed redundant EmployeeHeader component and duplicate Sign Out button, NavBar already provides all auth/view UI |
 | 31 | `kpi-count-stale` | **P2 MEDIUM** | KPI "Active Onboardings" shows inconsistent counts between views | Caching or recomputation issue |
 | 32 | `dashboard-layout-imbalance` | **P3 LOW** | Documentation Feedback and Live Activity sections unbalanced | Layout proportions off |
 | 33 | `activity-initials-only` | **P3 LOW** | Activity feed shows only 2-letter initials, uniform blue — no full names | Missing name display |
@@ -144,9 +142,9 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 38 | `create-hire-creates-user` | **FIXED** | ~~Creating a new hire also creates a user record — hires and users should be separate entities~~ | Fixed in commit fa07826 - removed 23 lines from `createOnboardingRunFromTemplate()` that called `createUser()`, added regression test verifying userService is not called during hire creation. |
 | 39 | `profiles-table-unused` | **P3 LOW** | `profiles` table and `profileService.ts` are fully implemented but have zero usage anywhere | Dead code — `profileService.ts` has CRUD methods but no component, hook, or store imports it. `user_profiles` junction table has no FK to `profiles`. Cleanup: remove `profileService.ts`, related mappers, and types. |
 | 40 | `user-create-fk-violation` | **P0 CRITICAL** | Creating users fails with `insert or update on table "users" violates foreign key constraint "users_created_by_fkey"` | `users.created_by` has self-referencing FK `REFERENCES users(id) ON DELETE SET NULL`. Dev-auth UUID `00000000-0000-4000-a000-000000000002` passes `isValidUUID()` syntax check but doesn't exist as a row in `users` table. Fix: null out `created_by` when referencing user doesn't exist, or seed dev-auth users into DB. |
-| 41 | `suggestion-step-lookup-ambiguous` | **P2 MEDIUM** | Suggestion cards may show wrong step title when multiple onboarding instances exist | `SuggestionsSection.tsx:30` uses `.find()` on flattened array of all steps from all instances — first match wins, which may be from wrong instance. Fix: filter by `instanceId` before looking up step title. |
-| 42 | `suggestion-no-step-title-in-activity` | **P2 MEDIUM** | Activity feed shows "submitted suggestion for step 3" (bare number) instead of step title | `OnboardingHub.tsx:119-123` logs `step ${activeModal.stepId}` (numeric position). Approve/reject activities are completely generic ("approved a documentation suggestion"). Fix: resolve step title at log time and include in activity message. |
-| 43 | `suggestion-approve-reject-generic` | **P3 LOW** | Approve/reject activity entries contain no context about which step or which employee | `ManagerView.tsx` logs generic messages like `'approved a documentation suggestion'` with no step title, instance, or employee name. Fix: include step title and employee name in activity messages. |
+| 41 | `suggestion-step-lookup-ambiguous` | **FIXED** | ~~Suggestion cards may show wrong step title when multiple onboarding instances exist~~ | Fixed in commit 4009f7a - SuggestionsSection now uses instance-scoped step title lookup via onboardingInstances prop |
+| 42 | `suggestion-no-step-title-in-activity` | **FIXED** | ~~Activity feed shows "submitted suggestion for step 3" (bare number) instead of step title~~ | Fixed in commit 4009f7a - OnboardingHub activity messages now include step titles in quoted format |
+| 43 | `suggestion-approve-reject-generic` | **FIXED** | ~~Approve/reject activity entries contain no context about which step or which employee~~ | Fixed in commit 4009f7a - ManagerView approve/reject messages now include employee name and step title |
 | 44 | `delete-user-cascades-instances` | **P1 HIGH** | Deleting a user also deletes their onboarding instances — destructive cascade | `userService.ts:399-418` manually queries and deletes `onboarding_instances` by email before deleting the user. This is wrong — hires and users are separate entities. Fix: remove the onboarding instance cascade from `deleteUser()`. |
 
 **Recommended fix order:** #40 first (P0 CRITICAL, blocks user creation), then #37, #38, #44 (P1 HIGH), then #41-42 (P2), then #39, #43 (P3).
@@ -211,6 +209,14 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 30 | `darkmode-batch` | 2026-02-16 | 080d095 | Fixed bugs #22-27 - added dark mode support to 6 remaining components (KPISection, ReportStuckModal, DeleteConfirmDialog, ActionBar, StepTimeline, WelcomeHeader), normalized gray->slate in KPISection, added option element styling, +21 tests (508 total) |
 | 31 | `template-reorder-fix` | 2026-02-16 | f84fb29 | Fixed bug #37 (P1 HIGH) - template step reordering now persists correctly by using array position as step ID (1-line fix: `id: index + 1` instead of `id: s.id || index + 1`), +1 test (513 total) |
 | 32 | `create-hire-separation` | 2026-02-16 | fa07826 | Fixed bug #38 (P1 HIGH) - removed user creation side effect from hire creation (23 lines deleted from createOnboardingRunFromTemplate), hires and users now properly separated entities, +1 regression test (513 total) |
+| 33 | `suggestion-improvements` | 2026-02-16 | 4009f7a | Fixed bugs #41, #42, #43 - instance-scoped step title lookup in SuggestionsSection, step titles in all OnboardingHub activity messages, contextual approve/reject messages with employee name and step title in ManagerView, +7 tests (520 total) |
+| 34 | `user-role-view-fix` | 2026-02-16 | 083cd9a | Fixed bug #40 (P0 CRITICAL) - removed FK-violating created_by from manager role validation, granted manager access to all non-employee roles, null out created_by for dev-auth users in userService createUser/updateUser, +12 tests (532 total) |
+| 35 | `user-service-fixes` | 2026-02-16 | 4009f7a | Fixed bug #44 (P1 HIGH) - removed destructive onboarding instance cascade from deleteUser(), hires and users now properly separate entities, +1 test verifying no instance service calls (533 total) |
+| 36 | `template-step-sync-fix` | 2026-02-17 | 10f1365 | Fixed template-to-instance synchronization bug - rewrote syncTemplateStepsToInstances() with title-based matching, propagates reorder/rename/field updates/removals to existing instances, preserves step completion status, +12 tests (540 total) |
+| 37 | `suggest-edit-indicator` | 2026-02-17 | 5194f0a | Added suggestion indicator to employee step cards - amber "Feedback Sent" badge appears on steps with pending suggestions, green success toast on submission, instant UI feedback before Realtime subscription updates, +9 tests (553 total) |
+| 38 | `suggest-edit-realtime-update` | 2026-02-17 | 86998ce | Fixed feedback badge delay bug - added _addSuggestion action to SuggestionsSlice, wired into OnboardingHub.handleSuggestEdit so badge appears immediately after server confirms suggestion creation (no page reload), +2 tests (563 total) |
+| 39 | `employee-header-cleanup` | 2026-02-17 | 49b0bfb | Fixed bug #30 (P2 MEDIUM) - removed redundant EmployeeHeader component (~40 lines) and duplicate Sign Out button from "no onboarding assigned" card, NavBar already provides all auth/view UI, +2 regression tests (563 total) |
+| 40 | `hire-email-signin` | 2026-02-17 | 4b7cd90 | Fixed bug #11 (P2 MEDIUM) - added getInstanceByEmployeeEmail() to query instances by employee_email, inserted hire check in signInWithEmailLink() between Users panel credentials and MOCK_EMAIL_ROLES, hires created via New Hires panel can now sign in with their email as employees, +10 tests (563 total) |
 
 ---
 
