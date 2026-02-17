@@ -10,6 +10,7 @@ import { toProfile, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
 import { isValidUUID } from '../../utils/uuid';
+import { creatorExists } from './userService';
 
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
 type ProfileRoleTagInsert = Database['public']['Tables']['profile_role_tags']['Insert'];
@@ -48,8 +49,14 @@ export async function createProfile(
   const trimmedName = name.trim();
   const trimmedDesc = description ? description.trim() : null;
 
-  // Only pass createdBy if it's a valid UUID; otherwise use null.
-  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+  // Only pass createdBy if it's a valid UUID AND the creator row exists;
+  // otherwise use null. Dev auth generates UUIDs that may not have a
+  // corresponding users row, which would cause an FK constraint violation.
+  let safeCreatedBy: string | null = null;
+  if (createdBy && isValidUUID(createdBy)) {
+    const exists = await creatorExists(createdBy);
+    safeCreatedBy = exists ? createdBy : null;
+  }
 
   const row: ProfileInsert = {
     name: trimmedName,

@@ -10,6 +10,7 @@ import { toRole, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { createCrudService } from './crudFactory';
 import { isValidUUID } from '../../utils/uuid';
+import { creatorExists } from './userService';
 
 type RoleInsert = Database['public']['Tables']['roles']['Insert'];
 
@@ -88,10 +89,14 @@ export async function createRole(
   const trimmedName = name.trim();
   const trimmedDesc = description !== undefined ? description.trim() : null;
 
-  // Only pass createdBy if it's a valid UUID; otherwise use null.
-  // Dev auth generates non-UUID identifiers like "test-test-manager"
-  // which would cause a Postgres type error on the UUID column.
-  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+  // Only pass createdBy if it's a valid UUID AND the creator row exists;
+  // otherwise use null. Dev auth generates UUIDs that may not have a
+  // corresponding users row, which would cause an FK constraint violation.
+  let safeCreatedBy: string | null = null;
+  if (createdBy && isValidUUID(createdBy)) {
+    const exists = await creatorExists(createdBy);
+    safeCreatedBy = exists ? createdBy : null;
+  }
 
   const row: RoleInsert = {
     name: trimmedName,

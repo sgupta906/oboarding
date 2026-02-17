@@ -333,7 +333,7 @@ export function UsersPanel() {
         title="Delete User"
         message={
           userToDelete
-            ? `Are you sure you want to delete "${userToDelete.name}"? This will also delete any associated onboarding data. This action cannot be undone.`
+            ? `Are you sure you want to delete "${userToDelete.name}"? This action cannot be undone.`
             : ''
         }
         confirmLabel="Delete"

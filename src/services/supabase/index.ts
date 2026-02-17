@@ -91,6 +91,7 @@ export {
   updateUser,
   deleteUser,
   userEmailExists,
+  creatorExists,
   subscribeToUsers,
   addUserToAuthCredentials,
   getAuthCredential,

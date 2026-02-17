@@ -201,6 +201,23 @@ export async function userEmailExists(email: string, excludeUserId?: string): Pr
 }
 
 /**
+ * Checks if a user with the given ID exists in the users table.
+ * Used to validate `created_by` FK references before INSERT operations.
+ * Returns false on query error (fail-safe: treat as non-existent rather
+ * than failing the entire create operation for an informational field).
+ */
+export async function creatorExists(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', userId)
+    .limit(1);
+
+  if (error) return false;
+  return (data ?? []).length > 0;
+}
+
+/**
  * Creates a new user with junction table rows.
  * @throws Error if email already exists.
  */
@@ -218,10 +235,14 @@ export async function createUser(
   const trimmedName = userData.name.trim();
   const primaryRole = userData.roles[0] || 'employee';
 
-  // Only pass createdBy if it's a valid UUID; otherwise use null.
-  // Dev auth generates non-UUID identifiers like "test-test-manager"
-  // which would cause a Postgres type error on the UUID column.
-  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+  // Only pass createdBy if it's a valid UUID AND the creator row exists;
+  // otherwise use null. Dev auth generates UUIDs that may not have a
+  // corresponding users row, which would cause an FK constraint violation.
+  let safeCreatedBy: string | null = null;
+  if (createdBy && isValidUUID(createdBy)) {
+    const exists = await creatorExists(createdBy);
+    safeCreatedBy = exists ? createdBy : null;
+  }
 
   // Insert user row
   const row: UserInsert = {
@@ -384,38 +405,14 @@ export async function updateUser(
 }
 
 /**
- * Deletes a user and their associated onboarding instances.
- * Database CASCADE handles junction table cleanup (user_roles, user_profiles).
- * Onboarding instances must be deleted explicitly since they reference users
- * by employee_email (TEXT), not by foreign key.
- * Also removes auth credentials.
+ * Deletes a user. Database CASCADE handles junction table cleanup
+ * (user_roles, user_profiles). Also removes auth credentials.
+ * Onboarding instances are NOT deleted -- they are separate entities.
  */
 export async function deleteUser(userId: string): Promise<void> {
-  // Fetch user to get email for auth cleanup and instance lookup
+  // Fetch user to get email for auth credential cleanup
   const user = await getUser(userId);
   if (!user) return; // Idempotent
-
-  // Delete associated onboarding instances (by email, since no FK to users)
-  const { data: instances } = await supabase
-    .from('onboarding_instances')
-    .select('id')
-    .ilike('employee_email', user.email);
-
-  if (instances && instances.length > 0) {
-    const instanceIds = instances.map((i: { id: string }) => i.id);
-    const { error: instanceError } = await supabase
-      .from('onboarding_instances')
-      .delete()
-      .in('id', instanceIds);
-
-    if (instanceError) {
-      throw new Error(
-        `Failed to delete onboarding instances for user ${userId}: ${instanceError.message}`
-      );
-    }
-    // CASCADE handles instance_steps, instance_profiles, instance_template_refs
-    // suggestions.instance_id gets SET NULL
-  }
 
   // Delete user row (CASCADE handles user_roles, user_profiles)
   const { error } = await supabase

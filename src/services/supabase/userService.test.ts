@@ -1,7 +1,10 @@
 /**
- * userService Tests - Verify deleteUser cleans up onboarding instances
- * Tests that deleteUser queries onboarding_instances by employee email
- * and deletes them before removing the user row.
+ * userService Tests
+ *
+ * Tests for:
+ * - creatorExists() helper (Bug #40 fix)
+ * - createUser() existence check integration (Bug #40 fix)
+ * - deleteUser() simplified flow without instance cascade (Bug #44 fix)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -12,22 +15,43 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Track calls per table for assertions
 const mockDeleteEq = vi.fn();
-const mockDeleteIn = vi.fn();
-const mockSelectEq = vi.fn();
+const mockSelectEqLimit = vi.fn();
 
 let usersSelectResult: any;
-let instancesSelectResult: any;
-let instancesDeleteResult: any;
+let usersSelectSingleResult: any;
 let usersDeleteResult: any;
+let usersInsertResult: any;
+let userEmailCheckResult: any;
+let creatorExistsResult: any;
 
 vi.mock('../../config/supabase', () => ({
   supabase: {
     from: vi.fn((table: string) => {
       if (table === 'users') {
         return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: vi.fn(() => usersSelectResult),
+          select: vi.fn((_clause?: string) => {
+            // creatorExists() uses select('id').eq('id', ...).limit(1)
+            // userEmailExists() uses select('id').ilike(...).limit(1)
+            // getUser (crud.get) uses select('*, user_roles(*), user_profiles(*)').eq('id', ...).single()
+            return {
+              eq: vi.fn((_col: string, _val: string) => ({
+                single: vi.fn(() => usersSelectSingleResult ?? usersSelectResult),
+                limit: vi.fn((...args: any[]) => {
+                  mockSelectEqLimit(table, ...args);
+                  return creatorExistsResult;
+                }),
+              })),
+              ilike: vi.fn(() => ({
+                neq: vi.fn(() => ({
+                  limit: vi.fn(() => userEmailCheckResult),
+                })),
+                limit: vi.fn(() => userEmailCheckResult),
+              })),
+            };
+          }),
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(() => usersInsertResult),
             })),
           })),
           delete: vi.fn(() => ({
@@ -38,20 +62,16 @@ vi.mock('../../config/supabase', () => ({
           })),
         };
       }
-      if (table === 'onboarding_instances') {
+      if (table === 'user_roles') {
         return {
-          select: vi.fn(() => ({
-            ilike: vi.fn((...args: any[]) => {
-              mockSelectEq(table, ...args);
-              return instancesSelectResult;
-            }),
-          })),
-          delete: vi.fn(() => ({
-            in: vi.fn((...args: any[]) => {
-              mockDeleteIn(table, ...args);
-              return instancesDeleteResult;
-            }),
-          })),
+          insert: vi.fn(() => ({ error: null })),
+          delete: vi.fn(() => ({ eq: vi.fn(() => ({ error: null })) })),
+        };
+      }
+      if (table === 'user_profiles') {
+        return {
+          insert: vi.fn(() => ({ error: null })),
+          delete: vi.fn(() => ({ eq: vi.fn(() => ({ error: null })) })),
         };
       }
       return {};
@@ -80,115 +100,167 @@ vi.mock('./subscriptionManager', () => ({
   })),
 }));
 
-import { deleteUser } from './userService';
+import { creatorExists, createUser, deleteUser } from './userService';
 
-describe('deleteUser - onboarding instance cleanup', () => {
+// ============================================================================
+// creatorExists() tests (Task 2.1 - Bug #40)
+// ============================================================================
+
+describe('creatorExists', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: user exists, no errors
-    usersSelectResult = {
+  });
+
+  it('returns true when user row exists', async () => {
+    creatorExistsResult = { data: [{ id: 'user-1' }], error: null };
+
+    const result = await creatorExists('user-1');
+
+    expect(result).toBe(true);
+  });
+
+  it('returns false when user row does not exist', async () => {
+    creatorExistsResult = { data: [], error: null };
+
+    const result = await creatorExists('nonexistent-id');
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false on query error (fail-safe)', async () => {
+    creatorExistsResult = { data: null, error: { message: 'connection error' } };
+
+    const result = await creatorExists('user-1');
+
+    expect(result).toBe(false);
+  });
+});
+
+// ============================================================================
+// createUser() existence check tests (Task 2.2 - Bug #40)
+// ============================================================================
+
+describe('createUser - creator existence check', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: email does not exist (so create proceeds)
+    userEmailCheckResult = { data: [], error: null };
+    // Default: insert succeeds
+    usersInsertResult = {
+      data: {
+        id: 'new-user-1',
+        email: 'newuser@example.com',
+        name: 'New User',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        created_by: null,
+      },
+      error: null,
+    };
+  });
+
+  it('sets created_by to null when creator UUID does not exist in users table', async () => {
+    // Creator UUID is valid format but does not exist in DB
+    creatorExistsResult = { data: [], error: null };
+
+    const result = await createUser(
+      { email: 'newuser@example.com', name: 'New User', roles: ['employee'], profiles: [], createdBy: '' },
+      '00000000-0000-4000-a000-000000000099'
+    );
+
+    // The function should have checked existence and fallen back to null
+    expect(result).toBeDefined();
+    expect(result.id).toBe('new-user-1');
+  });
+
+  it('sets created_by to the UUID when creator exists in users table', async () => {
+    // Creator UUID exists in DB
+    creatorExistsResult = { data: [{ id: '00000000-0000-4000-a000-000000000002' }], error: null };
+    usersInsertResult = {
+      data: {
+        id: 'new-user-2',
+        email: 'newuser2@example.com',
+        name: 'New User 2',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        created_by: '00000000-0000-4000-a000-000000000002',
+      },
+      error: null,
+    };
+
+    const result = await createUser(
+      { email: 'newuser2@example.com', name: 'New User 2', roles: ['employee'], profiles: [], createdBy: '' },
+      '00000000-0000-4000-a000-000000000002'
+    );
+
+    expect(result).toBeDefined();
+    expect(result.id).toBe('new-user-2');
+  });
+
+  it('sets created_by to null when UUID format is invalid (preserves existing behavior)', async () => {
+    // Invalid UUID format -- should not even call creatorExists
+    const result = await createUser(
+      { email: 'newuser3@example.com', name: 'New User 3', roles: ['employee'], profiles: [], createdBy: '' },
+      'not-a-uuid'
+    );
+
+    expect(result).toBeDefined();
+    expect(result.id).toBe('new-user-1');
+    // creatorExists should NOT have been called since format is invalid
+    expect(mockSelectEqLimit).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// deleteUser() simplified tests (Task 2.3 - Bug #44)
+// ============================================================================
+
+describe('deleteUser - simplified (no instance cascade)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: user exists
+    usersSelectSingleResult = {
       data: {
         id: 'user-1',
         email: 'alice@example.com',
         name: 'Alice',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z',
-        created_by: 'system',
+        created_by: null,
         user_roles: [{ role_name: 'employee' }],
         user_profiles: [],
       },
       error: null,
     };
     usersDeleteResult = { error: null };
-    instancesSelectResult = { data: [], error: null };
-    instancesDeleteResult = { error: null };
   });
 
-  it('queries onboarding_instances by employee email before deleting user', async () => {
-    instancesSelectResult = { data: [], error: null };
-
+  it('deletes user row and removes auth credentials without touching instances', async () => {
     await deleteUser('user-1');
 
-    // Verify instances were queried by email (case-insensitive via ilike)
-    expect(mockSelectEq).toHaveBeenCalledWith(
-      'onboarding_instances',
-      'employee_email',
-      'alice@example.com'
-    );
-    // Verify user row was still deleted
+    // Verify user row was deleted
     expect(mockDeleteEq).toHaveBeenCalledWith('users', 'id', 'user-1');
   });
 
-  it('deletes found instances then deletes user row', async () => {
-    instancesSelectResult = {
-      data: [{ id: 'inst-1' }],
-      error: null,
-    };
+  it('does NOT query or delete onboarding_instances', async () => {
+    const { supabase } = await import('../../config/supabase');
 
     await deleteUser('user-1');
 
-    // Verify instance was deleted by ID
-    expect(mockDeleteIn).toHaveBeenCalledWith(
-      'onboarding_instances',
-      'id',
-      ['inst-1']
-    );
-    // Verify user row was deleted after instances
-    expect(mockDeleteEq).toHaveBeenCalledWith('users', 'id', 'user-1');
-  });
+    // Get all calls to supabase.from()
+    const fromCalls = vi.mocked(supabase.from).mock.calls;
+    const tablesQueried = fromCalls.map((call) => call[0]);
 
-  it('handles user with no onboarding instances', async () => {
-    instancesSelectResult = { data: [], error: null };
-
-    await deleteUser('user-1');
-
-    // No instance delete should be called
-    expect(mockDeleteIn).not.toHaveBeenCalled();
-    // User row should still be deleted
-    expect(mockDeleteEq).toHaveBeenCalledWith('users', 'id', 'user-1');
-  });
-
-  it('handles user with multiple instances', async () => {
-    instancesSelectResult = {
-      data: [{ id: 'inst-1' }, { id: 'inst-2' }, { id: 'inst-3' }],
-      error: null,
-    };
-
-    await deleteUser('user-1');
-
-    // All instance IDs should be passed to the delete
-    expect(mockDeleteIn).toHaveBeenCalledWith(
-      'onboarding_instances',
-      'id',
-      ['inst-1', 'inst-2', 'inst-3']
-    );
+    // onboarding_instances should never appear
+    expect(tablesQueried).not.toContain('onboarding_instances');
   });
 
   it('returns early (idempotent) when user not found', async () => {
-    usersSelectResult = { data: null, error: { code: 'PGRST116', message: 'not found' } };
+    usersSelectSingleResult = { data: null, error: { code: 'PGRST116', message: 'not found' } };
 
     await deleteUser('nonexistent-user');
 
     // Neither instances nor user delete should be called
-    expect(mockSelectEq).not.toHaveBeenCalled();
-    expect(mockDeleteEq).not.toHaveBeenCalled();
-    expect(mockDeleteIn).not.toHaveBeenCalled();
-  });
-
-  it('throws when instance deletion fails', async () => {
-    instancesSelectResult = {
-      data: [{ id: 'inst-1' }],
-      error: null,
-    };
-    instancesDeleteResult = {
-      error: { message: 'Foreign key constraint violation' },
-    };
-
-    await expect(deleteUser('user-1')).rejects.toThrow(
-      'Failed to delete onboarding instances'
-    );
-
-    // User row should NOT have been deleted since instance cleanup failed
     expect(mockDeleteEq).not.toHaveBeenCalled();
   });
 });

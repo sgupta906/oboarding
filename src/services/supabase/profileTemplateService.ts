@@ -11,6 +11,7 @@ import type { Database } from '../../types/database.types';
 import { debounce } from '../../utils/debounce';
 import { createCrudService } from './crudFactory';
 import { isValidUUID } from '../../utils/uuid';
+import { creatorExists } from './userService';
 
 type ProfileTemplateInsert = Database['public']['Tables']['profile_templates']['Insert'];
 type ProfileTemplateStepInsert = Database['public']['Tables']['profile_template_steps']['Insert'];
@@ -74,8 +75,14 @@ export async function createProfileTemplate(
   const trimmedName = name.trim();
   const trimmedDesc = description ? description.trim() : null;
 
-  // Only pass createdBy if it's a valid UUID; otherwise use null.
-  const safeCreatedBy = createdBy && isValidUUID(createdBy) ? createdBy : null;
+  // Only pass createdBy if it's a valid UUID AND the creator row exists;
+  // otherwise use null. Dev auth generates UUIDs that may not have a
+  // corresponding users row, which would cause an FK constraint violation.
+  let safeCreatedBy: string | null = null;
+  if (createdBy && isValidUUID(createdBy)) {
+    const exists = await creatorExists(createdBy);
+    safeCreatedBy = exists ? createdBy : null;
+  }
 
   const row: ProfileTemplateInsert = {
     profile_id: profileId,

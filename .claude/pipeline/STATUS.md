@@ -6,12 +6,12 @@
 
 ## Current State
 
-**Current Feature:** None — awaiting next assignment
-**Current Phase:** IDLE
-**Next Command:** Choose next bug from roadmap
+**Current Feature:** suggestion-improvements (Bugs #41, #42, #43)
+**Current Phase:** RESEARCH COMPLETE
+**Next Command:** `/plan suggestion-improvements`
 
 ### Pipeline Progress
-- [ ] /research
+- [x] /research
 - [ ] /plan
 - [ ] /implement
 - [ ] /test
@@ -136,6 +136,21 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 35 | `completed-step-strikethrough` | **P3 LOW** | Completed step description uses hard-to-read strikethrough | Poor readability |
 | 36 | `no-loading-skeleton` | **P3 LOW** | Plain text "Loading dashboard..." instead of skeleton/spinner | Missing loading state components |
 
+### Data Model & Persistence Bugs (discovered via Playwright scouting 2026-02-16, round 3)
+
+| # | Bug | Priority | Symptom | Root Cause |
+|---|-----|----------|---------|------------|
+| 37 | `template-reorder-not-persisted` | **FIXED** | ~~Reordering template steps appears to work (optimistic update) but reverts on page reload~~ | Fixed in commit f84fb29 - changed `TemplateModal.tsx:205` from `id: s.id \|\| index + 1` to `id: index + 1` so step IDs always reflect current array position. +1 test validates submitted payload. |
+| 38 | `create-hire-creates-user` | **FIXED** | ~~Creating a new hire also creates a user record — hires and users should be separate entities~~ | Fixed in commit fa07826 - removed 23 lines from `createOnboardingRunFromTemplate()` that called `createUser()`, added regression test verifying userService is not called during hire creation. |
+| 39 | `profiles-table-unused` | **P3 LOW** | `profiles` table and `profileService.ts` are fully implemented but have zero usage anywhere | Dead code — `profileService.ts` has CRUD methods but no component, hook, or store imports it. `user_profiles` junction table has no FK to `profiles`. Cleanup: remove `profileService.ts`, related mappers, and types. |
+| 40 | `user-create-fk-violation` | **P0 CRITICAL** | Creating users fails with `insert or update on table "users" violates foreign key constraint "users_created_by_fkey"` | `users.created_by` has self-referencing FK `REFERENCES users(id) ON DELETE SET NULL`. Dev-auth UUID `00000000-0000-4000-a000-000000000002` passes `isValidUUID()` syntax check but doesn't exist as a row in `users` table. Fix: null out `created_by` when referencing user doesn't exist, or seed dev-auth users into DB. |
+| 41 | `suggestion-step-lookup-ambiguous` | **P2 MEDIUM** | Suggestion cards may show wrong step title when multiple onboarding instances exist | `SuggestionsSection.tsx:30` uses `.find()` on flattened array of all steps from all instances — first match wins, which may be from wrong instance. Fix: filter by `instanceId` before looking up step title. |
+| 42 | `suggestion-no-step-title-in-activity` | **P2 MEDIUM** | Activity feed shows "submitted suggestion for step 3" (bare number) instead of step title | `OnboardingHub.tsx:119-123` logs `step ${activeModal.stepId}` (numeric position). Approve/reject activities are completely generic ("approved a documentation suggestion"). Fix: resolve step title at log time and include in activity message. |
+| 43 | `suggestion-approve-reject-generic` | **P3 LOW** | Approve/reject activity entries contain no context about which step or which employee | `ManagerView.tsx` logs generic messages like `'approved a documentation suggestion'` with no step title, instance, or employee name. Fix: include step title and employee name in activity messages. |
+| 44 | `delete-user-cascades-instances` | **P1 HIGH** | Deleting a user also deletes their onboarding instances — destructive cascade | `userService.ts:399-418` manually queries and deletes `onboarding_instances` by email before deleting the user. This is wrong — hires and users are separate entities. Fix: remove the onboarding instance cascade from `deleteUser()`. |
+
+**Recommended fix order:** #40 first (P0 CRITICAL, blocks user creation), then #37, #38, #44 (P1 HIGH), then #41-42 (P2), then #39, #43 (P3).
+
 ### Low-Priority Cleanup (do incrementally, no dedicated pipeline run)
 
 | Issue | Notes |
@@ -194,6 +209,8 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 28 | `users-error-handling` | 2026-02-16 | 72f5fa2 | Fixed bugs #8, #10, #12 - re-throw errors in submit handlers so form fields retained on server error, clear store error on modal close via reset(), suppress duplicate error banners while modal open, +5 tests (489 total) |
 | 29 | `manager-modal-fixes` | 2026-02-16 | 230b915 | Fixed bugs #5 and #28 - threaded readOnly prop through component tree for manager "View Only" mode in Employee View, added useEffect reset hooks to 5 modals for form state cleanup on re-open, +7 tests (508 total) |
 | 30 | `darkmode-batch` | 2026-02-16 | 080d095 | Fixed bugs #22-27 - added dark mode support to 6 remaining components (KPISection, ReportStuckModal, DeleteConfirmDialog, ActionBar, StepTimeline, WelcomeHeader), normalized gray->slate in KPISection, added option element styling, +21 tests (508 total) |
+| 31 | `template-reorder-fix` | 2026-02-16 | f84fb29 | Fixed bug #37 (P1 HIGH) - template step reordering now persists correctly by using array position as step ID (1-line fix: `id: index + 1` instead of `id: s.id || index + 1`), +1 test (513 total) |
+| 32 | `create-hire-separation` | 2026-02-16 | fa07826 | Fixed bug #38 (P1 HIGH) - removed user creation side effect from hire creation (23 lines deleted from createOnboardingRunFromTemplate), hires and users now properly separated entities, +1 regression test (513 total) |
 
 ---
 
