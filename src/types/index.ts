@@ -184,6 +184,7 @@ export interface StepCardProps {
   onReportStuck: (stepId: number) => void;
   isLoading?: boolean;
   readOnly?: boolean;
+  hasPendingSuggestion?: boolean;
 }
 
 export interface WelcomeHeaderProps {

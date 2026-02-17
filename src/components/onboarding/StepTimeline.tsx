@@ -14,6 +14,7 @@ interface StepTimelineProps {
   onReportStuck: (stepId: number) => void;
   loadingStepIds?: Set<number>;
   readOnly?: boolean;
+  stepsWithPendingSuggestions?: Set<number>;
 }
 
 /**
@@ -36,6 +37,7 @@ export function StepTimeline({
   onReportStuck,
   loadingStepIds,
   readOnly,
+  stepsWithPendingSuggestions,
 }: StepTimelineProps) {
   const completedCount = steps.filter((s) => s.status === 'completed').length;
   const stuckCount = steps.filter((s) => s.status === 'stuck').length;
@@ -81,6 +83,7 @@ export function StepTimeline({
               onReportStuck={onReportStuck}
               isLoading={loadingStepIds?.has(step.id)}
               readOnly={readOnly}
+              hasPendingSuggestion={stepsWithPendingSuggestions?.has(step.id)}
             />
 
             {/* Visual connectors between steps */}

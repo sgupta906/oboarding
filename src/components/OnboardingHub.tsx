@@ -20,6 +20,7 @@ import {
   useEmployeeOnboarding,
   useSteps,
   useOnboardingInstances,
+  useSuggestions,
 } from '../hooks';
 import {
   createSuggestion,
@@ -47,6 +48,23 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
   } = useEmployeeOnboarding(employeeEmail);
   const { data: employeeStepsData, isLoading: employeeStepsLoading, updateStatus } = useSteps(
     employeeInstance?.id ?? ''
+  );
+
+  // Suggestions subscription for employee view (badge indicator)
+  const { data: suggestions } = useSuggestions(!isManager);
+
+  // Compute set of step IDs with pending suggestions for the current employee
+  const stepsWithPendingSuggestions = useMemo(
+    () =>
+      new Set(
+        suggestions
+          .filter(
+            (s) =>
+              s.status === 'pending' && s.instanceId === employeeInstance?.id
+          )
+          .map((s) => s.stepId)
+      ),
+    [suggestions, employeeInstance?.id]
   );
 
   // Onboarding instances for EmployeeSelector (manager viewing employee tab)
@@ -133,6 +151,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
         timeAgo: 'just now',
       }).catch(console.warn);
       setActiveModal(null);
+      showToast('Suggestion submitted!', 'success');
     } catch {
       showToast('Failed to submit suggestion. Please try again.', 'error');
     } finally {
@@ -237,6 +256,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
           onReportStuck={handleReportStuckOpen}
           loadingStepIds={loadingStepIds}
           readOnly={isManager && currentView === 'employee'}
+          stepsWithPendingSuggestions={stepsWithPendingSuggestions}
         />
       )}
 

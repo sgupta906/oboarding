@@ -3,7 +3,7 @@
  * Displays step details, status, and available actions with smooth animations
  */
 
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, MessageSquare } from 'lucide-react';
 import { Card, Badge } from '../ui';
 import { ActionBar } from './ActionBar';
 import type { StepCardProps } from '../../types';
@@ -26,11 +26,14 @@ export function StepCard({
   onReportStuck,
   isLoading,
   readOnly,
+  hasPendingSuggestion,
 }: StepCardProps) {
   const borderColorMap = {
     stuck: 'border-l-rose-500 ring-2 ring-rose-100 dark:ring-rose-900 bg-rose-50/30 dark:bg-rose-950/20',
     completed: 'border-l-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20',
-    pending: 'border-l-brand-500',
+    pending: hasPendingSuggestion
+      ? 'border-l-brand-500 ring-2 ring-amber-200 dark:ring-amber-800'
+      : 'border-l-brand-500',
   };
 
   const indicatorBgMap = {
@@ -93,6 +96,12 @@ export function StepCard({
                       className="text-emerald-500 flex-shrink-0"
                       aria-label="Completed"
                     />
+                  )}
+                  {hasPendingSuggestion && (
+                    <Badge color="amber" className="inline-flex items-center gap-1">
+                      <MessageSquare size={14} className="flex-shrink-0" />
+                      Feedback Sent
+                    </Badge>
                   )}
                 </h3>
                 <div className="flex gap-2 mt-1 flex-wrap">

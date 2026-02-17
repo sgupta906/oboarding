@@ -18,6 +18,7 @@ interface EmployeeViewProps {
   onReportStuck: (stepId: number) => void;
   loadingStepIds?: Set<number>;
   readOnly?: boolean;
+  stepsWithPendingSuggestions?: Set<number>;
 }
 
 /**
@@ -85,6 +86,7 @@ export function EmployeeView({
   onReportStuck,
   loadingStepIds,
   readOnly,
+  stepsWithPendingSuggestions,
 }: EmployeeViewProps) {
   /**
    * Memoize progress calculation to prevent recalculation on every render
@@ -121,6 +123,7 @@ export function EmployeeView({
             onReportStuck={onReportStuck}
             loadingStepIds={loadingStepIds}
             readOnly={readOnly}
+            stepsWithPendingSuggestions={stepsWithPendingSuggestions}
           />
         </div>
       </main>

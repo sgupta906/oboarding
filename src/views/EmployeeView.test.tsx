@@ -195,4 +195,14 @@ describe('EmployeeView', () => {
     // "View Only" indicator should be visible instead
     expect(screen.getAllByText('View Only').length).toBeGreaterThan(0);
   });
+
+  it('renders "Feedback Sent" badge when stepsWithPendingSuggestions contains a pending step ID', () => {
+    // Step 2 (pending) has a pending suggestion
+    const suggestionsSet = new Set([2]);
+
+    renderEmployee({ stepsWithPendingSuggestions: suggestionsSet });
+
+    // The "Feedback Sent" badge should appear for step 2
+    expect(screen.getByText('Feedback Sent')).toBeInTheDocument();
+  });
 });
