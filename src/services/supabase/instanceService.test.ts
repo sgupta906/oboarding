@@ -180,6 +180,149 @@ describe('createOnboardingRunFromTemplate - hire/user separation (Bug #38)', () 
   });
 });
 
+// ---------------------------------------------------------------------------
+// Tests: getInstanceByEmployeeEmail
+// ---------------------------------------------------------------------------
+
+describe('getInstanceByEmployeeEmail', () => {
+  let getInstanceByEmployeeEmail: typeof import('./instanceService').getInstanceByEmployeeEmail;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    // Dynamic import to get the function after mocks are set up
+    const mod = await import('./instanceService');
+    getInstanceByEmployeeEmail = mod.getInstanceByEmployeeEmail;
+  });
+
+  it('returns instance data when email matches', async () => {
+    const { supabase } = await import('../../config/supabase');
+    const fromFn = supabase.from as ReturnType<typeof vi.fn>;
+    const originalImpl = fromFn.getMockImplementation();
+
+    fromFn.mockImplementation((table: string) => {
+      if (table === 'onboarding_instances') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  data: [{ id: 'inst-42', employee_name: 'Delaney Smith' }],
+                  error: null,
+                })),
+              })),
+            })),
+          })),
+        };
+      }
+      return {};
+    });
+
+    try {
+      const result = await getInstanceByEmployeeEmail('delaney@gmail.com');
+      expect(result).toEqual({ instanceId: 'inst-42', employeeName: 'Delaney Smith' });
+    } finally {
+      if (originalImpl) fromFn.mockImplementation(originalImpl);
+    }
+  });
+
+  it('returns null when no instance found', async () => {
+    const { supabase } = await import('../../config/supabase');
+    const fromFn = supabase.from as ReturnType<typeof vi.fn>;
+    const originalImpl = fromFn.getMockImplementation();
+
+    fromFn.mockImplementation((table: string) => {
+      if (table === 'onboarding_instances') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  data: [],
+                  error: null,
+                })),
+              })),
+            })),
+          })),
+        };
+      }
+      return {};
+    });
+
+    try {
+      const result = await getInstanceByEmployeeEmail('nobody@example.com');
+      expect(result).toBeNull();
+    } finally {
+      if (originalImpl) fromFn.mockImplementation(originalImpl);
+    }
+  });
+
+  it('returns null on Supabase error (graceful failure)', async () => {
+    const { supabase } = await import('../../config/supabase');
+    const fromFn = supabase.from as ReturnType<typeof vi.fn>;
+    const originalImpl = fromFn.getMockImplementation();
+
+    fromFn.mockImplementation((table: string) => {
+      if (table === 'onboarding_instances') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn(() => ({
+                limit: vi.fn(() => ({
+                  data: null,
+                  error: { message: 'Connection refused' },
+                })),
+              })),
+            })),
+          })),
+        };
+      }
+      return {};
+    });
+
+    try {
+      const result = await getInstanceByEmployeeEmail('delaney@gmail.com');
+      expect(result).toBeNull();
+    } finally {
+      if (originalImpl) fromFn.mockImplementation(originalImpl);
+    }
+  });
+
+  it('normalizes email to lowercase', async () => {
+    const { supabase } = await import('../../config/supabase');
+    const fromFn = supabase.from as ReturnType<typeof vi.fn>;
+    const originalImpl = fromFn.getMockImplementation();
+
+    let capturedEmail: string | undefined;
+    fromFn.mockImplementation((table: string) => {
+      if (table === 'onboarding_instances') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn((_col: string, email: string) => {
+              capturedEmail = email;
+              return {
+                order: vi.fn(() => ({
+                  limit: vi.fn(() => ({
+                    data: [{ id: 'inst-99', employee_name: 'Delaney' }],
+                    error: null,
+                  })),
+                })),
+              };
+            }),
+          })),
+        };
+      }
+      return {};
+    });
+
+    try {
+      await getInstanceByEmployeeEmail('Delaney@Gmail.COM');
+      expect(capturedEmail).toBe('delaney@gmail.com');
+    } finally {
+      if (originalImpl) fromFn.mockImplementation(originalImpl);
+    }
+  });
+});
+
 describe('updateStepStatus - status revert logic', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -70,6 +70,7 @@ export {
 export {
   listOnboardingInstances,
   getOnboardingInstance,
+  getInstanceByEmployeeEmail,
   createOnboardingInstance,
   updateOnboardingInstance,
   updateStepStatus,

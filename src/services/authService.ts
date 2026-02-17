@@ -5,7 +5,7 @@
 
 import { supabase } from '../config/supabase';
 import type { UserRole } from '../config/authTypes';
-import { getAuthCredential } from './supabase';
+import { getAuthCredential, getInstanceByEmployeeEmail } from './supabase';
 import { getDevAuthUUID } from '../utils/uuid';
 
 /**
@@ -151,6 +151,32 @@ export async function signInWithEmailLink(email: string): Promise<void> {
 
       console.log(`[Auth] Signed in as ${trimmedEmail} (${dynamicCredential.role}) - created via Users panel`);
       return;
+    }
+
+    // Check if this email belongs to an onboarding instance (hire)
+    try {
+      const instance = await getInstanceByEmployeeEmail(trimmedEmail);
+      if (instance) {
+        const hireUid = getDevAuthUUID(trimmedEmail);
+        localStorage.setItem(
+          'mockAuthUser',
+          JSON.stringify({
+            uid: hireUid,
+            email: trimmedEmail,
+            role: 'employee',
+          })
+        );
+        window.dispatchEvent(
+          new CustomEvent('authStorageChange', {
+            detail: { key: 'mockAuthUser' },
+          })
+        );
+        console.log(`[Auth] Signed in as ${trimmedEmail} (employee) - hire with onboarding instance`);
+        return;
+      }
+    } catch (instanceError) {
+      // Supabase may be unavailable -- fall through to MOCK_EMAIL_ROLES
+      console.warn('Instance lookup failed, falling through:', instanceError);
     }
 
     // Determine role from mock email mapping (fallback for test accounts)

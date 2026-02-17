@@ -63,6 +63,39 @@ export const subscribeToOnboardingInstances = crud.subscribe;
 export const deleteOnboardingInstance = crud.remove;
 
 // ============================================================================
+// Lightweight Lookups
+// ============================================================================
+
+/**
+ * Fetches the most recent onboarding instance for an employee by email.
+ * Returns a lightweight object with just the instance ID and employee name,
+ * or null if no instance exists for the given email.
+ */
+export async function getInstanceByEmployeeEmail(
+  email: string
+): Promise<{ instanceId: string; employeeName: string } | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const { data, error } = await supabase
+    .from('onboarding_instances')
+    .select('id, employee_name')
+    .eq('employee_email', normalizedEmail)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error(`Failed to fetch instance by email: ${error.message}`);
+    return null;
+  }
+
+  if (!data || data.length === 0) return null;
+
+  return {
+    instanceId: data[0].id,
+    employeeName: data[0].employee_name,
+  };
+}
+
+// ============================================================================
 // CRUD Operations (Custom)
 // ============================================================================
 

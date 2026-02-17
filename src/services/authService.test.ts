@@ -76,9 +76,12 @@ vi.mock('../config/supabase', () => ({
   },
 }));
 
-// Mock getAuthCredential from ./supabase barrel
+// Mock getAuthCredential and getInstanceByEmployeeEmail from ./supabase barrel
+const mockGetInstanceByEmployeeEmail = vi.fn().mockResolvedValue(null);
+
 vi.mock('./supabase', () => ({
   getAuthCredential: vi.fn().mockReturnValue(null),
+  getInstanceByEmployeeEmail: (...args: any[]) => mockGetInstanceByEmployeeEmail(...args),
 }));
 
 describe('Auth Service', () => {
@@ -88,6 +91,7 @@ describe('Auth Service', () => {
     mockUpsert.mockResolvedValue({ error: null });
     mockInsert.mockResolvedValue({ error: null });
     mockDeleteEq.mockResolvedValue({ error: null });
+    mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
   });
 
   describe('signInWithEmailLink - Error Cases', () => {
@@ -442,6 +446,95 @@ describe('Auth Service', () => {
         expect(parsed.email).toBe('test-employee@example.com');
         expect(parsed.role).toBe('employee');
       }
+    });
+  });
+
+  describe('signInWithEmailLink - Hire Email', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('should sign in hire email as employee when instance exists', async () => {
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-hire-1',
+        employeeName: 'Delaney Smith',
+      });
+
+      await signInWithEmailLink('delaney@gmail.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.email).toBe('delaney@gmail.com');
+      expect(parsed.role).toBe('employee');
+      expect(parsed.uid).toBeTruthy();
+    });
+
+    it('should dispatch authStorageChange event for hire email', async () => {
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-hire-1',
+        employeeName: 'Delaney Smith',
+      });
+
+      const eventSpy = vi.fn();
+      window.addEventListener('authStorageChange', eventSpy);
+
+      await signInWithEmailLink('delaney@gmail.com');
+
+      expect(eventSpy).toHaveBeenCalled();
+      window.removeEventListener('authStorageChange', eventSpy);
+    });
+
+    it('should NOT call Supabase Auth for hire email', async () => {
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-hire-1',
+        employeeName: 'Delaney Smith',
+      });
+
+      await signInWithEmailLink('delaney@gmail.com');
+
+      expect(mockSupabaseAuth.signUp).not.toHaveBeenCalled();
+      expect(mockSupabaseAuth.signInWithPassword).not.toHaveBeenCalled();
+    });
+
+    it('should still reject unknown email with no instance and no MOCK_EMAIL_ROLES entry', async () => {
+      // getInstanceByEmployeeEmail returns null (no instance found)
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce(null);
+
+      await expect(
+        signInWithEmailLink('totally-unknown@example.com')
+      ).rejects.toThrow('Email not recognized');
+    });
+
+    it('should fall through to MOCK_EMAIL_ROLES when instance lookup throws', async () => {
+      mockGetInstanceByEmployeeEmail.mockRejectedValueOnce(
+        new Error('Supabase connection refused')
+      );
+
+      // test-employee@example.com is in MOCK_EMAIL_ROLES, so it should succeed
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'test-uid', identities: [{ id: '1' }] } },
+        error: null,
+      });
+
+      await expect(
+        signInWithEmailLink('test-employee@example.com')
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle hire email case-insensitively', async () => {
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-hire-2',
+        employeeName: 'Delaney',
+      });
+
+      await signInWithEmailLink('Delaney@Gmail.COM');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.email).toBe('delaney@gmail.com');
+      expect(parsed.role).toBe('employee');
     });
   });
 
