@@ -6,12 +6,13 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Users, Trash2 } from 'lucide-react';
-import { useOnboardingInstances } from '../../hooks';
+import { Users, Trash2, Pencil } from 'lucide-react';
+import { useOnboardingInstances, useRoles, useTemplates } from '../../hooks';
 import { useAuth } from '../../config/authContext';
 import { logActivity } from '../../services/supabase';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
+import { EditHireModal } from '../modals/EditHireModal';
 import type { OnboardingInstance } from '../../types';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'on_hold';
@@ -69,11 +70,16 @@ function getEmptyMessage(filter: StatusFilter): string {
  * Includes a four-option status filter (All / Active / Completed / On Hold).
  */
 export function NewHiresPanel() {
-  const { data, isLoading, error, removeInstance } = useOnboardingInstances();
+  const { data, isLoading, error, removeInstance, updateInstance } = useOnboardingInstances();
   const { user: authUser } = useAuth();
+  const { roles, isLoading: rolesLoading } = useRoles();
+  const { data: templates, isLoading: templatesLoading } = useTemplates();
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [instanceToDelete, setInstanceToDelete] = useState<OnboardingInstance | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingInstance, setEditingInstance] = useState<OnboardingInstance | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   /** Helper to get initials for activity logging */
@@ -112,6 +118,28 @@ export function NewHiresPanel() {
       setInstanceToDelete(null);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  /** Handle submitting an edit for an onboarding instance */
+  const handleEditSubmit = async (instanceId: string, updates: Partial<OnboardingInstance>) => {
+    setIsEditing(true);
+    setEditError(null);
+    try {
+      await updateInstance(instanceId, updates);
+      // Fire-and-forget activity log
+      logActivity({
+        userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        action: `Edited onboarding for ${editingInstance?.employeeName ?? 'employee'}`,
+        timeAgo: 'just now',
+        userId: authUser?.uid,
+      }).catch(() => {});
+      showSuccess('Onboarding instance updated successfully');
+      setEditingInstance(null);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Failed to update onboarding instance');
+    } finally {
+      setIsEditing(false);
     }
   };
 
@@ -298,14 +326,24 @@ export function NewHiresPanel() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setInstanceToDelete(instance)}
-                        className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                        aria-label={`Delete onboarding for ${instance.employeeName}`}
-                        title="Delete onboarding instance"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => setEditingInstance(instance)}
+                          className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                          aria-label={`Edit onboarding for ${instance.employeeName}`}
+                          title="Edit onboarding instance"
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => setInstanceToDelete(instance)}
+                          className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                          aria-label={`Delete onboarding for ${instance.employeeName}`}
+                          title="Delete onboarding instance"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -330,6 +368,23 @@ export function NewHiresPanel() {
         onCancel={() => setInstanceToDelete(null)}
         isLoading={isDeleting}
         isDangerous
+      />
+
+      {/* Edit Hire Modal */}
+      <EditHireModal
+        isOpen={editingInstance !== null}
+        onClose={() => {
+          setEditingInstance(null);
+          setEditError(null);
+        }}
+        onSubmit={handleEditSubmit}
+        instance={editingInstance}
+        isSubmitting={isEditing}
+        error={editError}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        templates={templates}
+        templatesLoading={templatesLoading}
       />
     </div>
   );

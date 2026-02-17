@@ -16,6 +16,7 @@ interface UseOnboardingInstancesReturn {
   isLoading: boolean;
   error: Error | null;
   removeInstance: (id: string) => Promise<void>;
+  updateInstance: (id: string, updates: Partial<OnboardingInstance>) => Promise<void>;
 }
 
 /**
@@ -40,10 +41,15 @@ export function useOnboardingInstances(enabled: boolean = true): UseOnboardingIn
     await useOnboardingStore.getState()._removeInstance(id);
   };
 
+  const updateInstance = async (id: string, updates: Partial<OnboardingInstance>): Promise<void> => {
+    await useOnboardingStore.getState()._updateInstance(id, updates);
+  };
+
   return {
     data: enabled ? instances : [],
     isLoading: enabled ? isLoading : false,
     error: enabled ? error : null,
     removeInstance,
+    updateInstance,
   };
 }

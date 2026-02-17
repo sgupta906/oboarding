@@ -60,6 +60,7 @@ const mockInstances: OnboardingInstance[] = [
 // ---------------------------------------------------------------------------
 
 const mockRemoveInstance = vi.fn();
+const mockUpdateInstance = vi.fn();
 const mockLogActivity = vi.fn();
 
 let mockReturn: {
@@ -67,15 +68,33 @@ let mockReturn: {
   isLoading: boolean;
   error: Error | null;
   removeInstance: ReturnType<typeof vi.fn>;
+  updateInstance: ReturnType<typeof vi.fn>;
 } = {
   data: mockInstances,
   isLoading: false,
   error: null,
   removeInstance: mockRemoveInstance,
+  updateInstance: mockUpdateInstance,
 };
 
 vi.mock('../../hooks', () => ({
   useOnboardingInstances: () => mockReturn,
+  useRoles: () => ({
+    data: [
+      { id: 'role-1', name: 'Engineering', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+      { id: 'role-2', name: 'Sales', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+    ],
+    isLoading: false,
+    error: null,
+  }),
+  useTemplates: () => ({
+    data: [
+      { id: 'tmpl-1', name: 'Engineer Onboarding', description: 'For engineers', role: 'Engineering', steps: [], createdAt: Date.now(), isActive: true },
+      { id: 'tmpl-2', name: 'Sales Onboarding', description: 'For sales', role: 'Sales', steps: [], createdAt: Date.now(), isActive: true },
+    ],
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 vi.mock('../../config/authContext', () => ({
@@ -100,12 +119,14 @@ describe('NewHiresPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRemoveInstance.mockResolvedValue(undefined);
+    mockUpdateInstance.mockResolvedValue(undefined);
     mockLogActivity.mockResolvedValue(undefined);
     mockReturn = {
       data: mockInstances,
       isLoading: false,
       error: null,
       removeInstance: mockRemoveInstance,
+      updateInstance: mockUpdateInstance,
     };
   });
 
@@ -221,21 +242,21 @@ describe('NewHiresPanel', () => {
 
   describe('States', () => {
     it('shows loading spinner when isLoading is true', () => {
-      mockReturn = { data: [], isLoading: true, error: null, removeInstance: mockRemoveInstance };
+      mockReturn = { data: [], isLoading: true, error: null, removeInstance: mockRemoveInstance, updateInstance: mockUpdateInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText('Loading onboarding data...')).toBeInTheDocument();
     });
 
     it('shows error message when error is present', () => {
-      mockReturn = { data: [], isLoading: false, error: new Error('Failed to fetch'), removeInstance: mockRemoveInstance };
+      mockReturn = { data: [], isLoading: false, error: new Error('Failed to fetch'), removeInstance: mockRemoveInstance, updateInstance: mockUpdateInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText('Failed to fetch')).toBeInTheDocument();
     });
 
     it('shows empty state when no instances', () => {
-      mockReturn = { data: [], isLoading: false, error: null, removeInstance: mockRemoveInstance };
+      mockReturn = { data: [], isLoading: false, error: null, removeInstance: mockRemoveInstance, updateInstance: mockUpdateInstance };
       render(<NewHiresPanel />);
 
       expect(screen.getByText(/no new hires/i)).toBeInTheDocument();
@@ -248,6 +269,7 @@ describe('NewHiresPanel', () => {
         isLoading: false,
         error: null,
         removeInstance: mockRemoveInstance,
+        updateInstance: mockUpdateInstance,
       };
       const user = userEvent.setup();
       render(<NewHiresPanel />);
@@ -329,6 +351,59 @@ describe('NewHiresPanel', () => {
       expect(screen.queryByText('Delete Onboarding Instance')).not.toBeInTheDocument();
       // removeInstance should NOT have been called
       expect(mockRemoveInstance).not.toHaveBeenCalled();
+    });
+  });
+
+  // ---- Edit Tests ----
+
+  describe('Edit', () => {
+    it('renders edit button for each row with correct aria-label', () => {
+      render(<NewHiresPanel />);
+
+      expect(
+        screen.getByRole('button', { name: /edit onboarding for alice smith/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /edit onboarding for bob johnson/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /edit onboarding for charlie brown/i })
+      ).toBeInTheDocument();
+    });
+
+    it('edit button is alongside delete button in Actions column', () => {
+      render(<NewHiresPanel />);
+
+      // Both edit and delete buttons should exist for Alice
+      const editBtn = screen.getByRole('button', { name: /edit onboarding for alice smith/i });
+      const deleteBtn = screen.getByRole('button', { name: /delete onboarding for alice smith/i });
+
+      expect(editBtn).toBeInTheDocument();
+      expect(deleteBtn).toBeInTheDocument();
+    });
+
+    it('opens edit modal when edit button is clicked', async () => {
+      const user = userEvent.setup();
+      render(<NewHiresPanel />);
+
+      await user.click(
+        screen.getByRole('button', { name: /edit onboarding for alice smith/i })
+      );
+
+      // Edit modal should be visible
+      expect(screen.getByText('Edit Onboarding')).toBeInTheDocument();
+    });
+
+    it('passes correct instance to EditHireModal', async () => {
+      const user = userEvent.setup();
+      render(<NewHiresPanel />);
+
+      await user.click(
+        screen.getByRole('button', { name: /edit onboarding for alice smith/i })
+      );
+
+      // Modal should show the instance's pre-filled name
+      expect(screen.getByLabelText(/employee name/i)).toHaveValue('Alice Smith');
     });
   });
 });

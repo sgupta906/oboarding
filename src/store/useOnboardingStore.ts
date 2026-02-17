@@ -24,6 +24,7 @@ import {
   subscribeToSteps,
   updateStepStatus,
   deleteOnboardingInstance,
+  updateOnboardingInstance,
   subscribeToUsers,
   createUser,
   updateUser,
@@ -55,6 +56,8 @@ export interface InstancesSlice {
   _addInstance: (instance: OnboardingInstance) => void;
   /** Deletes an instance via server, then removes from local state. Re-throws on error. */
   _removeInstance: (instanceId: string) => Promise<void>;
+  /** Optimistic update + rollback on error. Re-throws on error. */
+  _updateInstance: (instanceId: string, updates: Partial<OnboardingInstance>) => Promise<void>;
 }
 
 /** State and actions for the steps slice (keyed by instanceId) */
@@ -298,6 +301,24 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       const msg =
         err instanceof Error ? err.message : 'Failed to delete onboarding instance';
       throw new Error(msg);
+    }
+  },
+
+  _updateInstance: async (instanceId: string, updates: Partial<OnboardingInstance>) => {
+    // Capture snapshot for rollback
+    const snapshot = get().instances;
+    // Optimistic update
+    set((state) => ({
+      instances: state.instances.map((i) =>
+        i.id === instanceId ? { ...i, ...updates } : i
+      ),
+    }));
+    try {
+      await updateOnboardingInstance(instanceId, updates);
+    } catch (err) {
+      // Rollback on error
+      set({ instances: snapshot });
+      throw err;
     }
   },
 

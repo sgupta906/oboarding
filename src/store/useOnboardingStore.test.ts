@@ -19,6 +19,7 @@ const mockSubscribeToUsers = vi.fn();
 const mockCreateUser = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockDeleteOnboardingInstance = vi.fn();
+const mockUpdateOnboardingInstance = vi.fn();
 const mockDeleteUser = vi.fn();
 const mockGetUser = vi.fn();
 const mockActivitiesUnsubscribe = vi.fn();
@@ -33,6 +34,8 @@ vi.mock('../services/supabase', () => ({
   updateStepStatus: (...args: unknown[]) => mockUpdateStepStatus(...args),
   deleteOnboardingInstance: (...args: unknown[]) =>
     mockDeleteOnboardingInstance(...args),
+  updateOnboardingInstance: (...args: unknown[]) =>
+    mockUpdateOnboardingInstance(...args),
   subscribeToUsers: (...args: unknown[]) => mockSubscribeToUsers(...args),
   createUser: (...args: unknown[]) => mockCreateUser(...args),
   updateUser: (...args: unknown[]) => mockUpdateUser(...args),
@@ -144,6 +147,7 @@ describe('useOnboardingStore', () => {
 
     mockUpdateStepStatus.mockResolvedValue(undefined);
     mockDeleteOnboardingInstance.mockResolvedValue(undefined);
+    mockUpdateOnboardingInstance.mockResolvedValue(undefined);
 
     // Default users mocks
     mockSubscribeToUsers.mockImplementation(() => {
@@ -383,6 +387,74 @@ describe('useOnboardingStore', () => {
       expect(state.instances).toHaveLength(2);
       expect(state.instances[0].id).toBe('inst-1');
       expect(state.instances[1].id).toBe('inst-2');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // _updateInstance
+  // -------------------------------------------------------------------------
+
+  describe('_updateInstance', () => {
+    it('is available as a function', () => {
+      expect(typeof useOnboardingStore.getState()._updateInstance).toBe('function');
+    });
+
+    it('optimistically updates instance in store', async () => {
+      const inst1 = makeInstance('inst-1', 'alice@example.com');
+      const inst2 = makeInstance('inst-2', 'bob@example.com');
+      useOnboardingStore.setState({ instances: [inst1, inst2] });
+
+      const promise = useOnboardingStore
+        .getState()
+        ._updateInstance('inst-1', { role: 'Sales', department: 'Revenue' });
+
+      // Optimistic update should be applied synchronously
+      const state = useOnboardingStore.getState();
+      expect(state.instances[0].role).toBe('Sales');
+      expect(state.instances[0].department).toBe('Revenue');
+      // Other instance unchanged
+      expect(state.instances[1].role).toBe('Engineering');
+
+      await promise;
+    });
+
+    it('calls updateOnboardingInstance with correct arguments', async () => {
+      const inst1 = makeInstance('inst-1', 'alice@example.com');
+      useOnboardingStore.setState({ instances: [inst1] });
+
+      const updates = { role: 'Sales', department: 'Revenue' };
+      await useOnboardingStore.getState()._updateInstance('inst-1', updates);
+
+      expect(mockUpdateOnboardingInstance).toHaveBeenCalledWith('inst-1', updates);
+    });
+
+    it('rolls back on server error', async () => {
+      const inst1 = makeInstance('inst-1', 'alice@example.com');
+      const inst2 = makeInstance('inst-2', 'bob@example.com');
+      useOnboardingStore.setState({ instances: [inst1, inst2] });
+
+      mockUpdateOnboardingInstance.mockRejectedValue(new Error('Update failed'));
+
+      await expect(
+        useOnboardingStore.getState()._updateInstance('inst-1', { role: 'Sales' })
+      ).rejects.toThrow('Update failed');
+
+      // Should have rolled back
+      const state = useOnboardingStore.getState();
+      expect(state.instances[0].role).toBe('Engineering');
+      expect(state.instances[1].role).toBe('Engineering');
+    });
+
+    it('re-throws server errors for caller to handle', async () => {
+      const inst1 = makeInstance('inst-1');
+      useOnboardingStore.setState({ instances: [inst1] });
+
+      const serverError = new Error('Server error');
+      mockUpdateOnboardingInstance.mockRejectedValue(serverError);
+
+      await expect(
+        useOnboardingStore.getState()._updateInstance('inst-1', { role: 'Sales' })
+      ).rejects.toThrow(serverError);
     });
   });
 

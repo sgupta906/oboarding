@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** None (ready for next feature)
-**Current Phase:** Feature complete
-**Next Command:** Select next feature from backlog
+**Current Feature:** edit-new-hires
+**Current Phase:** Testing complete (all pass)
+**Next Command:** `/finalize edit-new-hires`
 
 ### Next Up: Google OAuth Sign-In
 - Research complete: `.claude/features/google-auth/2026-02-17T18:00_research.md`
