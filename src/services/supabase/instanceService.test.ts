@@ -69,7 +69,116 @@ vi.mock('./subscriptionManager', () => ({
   })),
 }));
 
-import { updateStepStatus } from './instanceService';
+import { updateStepStatus, createOnboardingRunFromTemplate } from './instanceService';
+
+// ---------------------------------------------------------------------------
+// Mock: userService (spy on dynamic import to detect unwanted calls)
+// ---------------------------------------------------------------------------
+
+const mockAddUserToAuthCredentials = vi.fn();
+const mockUserEmailExists = vi.fn().mockResolvedValue(false);
+const mockCreateUser = vi.fn().mockResolvedValue({});
+
+vi.mock('./userService', () => ({
+  addUserToAuthCredentials: (...args: any[]) => mockAddUserToAuthCredentials(...args),
+  userEmailExists: (...args: any[]) => mockUserEmailExists(...args),
+  createUser: (...args: any[]) => mockCreateUser(...args),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock: templateService (needed for createOnboardingRunFromTemplate)
+// ---------------------------------------------------------------------------
+
+const mockGetTemplate = vi.fn();
+
+vi.mock('./templateService', () => ({
+  getTemplate: (...args: any[]) => mockGetTemplate(...args),
+}));
+
+describe('createOnboardingRunFromTemplate - hire/user separation (Bug #38)', () => {
+  it('does not call userService functions when creating an onboarding run', async () => {
+    // Clear mocks for this test only
+    mockAddUserToAuthCredentials.mockClear();
+    mockUserEmailExists.mockClear();
+    mockCreateUser.mockClear();
+
+    // Arrange: mock template with steps
+    mockGetTemplate.mockResolvedValue({
+      id: 'tmpl-1',
+      name: 'Test Template',
+      steps: [
+        {
+          id: 1,
+          title: 'Step 1',
+          description: 'First step',
+          role: 'employee',
+          owner: 'Employee',
+          expert: 'Manager',
+          status: 'pending',
+          link: null,
+        },
+      ],
+    });
+
+    // Mock supabase insert for onboarding_instances
+    const { supabase } = await import('../../config/supabase');
+    const fromFn = supabase.from as ReturnType<typeof vi.fn>;
+    const originalImpl = fromFn.getMockImplementation();
+
+    // Override from() to handle insert chain for onboarding_instances creation
+    fromFn.mockImplementation((table: string) => {
+      if (table === 'onboarding_instances') {
+        return {
+          insert: vi.fn(() => ({
+            select: vi.fn(() => ({
+              single: vi.fn(() => ({
+                data: { id: 'inst-new-1' },
+                error: null,
+              })),
+            })),
+          })),
+          update: vi.fn((_data: any) => ({
+            eq: vi.fn(() => ({ error: null })),
+          })),
+        };
+      }
+      if (table === 'instance_steps') {
+        return {
+          insert: vi.fn(() => ({ error: null })),
+        };
+      }
+      return {};
+    });
+
+    try {
+      // Act
+      const result = await createOnboardingRunFromTemplate({
+        employeeName: 'Test User',
+        employeeEmail: 'test@example.com',
+        role: 'Engineer',
+        department: 'Engineering',
+        templateId: 'tmpl-1',
+      });
+
+      // Assert: onboarding instance was created
+      expect(result).toBeDefined();
+      expect(result.id).toBe('inst-new-1');
+      expect(result.employeeEmail).toBe('test@example.com');
+
+      // Assert: userService was NOT called (Bug #38 regression check)
+      expect(mockAddUserToAuthCredentials).not.toHaveBeenCalled();
+      expect(mockUserEmailExists).not.toHaveBeenCalled();
+      expect(mockCreateUser).not.toHaveBeenCalled();
+    } finally {
+      // Restore original mock so other tests are not affected
+      if (originalImpl) {
+        fromFn.mockImplementation(originalImpl);
+      } else {
+        fromFn.mockReset();
+      }
+    }
+  });
+});
 
 describe('updateStepStatus - status revert logic', () => {
   beforeEach(() => {

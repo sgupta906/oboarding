@@ -353,29 +353,6 @@ export async function createOnboardingRunFromTemplate(
 
   const instanceId = await createOnboardingInstance(newInstanceData);
 
-  // Step 4: Add auth credentials and ensure user record
-  // Lazy import to avoid circular dep
-  const { addUserToAuthCredentials, userEmailExists, createUser } = await import('./userService');
-  addUserToAuthCredentials(normalizedEmail, 'employee', instanceId);
-
-  try {
-    const exists = await userEmailExists(normalizedEmail);
-    if (!exists) {
-      await createUser(
-        {
-          email: normalizedEmail,
-          name: employeeData.employeeName,
-          roles: ['employee'],
-          profiles: employeeData.department ? [employeeData.department] : [],
-          createdBy: 'system',
-        },
-        'system'
-      );
-    }
-  } catch (err) {
-    console.warn('Failed to ensure user record for onboarding:', err);
-  }
-
   return {
     id: instanceId,
     ...newInstanceData,
