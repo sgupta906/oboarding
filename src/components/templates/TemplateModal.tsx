@@ -156,20 +156,17 @@ export function TemplateModal({
     } else {
       const validSteps = steps.filter((s) => s.title.trim() || s.description.trim());
       if (validSteps.length === 0) {
-        errors.push('At least one step with title and description is required');
+        errors.push('At least one step with a title is required');
       }
 
       for (const step of validSteps) {
         if (!step.title.trim()) {
           errors.push('All steps must have a title');
         }
-        if (!step.description.trim()) {
-          errors.push('All steps must have a description');
-        }
       }
     }
 
-    setValidationErrors(errors);
+    setValidationErrors([...new Set(errors)]);
     return errors.length === 0;
   };
 
@@ -587,8 +584,7 @@ export function TemplateModal({
                 </div>
 
                 {/* Link */}
-                {(step.link || mode === 'edit') && (
-                  <div>
+                <div>
                     <label
                       htmlFor={`step-link-${index}`}
                       className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
@@ -606,8 +602,7 @@ export function TemplateModal({
                       className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
                       aria-label={`Step ${index + 1} link`}
                     />
-                  </div>
-                )}
+                </div>
 
               </div>
             ))}

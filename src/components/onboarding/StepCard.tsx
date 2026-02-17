@@ -3,7 +3,7 @@
  * Displays step details, status, and available actions with smooth animations
  */
 
-import { CheckCircle, AlertTriangle, MessageSquare } from 'lucide-react';
+import { CheckCircle, AlertTriangle, MessageSquare, ExternalLink } from 'lucide-react';
 import { Card, Badge } from '../ui';
 import { ActionBar } from './ActionBar';
 import type { StepCardProps } from '../../types';
@@ -131,6 +131,24 @@ export function StepCard({
             >
               {step.description}
             </p>
+
+            {/* Step link */}
+            {step.link && (
+              <a
+                href={step.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition-colors ${
+                  isCompleted
+                    ? 'text-slate-400 dark:text-slate-500'
+                    : 'text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300'
+                }`}
+                aria-label={`Open reference link for ${step.title}`}
+              >
+                <ExternalLink size={14} className="flex-shrink-0" />
+                <span className="truncate max-w-xs">{step.link}</span>
+              </a>
+            )}
 
             {/* Status indicator message */}
             {isStuck && (

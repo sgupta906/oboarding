@@ -63,6 +63,25 @@ const IMPERATIVE_VERB_REGEX =
 const URL_REGEX = /^https?:\/\/\S+$/i;
 
 /**
+ * Extracts meaningful keywords from a URL for matching against step text.
+ * e.g., "https://idco.dmdc.osd.mil/idco/locator" → ["idco", "dmdc", "locator"]
+ */
+function extractUrlKeywords(url: string): string[] {
+  try {
+    const u = new URL(url);
+    const parts = (u.hostname + u.pathname)
+      .split(/[./\-_]/)
+      .filter((p) => p.length >= 3)
+      .map((p) => p.toLowerCase());
+    // Filter out generic TLDs/subdomains
+    const generic = new Set(['www', 'com', 'org', 'net', 'gov', 'mil', 'edu', 'https', 'http', 'html', 'htm', 'index', 'php', 'aspx']);
+    return parts.filter((p) => !generic.has(p));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Splits a title on em-dash or double-hyphen separator into title + description.
  * "Complete Security Training — At a minimum, you must..." becomes:
  *   title: "Complete Security Training"
@@ -89,7 +108,9 @@ function classifyLine(line: string): 'bullet' | 'verb' | 'header' | 'url' | 'con
   if (URL_REGEX.test(line)) return 'url';
   if (BULLET_REGEX.test(line)) return 'bullet';
   if (line.length >= 8 && line.length <= 200 && IMPERATIVE_VERB_REGEX.test(line) && !line.endsWith(':')) return 'verb';
-  if (line.endsWith(':') && line.length >= 8 && line.length <= 80) return 'header';
+  // Headers must start with uppercase/digit (filters out sentence fragments like
+  // "steps will prevent you from obtaining your CAC card:")
+  if (line.endsWith(':') && line.length >= 8 && line.length <= 80 && /^[A-Z\d]/.test(line)) return 'header';
   if (line.length >= 15 && line.length <= 300) return 'continuation';
   return 'skip';
 }
@@ -113,6 +134,8 @@ function classifyLine(line: string): 'bullet' | 'verb' | 'header' | 'url' | 'con
 export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedStep[] {
   const lines = rawText.split(/\n/).map((l) => l.trim()).filter(Boolean);
   const steps: ParsedStep[] = [];
+  // Pending context from non-actionable headers — flows into next step's description
+  let pendingContext = '';
 
   for (const line of lines) {
     const type = classifyLine(line);
@@ -124,7 +147,11 @@ export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedS
           const raw = match[1].trim();
           const { title, description } = splitTitleDescription(raw);
           if (title) {
-            steps.push({ title, description, link: '' });
+            const desc = pendingContext
+              ? (pendingContext + (description ? ' ' + description : ''))
+              : description;
+            steps.push({ title, description: desc, link: '' });
+            pendingContext = '';
           }
         }
         break;
@@ -132,15 +159,36 @@ export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedS
 
       case 'verb': {
         const { title, description } = splitTitleDescription(line);
-        steps.push({ title, description, link: '' });
+        const desc = pendingContext
+          ? (pendingContext + (description ? ' ' + description : ''))
+          : description;
+        steps.push({ title, description: desc, link: '' });
+        pendingContext = '';
         break;
       }
 
       case 'header': {
         // Strip trailing colon for the title
-        const title = line.slice(0, -1).trim();
-        if (title.length >= 5) {
-          steps.push({ title, description: '', link: '' });
+        const headerText = line.slice(0, -1).trim();
+        if (headerText.length >= 5) {
+          // Actionable headers (contain imperative verb) become steps
+          // Non-actionable headers become context for the next step
+          if (IMPERATIVE_VERB_REGEX.test(headerText)) {
+            steps.push({ title: headerText, description: pendingContext, link: '' });
+            pendingContext = '';
+          } else {
+            // Non-actionable: accumulate as context or append to previous step
+            if (steps.length > 0) {
+              const prev = steps[steps.length - 1];
+              prev.description = prev.description
+                ? prev.description + ' ' + headerText + '.'
+                : headerText + '.';
+            } else {
+              pendingContext = pendingContext
+                ? pendingContext + ' ' + headerText + '.'
+                : headerText + '.';
+            }
+          }
         }
         break;
       }
@@ -160,6 +208,11 @@ export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedS
           prev.description = prev.description
             ? prev.description + ' ' + line
             : line;
+        } else {
+          // No step yet — accumulate as pending context
+          pendingContext = pendingContext
+            ? pendingContext + ' ' + line
+            : line;
         }
         break;
       }
@@ -178,17 +231,47 @@ export function parseBulletsToSteps(rawText: string, links?: PdfLink[]): ParsedS
     }
   }
 
-  // Associate PDF annotation links with steps by URL-in-text matching
+  // Associate PDF annotation links with steps.
+  // Strategy: try to match link URL domain/path keywords to step text.
+  // Unmatched links are distributed to linkless steps in order (better than nothing).
   if (links && links.length > 0) {
+    const unmatched: PdfLink[] = [];
+
     for (const link of links) {
-      // Find a step whose title or description mentions text related to this link
-      // Simple heuristic: if the link URL isn't already assigned, assign to first
-      // step that doesn't have a link yet and comes from the same page region
+      // Extract keywords from URL path for text matching
+      const urlKeywords = extractUrlKeywords(link.url);
+
+      // Try to find the best matching step by keyword overlap
+      let bestStep: ParsedStep | null = null;
+      let bestScore = 0;
+
       for (const step of steps) {
-        if (!step.link) {
-          step.link = link.url;
-          break;
+        if (step.link) continue; // Already has a link
+        const stepText = (step.title + ' ' + step.description).toLowerCase();
+        let score = 0;
+        for (const kw of urlKeywords) {
+          if (stepText.includes(kw)) score++;
         }
+        if (score > bestScore) {
+          bestScore = score;
+          bestStep = step;
+        }
+      }
+
+      if (bestStep && bestScore > 0) {
+        bestStep.link = link.url;
+      } else {
+        unmatched.push(link);
+      }
+    }
+
+    // Distribute remaining unmatched links to linkless steps in order
+    let linkIdx = 0;
+    for (const step of steps) {
+      if (linkIdx >= unmatched.length) break;
+      if (!step.link) {
+        step.link = unmatched[linkIdx].url;
+        linkIdx++;
       }
     }
   }

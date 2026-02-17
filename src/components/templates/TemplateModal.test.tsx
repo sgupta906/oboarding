@@ -185,7 +185,7 @@ describe('TemplateModal', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/At least one step with title and description is required/)
+          screen.getByText(/At least one step with a title is required/)
         ).toBeInTheDocument();
       });
 

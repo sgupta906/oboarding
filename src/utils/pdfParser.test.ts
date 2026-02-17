@@ -138,19 +138,17 @@ describe('parseBulletsToSteps', () => {
       'Preferred Location:',
     ].join('\n');
     const result = parseBulletsToSteps(input);
-    // 4 verb steps + 1 header step, "The Lincoln..." becomes description
-    expect(result).toHaveLength(5);
+    // 4 verb steps; "The Lincoln..." becomes description; "Preferred Location:" is non-actionable header → context
+    expect(result).toHaveLength(4);
     expect(result[0].title).toContain('Work with Haley');
     expect(result[1].title).toContain('Signature Block');
     expect(result[2].title).toContain('Coordinate');
     expect(result[3].title).toContain('Slack channels');
-    // "The Lincoln..." becomes description of previous step
+    // "The Lincoln..." becomes description of previous step, plus "Preferred Location." as context
     expect(result[3].description).toContain('Lincoln location');
-    // "Preferred Location:" header becomes a step
-    expect(result[4].title).toBe('Preferred Location');
   });
 
-  it('converts header-with-colon lines into steps', () => {
+  it('converts actionable header-with-colon lines into steps', () => {
     const input = [
       'Complete these first few trainings:',
       'Complete the New Hire Survey',
@@ -158,12 +156,27 @@ describe('parseBulletsToSteps', () => {
       'Review BCBS in Gusto.',
     ].join('\n');
     const result = parseBulletsToSteps(input);
-    // Headers become steps now (they're things employees need to read/do)
+    // Actionable headers (imperative verbs: Complete, Review) become steps
     expect(result).toHaveLength(4);
     expect(result[0].title).toBe('Complete these first few trainings');
     expect(result[1].title).toBe('Complete the New Hire Survey');
     expect(result[2].title).toBe('Review your benefits package');
     expect(result[3].title).toBe('Review BCBS in Gusto.');
+  });
+
+  it('converts non-actionable headers into context for next step', () => {
+    const input = [
+      'Prerequisites:',
+      'Complete Security Training',
+      'Billing Info:',
+      'The drive time is billable.',
+    ].join('\n');
+    const result = parseBulletsToSteps(input);
+    // "Prerequisites:" is non-actionable → becomes context for next step
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Complete Security Training');
+    expect(result[0].description).toContain('Prerequisites.');
+    // "Billing Info:" has no following step → appended to last step description
   });
 
   it('combines bullet items and imperative verb items without duplicates', () => {
@@ -311,6 +324,61 @@ describe('parseBulletsToSteps', () => {
     for (const step of result) {
       expect(step.description).toBe('');
     }
+  });
+
+  // =========================================================================
+  // Link association
+  // =========================================================================
+
+  it('assigns bare URLs to previous step link field', () => {
+    const input = '- Complete Security Training\nhttps://example.com/training\n- Sign SF-312';
+    const result = parseBulletsToSteps(input);
+    expect(result).toHaveLength(2);
+    expect(result[0].link).toBe('https://example.com/training');
+    expect(result[1].link).toBe('');
+  });
+
+  it('matches PDF annotation links to steps by URL keywords', () => {
+    const input = '- Complete Security Training\n- Sign SF-312';
+    const links = [
+      { url: 'https://example.com/security/training', y: 100, pageNum: 1 },
+    ];
+    const result = parseBulletsToSteps(input, links);
+    expect(result[0].link).toBe('https://example.com/security/training');
+    expect(result[1].link).toBe('');
+  });
+
+  it('distributes unmatched links to linkless steps in order', () => {
+    const input = '- Step one\n- Step two\n- Step three';
+    const links = [
+      { url: 'https://example.com/generic', y: 100, pageNum: 1 },
+    ];
+    const result = parseBulletsToSteps(input, links);
+    // No keyword match → assigned to first linkless step
+    expect(result[0].link).toBe('https://example.com/generic');
+  });
+
+  it('does not assign duplicate links when keyword matching works', () => {
+    const input = '- Complete Security Training\n- Review benefits package';
+    const links = [
+      { url: 'https://example.com/security', y: 100, pageNum: 1 },
+      { url: 'https://example.com/benefits', y: 200, pageNum: 1 },
+    ];
+    const result = parseBulletsToSteps(input, links);
+    expect(result[0].link).toBe('https://example.com/security');
+    expect(result[1].link).toBe('https://example.com/benefits');
+  });
+
+  it('does not overwrite bare URL links with annotation links', () => {
+    const input = '- Complete Security Training\nhttps://inline.com/link\n- Step two';
+    const links = [
+      { url: 'https://annotation.com/link', y: 100, pageNum: 1 },
+    ];
+    const result = parseBulletsToSteps(input, links);
+    // Bare URL was already assigned to step 1
+    expect(result[0].link).toBe('https://inline.com/link');
+    // Annotation link goes to step 2 (no keyword match → sequential fallback)
+    expect(result[1].link).toBe('https://annotation.com/link');
   });
 });
 
