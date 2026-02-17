@@ -89,17 +89,37 @@ export function ManagerView() {
 
   const isDashboardLoading = suggestionsLoading || activitiesLoading || instancesLoading;
 
+  /**
+   * Resolve a step title from instanceId + stepId.
+   * Prefers instance-scoped lookup; falls back to flat managerSteps.
+   */
+  const resolveStepTitle = (stepId?: number, instanceId?: string): string => {
+    if (stepId === undefined) return 'Unknown Step';
+    if (instanceId) {
+      const instance = onboardingInstances.find((i) => i.id === instanceId);
+      if (instance) {
+        const step = instance.steps.find((s) => s.id === stepId);
+        if (step) return step.title;
+      }
+    }
+    return managerSteps.find((s) => s.id === stepId)?.title || `Step ${stepId}`;
+  };
+
   // ---------------------------------------------------------------------------
   // Handlers: suggestion approve/reject (optimistic update pattern)
   // ---------------------------------------------------------------------------
   const handleApproveSuggestion = async (suggestionId: number | string) => {
+    const suggestion = suggestions.find((s) => s.id === suggestionId);
+    const stepTitle = resolveStepTitle(suggestion?.stepId, suggestion?.instanceId);
+    const employeeName = suggestion?.user || 'Unknown';
+
     setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
     const snapshot = optimisticUpdateStatus(suggestionId, 'reviewed');
     try {
       await updateSuggestionStatus(String(suggestionId), 'reviewed');
       logActivity({
         userInitials: 'MG',
-        action: 'approved a documentation suggestion',
+        action: `approved suggestion from ${employeeName} on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
     } catch {
@@ -115,13 +135,17 @@ export function ManagerView() {
   };
 
   const handleRejectSuggestion = async (suggestionId: number | string) => {
+    const suggestion = suggestions.find((s) => s.id === suggestionId);
+    const stepTitle = resolveStepTitle(suggestion?.stepId, suggestion?.instanceId);
+    const employeeName = suggestion?.user || 'Unknown';
+
     setLoadingSuggestionIds((prev) => new Set(prev).add(suggestionId));
     const snapshot = optimisticRemove(suggestionId);
     try {
       await deleteSuggestion(String(suggestionId));
       logActivity({
         userInitials: 'MG',
-        action: 'rejected a documentation suggestion',
+        action: `rejected suggestion from ${employeeName} on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
     } catch {
@@ -271,6 +295,7 @@ export function ManagerView() {
               onApprove={handleApproveSuggestion}
               onReject={handleRejectSuggestion}
               loadingSuggestionIds={loadingSuggestionIds}
+              onboardingInstances={onboardingInstances}
             />
 
             {/* Live Activity Section - Secondary (1fr) */}

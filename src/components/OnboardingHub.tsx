@@ -71,19 +71,28 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
   // Per-ID loading state tracking
   const [loadingStepIds, setLoadingStepIds] = useState<Set<number>>(new Set());
 
+  /**
+   * Resolve a step title from the employee's steps data.
+   * Falls back to "Step N" when title is not found.
+   */
+  const getStepTitle = (stepId: number): string => {
+    return employeeStepsData.find((s) => s.id === stepId)?.title || `Step ${stepId}`;
+  };
+
   const handleStatusChange = async (id: number, newStatus: StepStatus) => {
     if (!employeeInstance?.id) return;
     setLoadingStepIds((prev) => new Set(prev).add(id));
     try {
       await updateStatus(id, newStatus);
+      const stepTitle = getStepTitle(id);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
         action:
           newStatus === 'completed'
-            ? `completed step ${id}`
+            ? `completed "${stepTitle}"`
             : newStatus === 'stuck'
-              ? `reported stuck on step ${id}`
-              : `marked step ${id} as pending`,
+              ? `reported stuck on "${stepTitle}"`
+              : `marked "${stepTitle}" as pending`,
         timeAgo: 'just now',
       }).catch(console.warn);
     } catch {
@@ -116,9 +125,10 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
         status: 'pending',
         instanceId: employeeInstance.id,
       });
+      const stepTitle = getStepTitle(activeModal.stepId);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
-        action: `submitted suggestion for step ${activeModal.stepId}`,
+        action: `submitted suggestion for "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
       setActiveModal(null);
@@ -134,9 +144,10 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     setIsSubmittingModal(true);
     try {
       await updateStatus(activeModal.stepId, 'stuck');
+      const stepTitle = getStepTitle(activeModal.stepId);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
-        action: `reported stuck on step ${activeModal.stepId}`,
+        action: `reported stuck on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
       setActiveModal(null);

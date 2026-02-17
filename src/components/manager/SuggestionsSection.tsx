@@ -23,11 +23,20 @@ export function SuggestionsSection({
   onApprove,
   onReject,
   loadingSuggestionIds,
+  onboardingInstances,
 }: SuggestionsSectionProps) {
   /**
-   * Find the step title by ID
+   * Find the step title by ID, preferring instance-scoped lookup when instanceId is available.
+   * Falls back to flat steps array for suggestions without instanceId.
    */
-  const getStepTitle = (stepId: number): string => {
+  const getStepTitle = (stepId: number, instanceId?: string): string => {
+    if (instanceId && onboardingInstances) {
+      const instance = onboardingInstances.find((i) => i.id === instanceId);
+      if (instance) {
+        const step = instance.steps.find((s) => s.id === stepId);
+        if (step) return step.title;
+      }
+    }
     return steps.find((s) => s.id === stepId)?.title || 'Unknown Step';
   };
 
@@ -68,7 +77,7 @@ export function SuggestionsSection({
             <SuggestionCard
               key={sugg.id}
               suggestion={sugg}
-              stepTitle={getStepTitle(sugg.stepId)}
+              stepTitle={getStepTitle(sugg.stepId, sugg.instanceId)}
               onApprove={onApprove || (() => {})}
               onReject={onReject || (() => {})}
               isLoading={loadingSuggestionIds?.has(sugg.id)}

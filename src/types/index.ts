@@ -372,6 +372,7 @@ export interface SuggestionsSectionProps {
   onApprove?: (id: number | string) => void;
   onReject?: (id: number | string) => void;
   loadingSuggestionIds?: Set<number | string>;
+  onboardingInstances?: OnboardingInstance[];
 }
 
 export interface ActivitySectionProps {

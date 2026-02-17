@@ -58,6 +58,7 @@ const mockSuggestions: Suggestion[] = [
     user: 'Alice',
     text: 'Add more detail',
     status: 'pending',
+    instanceId: 'inst-1',
   },
   {
     id: 2,
@@ -65,6 +66,7 @@ const mockSuggestions: Suggestion[] = [
     user: 'Bob',
     text: 'Clarify instructions',
     status: 'pending',
+    instanceId: 'inst-1',
   },
 ];
 
@@ -333,11 +335,11 @@ describe('ManagerView', () => {
         expect(mockUpdateSuggestionStatus).toHaveBeenCalledWith('1', 'reviewed');
       });
 
-      // Verify activity was logged
+      // Verify activity was logged with employee name and step title
       await waitFor(() => {
         expect(mockLogActivity).toHaveBeenCalledWith(
           expect.objectContaining({
-            action: 'approved a documentation suggestion',
+            action: expect.stringContaining('approved suggestion from Alice on'),
           })
         );
       });
@@ -386,11 +388,12 @@ describe('ManagerView', () => {
         expect(mockDeleteSuggestion).toHaveBeenCalledWith('1');
       });
 
-      // Verify activity was logged
+      // Verify activity was logged with employee name and step title
+      // First reject button corresponds to the first pending suggestion (Alice, stepId 1)
       await waitFor(() => {
         expect(mockLogActivity).toHaveBeenCalledWith(
           expect.objectContaining({
-            action: 'rejected a documentation suggestion',
+            action: expect.stringContaining('rejected suggestion from Alice on'),
           })
         );
       });
@@ -417,6 +420,150 @@ describe('ManagerView', () => {
           'error'
         );
       });
+    });
+  });
+
+  // ---- Step Title Resolution in Activity Messages (Bug #43) ----
+
+  describe('Step title resolution in activity messages', () => {
+    it('approve activity message includes employee name and step title from instance', async () => {
+      const user = userEvent.setup();
+      render(<ManagerView />);
+
+      const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+      await user.click(approveButtons[0]);
+
+      await waitFor(() => {
+        expect(mockLogActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'approved suggestion from Alice on "Setup laptop"',
+          })
+        );
+      });
+    });
+
+    it('reject activity message includes employee name and step title from instance', async () => {
+      const user = userEvent.setup();
+      render(<ManagerView />);
+
+      // Click the first reject button (suggestion from Alice on step 1 "Setup laptop")
+      const rejectButtons = screen.getAllByRole('button', { name: /reject/i });
+      await user.click(rejectButtons[0]);
+
+      await waitFor(() => {
+        expect(mockLogActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'rejected suggestion from Alice on "Setup laptop"',
+          })
+        );
+      });
+    });
+
+    it('approve falls back to flat step lookup when instanceId is missing', async () => {
+      // Override suggestions with one that has no instanceId
+      mockSuggestionsReturn.data = [
+        {
+          id: 10,
+          stepId: 1,
+          user: 'Charlie',
+          text: 'Missing instanceId suggestion',
+          status: 'pending',
+        },
+      ];
+
+      const user = userEvent.setup();
+      render(<ManagerView />);
+
+      const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+      await user.click(approveButtons[0]);
+
+      await waitFor(() => {
+        expect(mockLogActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: expect.stringContaining('approved suggestion from Charlie'),
+          })
+        );
+      });
+    });
+
+    it('approve falls back to Step N when step not found', async () => {
+      // Override suggestions with one that has a non-existent stepId
+      mockSuggestionsReturn.data = [
+        {
+          id: 20,
+          stepId: 999,
+          user: 'Dave',
+          text: 'Unknown step suggestion',
+          status: 'pending',
+          instanceId: 'inst-1',
+        },
+      ];
+
+      const user = userEvent.setup();
+      render(<ManagerView />);
+
+      const approveButtons = screen.getAllByRole('button', { name: /approve/i });
+      await user.click(approveButtons[0]);
+
+      await waitFor(() => {
+        expect(mockLogActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: expect.stringContaining('Step 999'),
+          })
+        );
+      });
+    });
+  });
+
+  // ---- SuggestionsSection Step Title Resolution (Bug #41) ----
+
+  describe('SuggestionsSection step title resolution', () => {
+    it('renders correct step title when instanceId matches an instance', () => {
+      // Suggestion with stepId=1 and instanceId='inst-1' should show "Setup laptop"
+      // (from inst-1's steps, not inst-2's steps)
+      render(<ManagerView />);
+
+      // The suggestion card shows the step title as a badge
+      // Suggestion 1 has stepId=1, instanceId='inst-1', inst-1 step 1 = "Setup laptop"
+      expect(screen.getByText('Setup laptop')).toBeInTheDocument();
+    });
+
+    it('falls back to flat steps lookup when instanceId is not provided', () => {
+      // Override with a suggestion without instanceId
+      mockSuggestionsReturn.data = [
+        {
+          id: 10,
+          stepId: 1,
+          user: 'Charlie',
+          text: 'No instance suggestion',
+          status: 'pending',
+          // no instanceId
+        },
+      ];
+
+      render(<ManagerView />);
+
+      // Should still find step 1 title from flat managerSteps
+      expect(screen.getByText('Setup laptop')).toBeInTheDocument();
+    });
+
+    it('falls back to flat steps when instanceId points to unknown instance', () => {
+      // Override with a suggestion with unknown instanceId
+      mockSuggestionsReturn.data = [
+        {
+          id: 10,
+          stepId: 1,
+          user: 'Charlie',
+          text: 'Unknown instance suggestion',
+          status: 'pending',
+          instanceId: 'nonexistent',
+        },
+      ];
+
+      render(<ManagerView />);
+
+      // Should fall back to flat steps and find step 1 title
+      expect(screen.getByText('Setup laptop')).toBeInTheDocument();
     });
   });
 });
