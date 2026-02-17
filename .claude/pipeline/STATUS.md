@@ -6,14 +6,23 @@
 
 ## Current State
 
-**Current Feature:** None (ready for next bug fix)
-**Current Phase:** Idle
-**Next Command:** Select a bug from the roadmap and run `/research <feature>`
+**Current Feature:** None (ready for next feature)
+**Current Phase:** Feature complete
+**Next Command:** Select next feature from backlog
+
+### Next Up: Google OAuth Sign-In
+- Research complete: `.claude/features/google-auth/2026-02-17T18:00_research.md`
+- "Sign in with Google" button via Supabase OAuth provider
+- New Google users get no role until manager assigns one
+- Separate "Unassigned Users" section in manager dashboard
+- Edit modal to assign role + department + template
+- Dev-auth mode preserved alongside Google OAuth
+- **Start with:** `/plan google-auth` (research already done)
 
 ### Last Completed Feature
-- Feature: hire-email-signin (Bug #11)
+- Feature: pdf-template-import
 - Finalized: 2026-02-17
-- Commit: 4b7cd90
+- Commit: 92b1155
 
 ---
 
@@ -98,8 +107,8 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 13 | `template-steps-cramped` | **FIXED** | ~~Steps area shows only ~1.5 steps at a time with real content~~ | Fixed in commit 6879d18 - removed `max-h-96` inner scroll, single ModalWrapper scroll surface |
 | 14 | `template-no-step-reorder` | **FIXED** | ~~Cannot insert step between existing steps or reorder~~ | Fixed in commit 6879d18 - added ChevronUp/ChevronDown buttons with boundary conditions |
 | 15 | `template-modal-too-narrow` | **FIXED** | ~~Modal cramped for complex templates~~ | Fixed in commit 6879d18 - widened from max-w-lg (512px) to max-w-2xl (672px), 31% wider |
-| 16 | `template-description-tiny` | **P2 MEDIUM** | Step description textarea too small and not resizable | `rows={2}` with `resize-none`; needs larger default + resizable |
-| 17 | `template-delete-overlap` | **P2 MEDIUM** | Trash icon overlaps step number badge, no delete confirmation | `absolute top-2 right-10` only 24px from badge at `right-2` |
+| 16 | `template-description-tiny` | **FIXED** | ~~Step description textarea too small and not resizable~~ | Fixed in commit 92b1155 - increased rows from 2 to 4, changed resize-none to resize-y |
+| 17 | `template-delete-overlap` | **RESOLVED** | ~~Trash icon overlaps step number badge~~ | Fixed as side effect of template-steps-ux changes |
 | 18 | `template-no-step-count` | **FIXED** | ~~No "Step X of Y" indicator~~ | Fixed in commit 6879d18 - added step count to section label "Onboarding Steps (N)" and badge per step |
 | 19 | `template-no-autoscroll` | **P3 LOW** | New steps added offscreen with no scroll-into-view | Missing `scrollIntoView()` after push |
 | 20 | `template-index-as-key` | **FIXED** | ~~Array index used as React key for steps~~ | Fixed in commit 6879d18 - replaced with stable _uid keys from incrementing counter |
@@ -125,7 +134,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | # | Issue | Priority | Symptom | Root Cause |
 |---|-------|----------|---------|------------|
 | 28 | `modal-stale-form-data` | **FIXED** | ~~Modal forms retain stale data from previous open/close cycles~~ | Fixed in commit 230b915 - added useEffect reset hooks to 5 modals (CreateOnboardingModal, UserModal, RoleModal, TemplateModal, SuggestEditModal) that reset form state when isOpen becomes true. |
-| 29 | `navbar-breaks-at-mobile` | **P2 MEDIUM** | At 375px, navbar loses brand name, templates button, dark mode toggle | No hamburger menu or responsive collapse |
+| 29 | `navbar-breaks-at-mobile` | **WONTFIX** | ~~At 375px, navbar loses brand name, templates button, dark mode toggle~~ | Not a mobile app — desktop-only is acceptable |
 | 30 | `employee-header-cleanup` | **FIXED** | ~~Employee selector dropdown visible in Employee View + duplicate Sign Out buttons~~ | Fixed in commit 49b0bfb - removed redundant EmployeeHeader component and duplicate Sign Out button, NavBar already provides all auth/view UI |
 | 31 | `kpi-count-stale` | **P2 MEDIUM** | KPI "Active Onboardings" shows inconsistent counts between views | Caching or recomputation issue |
 | 32 | `dashboard-layout-imbalance` | **P3 LOW** | Documentation Feedback and Live Activity sections unbalanced | Layout proportions off |
@@ -217,6 +226,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 38 | `suggest-edit-realtime-update` | 2026-02-17 | 86998ce | Fixed feedback badge delay bug - added _addSuggestion action to SuggestionsSlice, wired into OnboardingHub.handleSuggestEdit so badge appears immediately after server confirms suggestion creation (no page reload), +2 tests (563 total) |
 | 39 | `employee-header-cleanup` | 2026-02-17 | 49b0bfb | Fixed bug #30 (P2 MEDIUM) - removed redundant EmployeeHeader component (~40 lines) and duplicate Sign Out button from "no onboarding assigned" card, NavBar already provides all auth/view UI, +2 regression tests (563 total) |
 | 40 | `hire-email-signin` | 2026-02-17 | 4b7cd90 | Fixed bug #11 (P2 MEDIUM) - added getInstanceByEmployeeEmail() to query instances by employee_email, inserted hire check in signInWithEmailLink() between Users panel credentials and MOCK_EMAIL_ROLES, hires created via New Hires panel can now sign in with their email as employees, +10 tests (563 total) |
+| 41 | `pdf-template-import` | 2026-02-17 | 92b1155 | Added PDF import to Templates view - "Import from PDF" button extracts bullets/numbered lists client-side via pdfjs-dist, pre-fills TemplateModal with parsed steps, 10MB file limit, full dark mode + accessibility, code-split 404KB chunk (dynamic import). Also fixed bug #16 (template description textarea resize). +31 tests (594 total) |
 
 ---
 
