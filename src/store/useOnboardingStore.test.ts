@@ -1176,5 +1176,47 @@ describe('useOnboardingStore', () => {
       expect(state.suggestionsLoading).toBe(false);
       expect(state.suggestionsError).toBeNull();
     });
+
+    describe('_addSuggestion', () => {
+      it('appends suggestion to empty array', () => {
+        expect(useOnboardingStore.getState().suggestions).toHaveLength(0);
+
+        const newSuggestion: Suggestion = {
+          id: 'sug-1',
+          stepId: 5,
+          user: 'Jane Doe',
+          text: 'Please update the link',
+          status: 'pending',
+          createdAt: 1700000000000,
+          instanceId: 'inst-42',
+        };
+        useOnboardingStore.getState()._addSuggestion(newSuggestion);
+
+        const { suggestions } = useOnboardingStore.getState();
+        expect(suggestions).toHaveLength(1);
+        expect(suggestions[0]).toEqual(newSuggestion);
+      });
+
+      it('appends suggestion preserving existing suggestions', () => {
+        const existing = makeSuggestion(1, 'pending');
+        useOnboardingStore.setState({ suggestions: [existing] });
+
+        const newSuggestion: Suggestion = {
+          id: 'sug-2',
+          stepId: 3,
+          user: 'John Smith',
+          text: 'Add more detail here',
+          status: 'pending',
+          createdAt: 1700000000001,
+          instanceId: 'inst-99',
+        };
+        useOnboardingStore.getState()._addSuggestion(newSuggestion);
+
+        const { suggestions } = useOnboardingStore.getState();
+        expect(suggestions).toHaveLength(2);
+        expect(suggestions[0]).toEqual(existing);
+        expect(suggestions[1]).toEqual(newSuggestion);
+      });
+    });
   });
 });

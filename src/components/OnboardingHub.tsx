@@ -26,6 +26,7 @@ import {
   createSuggestion,
   logActivity,
 } from '../services/supabase';
+import { useOnboardingStore } from '../store/useOnboardingStore';
 import type { StepStatus, ModalState } from '../types';
 
 interface OnboardingHubProps {
@@ -137,13 +138,25 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
     if (!text.trim() || !activeModal || !employeeInstance) return;
     setIsSubmittingModal(true);
     try {
-      await createSuggestion({
+      const newId = await createSuggestion({
         stepId: activeModal.stepId,
         user: employeeInstance.employeeName,
         text: text.trim(),
         status: 'pending',
         instanceId: employeeInstance.id,
       });
+
+      // Update store so the "Feedback Sent" badge appears immediately
+      useOnboardingStore.getState()._addSuggestion({
+        id: newId,
+        stepId: activeModal.stepId,
+        user: employeeInstance.employeeName,
+        text: text.trim(),
+        status: 'pending',
+        createdAt: Date.now(),
+        instanceId: employeeInstance.id,
+      });
+
       const stepTitle = getStepTitle(activeModal.stepId);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),

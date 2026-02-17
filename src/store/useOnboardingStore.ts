@@ -153,6 +153,8 @@ export interface SuggestionsSlice {
    * Restores suggestions from a snapshot.
    */
   _rollbackSuggestions: (snapshot: Suggestion[]) => void;
+  /** Optimistically appends a newly created suggestion to the store. */
+  _addSuggestion: (suggestion: Suggestion) => void;
 }
 
 /**
@@ -635,5 +637,9 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 
   _rollbackSuggestions: (snapshot: Suggestion[]) => {
     set({ suggestions: snapshot });
+  },
+
+  _addSuggestion: (suggestion: Suggestion) => {
+    set((state) => ({ suggestions: [...state.suggestions, suggestion] }));
   },
 }));
