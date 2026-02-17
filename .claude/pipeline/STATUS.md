@@ -6,23 +6,23 @@
 
 ## Current State
 
-**Current Feature:** edit-new-hires
-**Current Phase:** Testing complete (all pass)
-**Next Command:** `/finalize edit-new-hires`
+**Current Feature:** None (ready for next feature)
+**Current Phase:** Awaiting new feature selection
+**Next Command:** User's choice
 
-### Next Up: Google OAuth Sign-In
-- Research complete: `.claude/features/google-auth/2026-02-17T18:00_research.md`
-- "Sign in with Google" button via Supabase OAuth provider
-- New Google users get no role until manager assigns one
-- Separate "Unassigned Users" section in manager dashboard
-- Edit modal to assign role + department + template
-- Dev-auth mode preserved alongside Google OAuth
-- **Start with:** `/plan google-auth` (research already done)
+### Candidate Features
+- **google-auth**: Research complete (`.claude/features/google-auth/2026-02-17T18:00_research.md`)
+  - "Sign in with Google" button via Supabase OAuth provider
+  - New Google users get no role until manager assigns one
+  - Separate "Unassigned Users" section in manager dashboard
+  - Edit modal to assign role + department + template
+  - Dev-auth mode preserved alongside Google OAuth
+  - **Start with:** `/plan google-auth` (research already done)
 
 ### Last Completed Feature
-- Feature: pdf-template-import
+- Feature: edit-new-hires
 - Finalized: 2026-02-17
-- Commit: 92b1155
+- Commit: 16b85e7
 
 ---
 
@@ -227,6 +227,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 39 | `employee-header-cleanup` | 2026-02-17 | 49b0bfb | Fixed bug #30 (P2 MEDIUM) - removed redundant EmployeeHeader component (~40 lines) and duplicate Sign Out button from "no onboarding assigned" card, NavBar already provides all auth/view UI, +2 regression tests (563 total) |
 | 40 | `hire-email-signin` | 2026-02-17 | 4b7cd90 | Fixed bug #11 (P2 MEDIUM) - added getInstanceByEmployeeEmail() to query instances by employee_email, inserted hire check in signInWithEmailLink() between Users panel credentials and MOCK_EMAIL_ROLES, hires created via New Hires panel can now sign in with their email as employees, +10 tests (563 total) |
 | 41 | `pdf-template-import` | 2026-02-17 | 92b1155 | Added PDF import to Templates view - "Import from PDF" button extracts bullets/numbered lists client-side via pdfjs-dist, pre-fills TemplateModal with parsed steps, 10MB file limit, full dark mode + accessibility, code-split 404KB chunk (dynamic import). Also fixed bug #16 (template description textarea resize). +31 tests (594 total) |
+| 42 | `edit-new-hires` | 2026-02-17 | 16b85e7 | Added EditHireModal component allowing managers to edit existing hires from New Hires panel - supports editing name, email, role, department, and template reassignment with title-based step merging to preserve completion status, Pencil edit button in Actions column, optimistic updates in Zustand store, +24 tests (633 total) |
 
 ---
 
