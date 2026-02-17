@@ -163,9 +163,18 @@ export async function updateTemplate(
 }
 
 /**
- * Syncs new steps from an updated template to all active onboarding instances.
- * Only adds NEW steps that don't already exist in the instance.
- * Preserves existing step statuses.
+ * Syncs template steps to all active onboarding instances using title-based matching.
+ *
+ * For each instance of the template:
+ *   1. Builds a Map<title, instanceStep> from existing instance steps.
+ *   2. Walks template steps in order:
+ *      - Title match found: preserves instance step's `status`, updates all other
+ *        fields (position, description, owner, expert, role, link) from the template.
+ *      - No title match: adds as a new step with `status: 'pending'`.
+ *   3. Orphan instance steps (title not in template) are dropped.
+ *   4. Progress is recalculated as round(completedCount / totalSteps * 100).
+ *
+ * Only `status` is preserved from instance steps; all other fields are overwritten.
  */
 async function syncTemplateStepsToInstances(templateId: string, newSteps: Step[]): Promise<void> {
   try {
@@ -188,13 +197,29 @@ async function syncTemplateStepsToInstances(templateId: string, newSteps: Step[]
 
     for (const instance of instances) {
       try {
-        const existingStepIds = new Set(instance.steps.map((step) => step.id));
-        const stepsToAdd = newSteps.filter((step) => !existingStepIds.has(step.id));
+        // Build a title -> instance step lookup for status preservation
+        const titleMap = new Map<string, Step>();
+        for (const step of instance.steps) {
+          titleMap.set(step.title, step);
+        }
 
-        if (stepsToAdd.length === 0) continue;
+        // Walk template steps in order, merging with instance data
+        const mergedSteps: Step[] = newSteps.map((templateStep, index) => {
+          const existing = titleMap.get(templateStep.title);
+          return {
+            id: index + 1,
+            title: templateStep.title,
+            description: templateStep.description,
+            role: templateStep.role,
+            owner: templateStep.owner,
+            expert: templateStep.expert,
+            link: templateStep.link,
+            status: existing ? existing.status : 'pending',
+          };
+        });
 
-        const mergedSteps = [...instance.steps, ...stepsToAdd];
-        const completedCount = mergedSteps.filter((step) => step.status === 'completed').length;
+        // Calculate progress
+        const completedCount = mergedSteps.filter((s) => s.status === 'completed').length;
         const progress = mergedSteps.length === 0
           ? 0
           : Math.round((completedCount / mergedSteps.length) * 100);
