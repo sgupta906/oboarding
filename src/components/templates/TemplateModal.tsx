@@ -149,9 +149,6 @@ export function TemplateModal({
         if (!step.title.trim()) {
           errors.push('All steps must have a title');
         }
-        if (!step.description.trim()) {
-          errors.push('All steps must have a description');
-        }
       }
     } else {
       const validSteps = steps.filter((s) => s.title.trim() || s.description.trim());
