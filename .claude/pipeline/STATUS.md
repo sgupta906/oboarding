@@ -8,21 +8,23 @@
 
 **Current Feature:** None (ready for next feature)
 **Current Phase:** idle
-**Next Command:** Pick a feature and run `/research <feature>`
+**Next Command:** User to pick from options below
 
-### Candidate Features
-- **google-auth**: Plan complete (`.claude/features/google-auth/2026-02-17T19:00_plan.md`, `.claude/features/google-auth/tasks.md`)
-  - "Sign in with Google" button via Supabase OAuth provider
-  - New Google users get no role until manager assigns one
-  - Separate "Unassigned Users" section in manager dashboard
-  - AssignRoleModal to assign role + department + template
-  - Dev-auth mode preserved alongside Google OAuth
-  - **Next:** `/implement google-auth`
+### Pending Server-Side Setup (Google Auth)
+- Google OAuth code is deployed (commit f92d440) but **provider not enabled** in Supabase
+- To activate: Supabase Dashboard → Authentication → Providers → Google → Enable + paste Google Cloud OAuth credentials
+- Redirect URI for Google Console: `https://ecnshfhpgwjxvuybewth.supabase.co/auth/v1/callback`
+- Once enabled, "Sign in with Google" will work end-to-end
 
-### Last Completed Feature
-- Feature: kpi-count-stale
-- Finalized: 2026-02-17
-- Commit: b3c29bc
+### Candidate Next Steps
+1. **Enable Google OAuth** — server-side config in Supabase + Google Cloud Console
+2. **P3 bugs** — #33 (activity-initials-only), #34 (template-delete-no-label), #35 (completed-step-strikethrough), #36 (no-loading-skeleton)
+3. **New features** — user's choice
+
+### Last Completed Features
+- Feature: google-auth — Finalized 2026-02-18, commit f92d440
+- Feature: kpi-count-stale (bug #31) — Finalized 2026-02-18, commit b3c29bc
+- Feature: dashboard-layout-imbalance (bug #32) — Finalized 2026-02-18, commit d66b22c
 
 ---
 
@@ -231,6 +233,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 43 | `profiles-cleanup` | 2026-02-18 | a18293b | Fixed bug #39 (P3 LOW) - removed dead code: deleted 2 unused Supabase service files (profileService.ts 162 lines, profileTemplateService.ts 277 lines), cleaned up barrel exports, mappers (toProfile, toProfileTemplate), and test blocks. Preserved UserProfileRow for user_profiles junction table. ~535 lines removed, 638 tests passing, zero runtime behavior changes |
 | 44 | `template-step-insert` | 2026-02-17 | ede3108 | Fixed bug #19 (P3 LOW) - added "Insert step below" button (Plus icon) to each step card in TemplateModal allowing insertion of blank steps at any position, implemented scroll-into-view for newly inserted/added steps via useEffect + data-step-uid attributes, dark mode styling + accessibility (aria-label, title, type="button"), +7 tests (638 total) |
 | 45 | `kpi-count-stale` | 2026-02-17 | b3c29bc | Fixed bug #31 (P2 MEDIUM) - cross-slice synchronization fix in Zustand store where _updateStepStatus() now updates both stepsByInstance and instances slices atomically. Prevents stale KPI "Active Onboardings" counts when employees complete steps. Removed misleading fallback step-counting path in KPISection. Dual rollback on error, progress recomputation matches server-side formula, +6 tests (667 total) |
+| 46 | `google-auth` | 2026-02-18 | f92d440 | Added Google OAuth sign-in via Supabase with manager-assignable roles for new users. Implemented signInWithGoogle() and ensureUserExists() in authService, made AuthUser.role nullable for unassigned Google OAuth users, added "Sign in with Google" button to SignInView with Google icon, created UnassignedUsersSection component for manager dashboard and AssignRoleModal for role/department/template assignment, integrated unassigned users into NewHiresPanel above existing table, +37 tests (675 total), maintained backwards compatibility with email and dev-auth sign-in |
 
 ---
 
