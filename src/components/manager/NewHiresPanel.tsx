@@ -7,13 +7,16 @@
 
 import { useState, useMemo } from 'react';
 import { Users, Trash2, Pencil } from 'lucide-react';
-import { useOnboardingInstances, useRoles, useTemplates } from '../../hooks';
+import { useOnboardingInstances, useRoles, useTemplates, useUsers } from '../../hooks';
 import { useAuth } from '../../config/authContext';
-import { logActivity } from '../../services/supabase';
+import { logActivity, createOnboardingRunFromTemplate } from '../../services/supabase';
+import { setUserRole } from '../../services/authService';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
 import { EditHireModal } from '../modals/EditHireModal';
-import type { OnboardingInstance } from '../../types';
+import { AssignRoleModal } from '../modals/AssignRoleModal';
+import { UnassignedUsersSection } from './UnassignedUsersSection';
+import type { OnboardingInstance, User } from '../../types';
 
 type StatusFilter = 'all' | 'active' | 'completed' | 'on_hold';
 
@@ -82,6 +85,12 @@ export function NewHiresPanel() {
   const [editError, setEditError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Unassigned users state
+  const { users } = useUsers();
+  const [assigningUser, setAssigningUser] = useState<User | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   /** Helper to get initials for activity logging */
   const getInitials = (name: string): string => {
     return name
@@ -96,6 +105,45 @@ export function NewHiresPanel() {
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  /** Handle assigning a role + template to an unassigned user */
+  const handleAssignSubmit = async (
+    userToAssign: User,
+    assignRole: string,
+    assignDepartment: string,
+    assignTemplateId: string,
+  ) => {
+    setIsAssigning(true);
+    setAssignError(null);
+    try {
+      // Step 1: Set user role in database
+      await setUserRole(userToAssign.id, userToAssign.email, assignRole);
+
+      // Step 2: Create onboarding instance from template
+      await createOnboardingRunFromTemplate({
+        employeeName: userToAssign.name,
+        employeeEmail: userToAssign.email,
+        role: assignRole,
+        department: assignDepartment,
+        templateId: assignTemplateId,
+      });
+
+      // Fire-and-forget activity log
+      logActivity({
+        userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        action: `Assigned ${assignRole} role to ${userToAssign.name}`,
+        timeAgo: 'just now',
+        userId: authUser?.uid,
+      }).catch(() => {});
+
+      showSuccess(`Role assigned to ${userToAssign.name} successfully`);
+      setAssigningUser(null);
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : 'Failed to assign role');
+    } finally {
+      setIsAssigning(false);
+    }
   };
 
   /** Handle confirming an instance deletion */
@@ -179,6 +227,15 @@ export function NewHiresPanel() {
           </p>
         </div>
       </div>
+
+      {/* Unassigned Users Section */}
+      <UnassignedUsersSection
+        users={users}
+        onAssign={(user) => {
+          setAssigningUser(user);
+          setAssignError(null);
+        }}
+      />
 
       {/* Filter Toggle Group */}
       <div
@@ -381,6 +438,23 @@ export function NewHiresPanel() {
         instance={editingInstance}
         isSubmitting={isEditing}
         error={editError}
+        roles={roles}
+        rolesLoading={rolesLoading}
+        templates={templates}
+        templatesLoading={templatesLoading}
+      />
+
+      {/* Assign Role Modal */}
+      <AssignRoleModal
+        isOpen={assigningUser !== null}
+        onClose={() => {
+          setAssigningUser(null);
+          setAssignError(null);
+        }}
+        onSubmit={handleAssignSubmit}
+        user={assigningUser}
+        isSubmitting={isAssigning}
+        error={assignError}
         roles={roles}
         rolesLoading={rolesLoading}
         templates={templates}

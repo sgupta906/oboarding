@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { getUserRole, signOut } from '../services/authService';
+import { getUserRole, signOut, ensureUserExists } from '../services/authService';
 import { getDevAuthUUID } from '../utils/uuid';
 import type { AuthUser, UserRole, AuthContextValue } from './authTypes';
 
@@ -173,11 +173,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
               setUser(authUser);
               setRole(userRole);
             } else {
-              // Failed to get role, clear user state
-              console.warn(
-                'User authenticated but role not found in database',
+              // Google OAuth user with no role yet -- create user row
+              // and set authenticated state with role=null
+              await ensureUserExists(
+                session.user.id,
+                session.user.email,
+                session.user.user_metadata?.full_name,
               );
-              setUser(null);
+              setUser({
+                uid: session.user.id,
+                email: session.user.email,
+                role: null,
+              });
               setRole(null);
             }
           } else {

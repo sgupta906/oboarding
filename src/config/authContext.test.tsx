@@ -27,6 +27,7 @@ vi.mock('./supabase', () => ({
 vi.mock('../services/authService', () => ({
   getUserRole: vi.fn(),
   signOut: vi.fn(),
+  ensureUserExists: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('AuthContext and useAuth Hook', () => {
@@ -182,12 +183,12 @@ describe('AuthContext and useAuth Hook', () => {
   });
 
   describe('AuthProvider - Role Fetch Error Handling', () => {
-    it('should clear user state when role fetch fails', async () => {
+    it('should set user with role=null when getUserRole returns null (Google OAuth flow)', async () => {
       vi.mocked(authService.getUserRole).mockResolvedValue(null);
 
       mockOnAuthStateChange.mockImplementation((callback: any) => {
         callback('SIGNED_IN', {
-          user: { id: 'test-uid-123', email: 'test@example.com' },
+          user: { id: 'test-uid-123', email: 'test@example.com', user_metadata: {} },
         });
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
@@ -202,9 +203,14 @@ describe('AuthContext and useAuth Hook', () => {
         expect(result.current.loading).toBe(false);
       });
 
-      expect(result.current.user).toBeNull();
+      // User is authenticated but has no role
+      expect(result.current.user).toEqual({
+        uid: 'test-uid-123',
+        email: 'test@example.com',
+        role: null,
+      });
       expect(result.current.role).toBeNull();
-      expect(result.current.isAuthenticated).toBe(false);
+      expect(result.current.isAuthenticated).toBe(true);
     });
 
     it('should handle getUserRole exceptions gracefully', async () => {
@@ -616,6 +622,126 @@ describe('AuthContext and useAuth Hook', () => {
       );
 
       removeEventListenerSpy.mockRestore();
+    });
+  });
+
+  describe('AuthProvider - Google OAuth User (No Role)', () => {
+    it('should set user with role=null when getUserRole returns null (no mock auth)', async () => {
+      vi.mocked(authService.getUserRole).mockResolvedValue(null);
+
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: {
+            id: 'google-uid-123',
+            email: 'google-user@gmail.com',
+            user_metadata: { full_name: 'Google User' },
+          },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.user).toEqual({
+        uid: 'google-uid-123',
+        email: 'google-user@gmail.com',
+        role: null,
+      });
+      expect(result.current.role).toBeNull();
+    });
+
+    it('should be authenticated (isAuthenticated=true) when user has role=null', async () => {
+      vi.mocked(authService.getUserRole).mockResolvedValue(null);
+
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: {
+            id: 'google-uid-456',
+            email: 'new-google@gmail.com',
+            user_metadata: {},
+          },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.user).not.toBeNull();
+    });
+
+    it('should call ensureUserExists when getUserRole returns null', async () => {
+      vi.mocked(authService.getUserRole).mockResolvedValue(null);
+
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: {
+            id: 'google-uid-789',
+            email: 'another-user@gmail.com',
+            user_metadata: { full_name: 'Another User' },
+          },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(
+          (authService as any).ensureUserExists,
+        ).toHaveBeenCalledWith('google-uid-789', 'another-user@gmail.com', 'Another User');
+      });
+    });
+
+    it('should pass Google user_metadata.full_name to ensureUserExists', async () => {
+      vi.mocked(authService.getUserRole).mockResolvedValue(null);
+
+      mockOnAuthStateChange.mockImplementation((callback: any) => {
+        callback('SIGNED_IN', {
+          user: {
+            id: 'google-uid-meta',
+            email: 'meta-user@gmail.com',
+            user_metadata: { full_name: 'Full Name From Google' },
+          },
+        });
+        return { data: { subscription: { unsubscribe: vi.fn() } } };
+      });
+
+      const wrapper = ({ children }: { children: React.ReactNode }) => (
+        <AuthProvider>{children}</AuthProvider>
+      );
+
+      renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => {
+        expect(
+          (authService as any).ensureUserExists,
+        ).toHaveBeenCalledWith(
+          'google-uid-meta',
+          'meta-user@gmail.com',
+          'Full Name From Google',
+        );
+      });
     });
   });
 });

@@ -24,7 +24,7 @@ export function hasManagerAccess(role: UserRole | null): boolean {
 export interface AuthUser {
   uid: string;
   email: string;
-  role: UserRole;
+  role: UserRole | null;
 }
 
 /**

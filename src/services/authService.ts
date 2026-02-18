@@ -105,6 +105,51 @@ export async function getUserRole(uid: string): Promise<UserRole | null> {
 }
 
 /**
+ * Signs in the user using Google OAuth via Supabase's built-in provider.
+ * This triggers a redirect to Google's consent screen. On successful
+ * authorization, the user is redirected back to the app and
+ * onAuthStateChange fires automatically to handle the session.
+ *
+ * @returns Promise that resolves when the redirect is initiated
+ * @throws Error if the OAuth request fails
+ */
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) throw error;
+}
+
+/**
+ * Ensures a user row exists in the `users` table for the given auth user.
+ * Uses upsert so it is idempotent -- safe to call on every sign-in.
+ * Does NOT create a user_roles entry (role is assigned by a manager).
+ *
+ * @param uid - Supabase Auth UUID
+ * @param email - User's email address
+ * @param displayName - Optional display name from OAuth provider
+ * @throws Error if the upsert fails
+ */
+export async function ensureUserExists(
+  uid: string,
+  email: string,
+  displayName?: string,
+): Promise<void> {
+  const name = displayName || email.split('@')[0];
+  const { error } = await supabase.from('users').upsert({
+    id: uid,
+    email,
+    name,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    console.error('Failed to ensure user exists:', error);
+    throw error;
+  }
+}
+
+/**
  * Mock sign-in with email link (stubbed for demo)
  * In production, this would use Supabase magic link or OAuth.
  * For testing, we use predefined test emails with hardcoded roles.

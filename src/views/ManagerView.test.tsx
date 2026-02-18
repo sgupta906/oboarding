@@ -166,6 +166,16 @@ vi.mock('../hooks', () => ({
     data: [],
     isLoading: false,
   }),
+  useUsers: () => ({
+    users: [],
+    isLoading: false,
+    error: null,
+    createNewUser: vi.fn(),
+    editUser: vi.fn(),
+    removeUser: vi.fn(),
+    fetchUser: vi.fn(),
+    reset: vi.fn(),
+  }),
 }));
 
 vi.mock('../context/ToastContext', () => ({
@@ -176,6 +186,11 @@ vi.mock('../services/supabase', () => ({
   updateSuggestionStatus: (...args: unknown[]) => mockUpdateSuggestionStatus(...args),
   deleteSuggestion: (...args: unknown[]) => mockDeleteSuggestion(...args),
   logActivity: (...args: unknown[]) => mockLogActivity(...args),
+  createOnboardingRunFromTemplate: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('../services/authService', () => ({
+  setUserRole: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../config/authContext', () => ({

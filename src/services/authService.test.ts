@@ -8,6 +8,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   signInWithEmailLink,
+  signInWithGoogle,
+  ensureUserExists,
   setUserRole,
   getUserRole,
   signOut,
@@ -28,6 +30,7 @@ const {
   const mockSupabaseAuth = {
     signUp: vi.fn(),
     signInWithPassword: vi.fn(),
+    signInWithOAuth: vi.fn(),
     signOut: vi.fn(),
     getUser: vi.fn(),
   };
@@ -577,6 +580,67 @@ describe('Auth Service', () => {
       await signOut();
 
       expect(mockSupabaseAuth.signOut).toHaveBeenCalled();
+    });
+  });
+
+  describe('signInWithGoogle', () => {
+    it('should call supabase.auth.signInWithOAuth with Google provider', async () => {
+      mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({ error: null });
+
+      await signInWithGoogle();
+
+      expect(mockSupabaseAuth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      });
+    });
+
+    it('should throw on OAuth error', async () => {
+      const oauthError = { message: 'OAuth provider not configured' };
+      mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({ error: oauthError });
+
+      await expect(signInWithGoogle()).rejects.toEqual(oauthError);
+    });
+
+    it('should not throw when OAuth succeeds', async () => {
+      mockSupabaseAuth.signInWithOAuth.mockResolvedValueOnce({ error: null });
+
+      await expect(signInWithGoogle()).resolves.not.toThrow();
+    });
+  });
+
+  describe('ensureUserExists', () => {
+    it('should upsert user row with correct fields', async () => {
+      await ensureUserExists('uid-google-1', 'jane@company.com', 'Jane Doe');
+
+      expect(mockFrom).toHaveBeenCalledWith('users');
+      expect(mockUpsert).toHaveBeenCalledWith({
+        id: 'uid-google-1',
+        email: 'jane@company.com',
+        name: 'Jane Doe',
+        updated_at: expect.any(String),
+      });
+    });
+
+    it('should use email prefix as name when displayName not provided', async () => {
+      await ensureUserExists('uid-google-2', 'bob@company.com');
+
+      expect(mockUpsert).toHaveBeenCalledWith({
+        id: 'uid-google-2',
+        email: 'bob@company.com',
+        name: 'bob',
+        updated_at: expect.any(String),
+      });
+    });
+
+    it('should throw on upsert error', async () => {
+      mockUpsert.mockResolvedValueOnce({
+        error: { message: 'Upsert failed' },
+      });
+
+      await expect(
+        ensureUserExists('uid-google-3', 'fail@company.com'),
+      ).rejects.toBeTruthy();
     });
   });
 });

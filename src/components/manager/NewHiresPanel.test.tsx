@@ -77,10 +77,14 @@ let mockReturn: {
   updateInstance: mockUpdateInstance,
 };
 
+let mockUsers = [
+  { id: 'u-1', email: 'alice@company.com', name: 'Alice Manager', roles: ['manager'], createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+] as Array<{ id: string; email: string; name: string; roles: string[]; createdAt: number; updatedAt: number; createdBy: string }>;
+
 vi.mock('../../hooks', () => ({
   useOnboardingInstances: () => mockReturn,
   useRoles: () => ({
-    data: [
+    roles: [
       { id: 'role-1', name: 'Engineering', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
       { id: 'role-2', name: 'Sales', createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
     ],
@@ -94,6 +98,16 @@ vi.mock('../../hooks', () => ({
     ],
     isLoading: false,
     error: null,
+  }),
+  useUsers: () => ({
+    users: mockUsers,
+    isLoading: false,
+    error: null,
+    createNewUser: vi.fn(),
+    editUser: vi.fn(),
+    removeUser: vi.fn(),
+    fetchUser: vi.fn(),
+    reset: vi.fn(),
   }),
 }));
 
@@ -109,6 +123,11 @@ vi.mock('../../config/authContext', () => ({
 
 vi.mock('../../services/supabase', () => ({
   logActivity: (...args: unknown[]) => mockLogActivity(...args),
+  createOnboardingRunFromTemplate: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock('../../services/authService', () => ({
+  setUserRole: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
@@ -128,6 +147,10 @@ describe('NewHiresPanel', () => {
       removeInstance: mockRemoveInstance,
       updateInstance: mockUpdateInstance,
     };
+    // Reset to all users having roles (no unassigned)
+    mockUsers = [
+      { id: 'u-1', email: 'alice@company.com', name: 'Alice Manager', roles: ['manager'], createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+    ];
   });
 
   // ---- Rendering Tests ----
@@ -404,6 +427,30 @@ describe('NewHiresPanel', () => {
 
       // Modal should show the instance's pre-filled name
       expect(screen.getByLabelText(/employee name/i)).toHaveValue('Alice Smith');
+    });
+  });
+
+  // ---- Unassigned Users Tests ----
+
+  describe('Unassigned Users', () => {
+    it('renders UnassignedUsersSection when unassigned users exist', () => {
+      // Override mockUsers to include an unassigned user
+      mockUsers = [
+        { id: 'u-assigned', email: 'assigned@co.com', name: 'Assigned User', roles: ['employee'], createdAt: Date.now(), updatedAt: Date.now(), createdBy: 'admin' },
+        { id: 'u-unassigned', email: 'new@gmail.com', name: 'New Google User', roles: [], createdAt: Date.now(), updatedAt: Date.now(), createdBy: '' },
+      ];
+
+      render(<NewHiresPanel />);
+
+      expect(screen.getByText('Unassigned Users')).toBeInTheDocument();
+      expect(screen.getByText('New Google User')).toBeInTheDocument();
+    });
+
+    it('hides UnassignedUsersSection when all users have roles', () => {
+      render(<NewHiresPanel />);
+
+      // Default mockUsers all have roles, so section should not appear
+      expect(screen.queryByText('Unassigned Users')).not.toBeInTheDocument();
     });
   });
 });

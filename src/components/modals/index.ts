@@ -9,4 +9,5 @@ export { CreateOnboardingModal } from './CreateOnboardingModal';
 export { RoleModal } from './RoleModal';
 export { UserModal } from './UserModal';
 export { EditHireModal } from './EditHireModal';
+export { AssignRoleModal } from './AssignRoleModal';
 export type { OnboardingFormData } from './CreateOnboardingModal';
