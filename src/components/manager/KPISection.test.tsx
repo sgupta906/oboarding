@@ -106,3 +106,87 @@ describe('KPISection dark mode', () => {
     expect(select.className).toContain('border');
   });
 });
+
+describe('KPISection active count', () => {
+  it('returns 0 active count when onboardingInstances is empty array', () => {
+    // Provide non-empty steps but empty onboardingInstances
+    const stepsWithPending: Step[] = [
+      {
+        id: 1,
+        title: 'Step 1',
+        description: 'Desc',
+        role: 'All',
+        owner: 'IT',
+        expert: 'Expert',
+        status: 'pending',
+        link: '',
+      },
+    ];
+    render(
+      <KPISection
+        steps={stepsWithPending}
+        suggestions={mockSuggestions}
+        onboardingInstances={[]}
+      />
+    );
+
+    // Should show "Active Onboardings: 0", NOT a step count
+    expect(screen.getByTestId('kpi-Active Onboardings')).toHaveTextContent(
+      'Active Onboardings: 0'
+    );
+  });
+
+  it('counts active instances correctly', () => {
+    const instances = [
+      {
+        id: 'i1',
+        employeeName: 'Alice',
+        employeeEmail: 'alice@test.com',
+        role: 'Eng',
+        department: 'Tech',
+        templateId: 't1',
+        steps: [],
+        createdAt: Date.now(),
+        progress: 50,
+        status: 'active' as const,
+      },
+      {
+        id: 'i2',
+        employeeName: 'Bob',
+        employeeEmail: 'bob@test.com',
+        role: 'Eng',
+        department: 'Tech',
+        templateId: 't1',
+        steps: [],
+        createdAt: Date.now(),
+        progress: 50,
+        status: 'active' as const,
+      },
+      {
+        id: 'i3',
+        employeeName: 'Charlie',
+        employeeEmail: 'charlie@test.com',
+        role: 'Eng',
+        department: 'Tech',
+        templateId: 't1',
+        steps: [],
+        createdAt: Date.now(),
+        progress: 100,
+        status: 'completed' as const,
+      },
+    ];
+
+    render(
+      <KPISection
+        steps={mockSteps}
+        suggestions={mockSuggestions}
+        onboardingInstances={instances}
+      />
+    );
+
+    // 2 active + 1 completed = should count 2
+    expect(screen.getByTestId('kpi-Active Onboardings')).toHaveTextContent(
+      'Active Onboardings: 2'
+    );
+  });
+});

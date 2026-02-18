@@ -412,10 +412,11 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     stepId: number,
     status: StepStatus
   ) => {
-    // Capture snapshot for rollback
-    const snapshot = get().stepsByInstance[instanceId] ?? [];
+    // Capture snapshots for rollback (both slices)
+    const stepsSnapshot = get().stepsByInstance[instanceId] ?? [];
+    const instancesSnapshot = get().instances;
 
-    // Optimistic update
+    // Optimistic update -- stepsByInstance
     set((state) => ({
       stepsByInstance: {
         ...state.stepsByInstance,
@@ -425,15 +426,44 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       },
     }));
 
+    // Optimistic update -- instances (cross-slice sync)
+    set((state) => ({
+      instances: state.instances.map((inst) => {
+        if (inst.id !== instanceId) return inst;
+        const updatedSteps = inst.steps.map((s) =>
+          s.id === stepId ? { ...s, status } : s
+        );
+        const completedCount = updatedSteps.filter(
+          (s) => s.status === 'completed'
+        ).length;
+        const progress =
+          updatedSteps.length === 0
+            ? 0
+            : Math.round((completedCount / updatedSteps.length) * 100);
+        return {
+          ...inst,
+          steps: updatedSteps,
+          progress,
+          status:
+            progress === 100
+              ? ('completed' as const)
+              : inst.status === 'completed'
+                ? ('active' as const)
+                : inst.status,
+        };
+      }),
+    }));
+
     try {
       await updateStepStatus(instanceId, stepId, status);
     } catch (err) {
-      // Rollback on error
+      // Rollback both slices on error
       set((state) => ({
         stepsByInstance: {
           ...state.stepsByInstance,
-          [instanceId]: snapshot,
+          [instanceId]: stepsSnapshot,
         },
+        instances: instancesSnapshot,
       }));
       throw err;
     }

@@ -689,6 +689,106 @@ describe('useOnboardingStore', () => {
       expect(state.stepsByInstance['inst-1'][1].status).toBe('pending');
     });
 
+    it('_updateStepStatus also updates instances[].steps', async () => {
+      // Pre-populate store with an instance that has steps, and matching stepsByInstance
+      const instance = {
+        ...makeInstance('inst-1'),
+        steps: [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        progress: 0,
+        status: 'active' as const,
+      };
+      useOnboardingStore.setState({
+        instances: [instance],
+        stepsByInstance: {
+          'inst-1': [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        },
+      });
+
+      await useOnboardingStore.getState()._updateStepStatus('inst-1', 1, 'completed');
+
+      const state = useOnboardingStore.getState();
+      // instances[].steps should also be updated
+      expect(state.instances[0].steps[0].status).toBe('completed');
+      expect(state.instances[0].steps[1].status).toBe('pending');
+    });
+
+    it('_updateStepStatus recomputes instances[].progress', async () => {
+      // Pre-populate with instance having 2 steps
+      const instance = {
+        ...makeInstance('inst-1'),
+        steps: [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        progress: 0,
+        status: 'active' as const,
+      };
+      useOnboardingStore.setState({
+        instances: [instance],
+        stepsByInstance: {
+          'inst-1': [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        },
+      });
+
+      // Complete 1 of 2 steps
+      await useOnboardingStore.getState()._updateStepStatus('inst-1', 1, 'completed');
+
+      const state = useOnboardingStore.getState();
+      expect(state.instances[0].progress).toBe(50);
+    });
+
+    it('_updateStepStatus transitions instance status to completed when all steps done', async () => {
+      // Pre-populate with instance having 2 steps, one already completed
+      const instance = {
+        ...makeInstance('inst-1'),
+        steps: [makeStep(1, 'completed'), makeStep(2, 'pending')],
+        progress: 50,
+        status: 'active' as const,
+      };
+      useOnboardingStore.setState({
+        instances: [instance],
+        stepsByInstance: {
+          'inst-1': [makeStep(1, 'completed'), makeStep(2, 'pending')],
+        },
+      });
+
+      // Complete the last step
+      await useOnboardingStore.getState()._updateStepStatus('inst-1', 2, 'completed');
+
+      const state = useOnboardingStore.getState();
+      expect(state.instances[0].progress).toBe(100);
+      expect(state.instances[0].status).toBe('completed');
+    });
+
+    it('_updateStepStatus rollback reverts both stepsByInstance and instances', async () => {
+      const serverError = new Error('Server error');
+      mockUpdateStepStatus.mockRejectedValue(serverError);
+
+      // Pre-populate store with instance and steps
+      const instance = {
+        ...makeInstance('inst-1'),
+        steps: [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        progress: 0,
+        status: 'active' as const,
+      };
+      useOnboardingStore.setState({
+        instances: [instance],
+        stepsByInstance: {
+          'inst-1': [makeStep(1, 'pending'), makeStep(2, 'pending')],
+        },
+      });
+
+      await expect(
+        useOnboardingStore.getState()._updateStepStatus('inst-1', 1, 'completed')
+      ).rejects.toThrow('Server error');
+
+      // Both stepsByInstance and instances should be rolled back
+      const state = useOnboardingStore.getState();
+      expect(state.stepsByInstance['inst-1'][0].status).toBe('pending');
+      expect(state.stepsByInstance['inst-1'][1].status).toBe('pending');
+      expect(state.instances[0].steps[0].status).toBe('pending');
+      expect(state.instances[0].steps[1].status).toBe('pending');
+      expect(state.instances[0].progress).toBe(0);
+      expect(state.instances[0].status).toBe('active');
+    });
+
     it('resetStoreInternals clears steps ref-counting', () => {
       // Start a steps subscription
       useOnboardingStore.getState()._startStepsSubscription('inst-1');

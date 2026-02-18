@@ -39,8 +39,7 @@ export function KPISection({
   // This ensures: 1 employee with 10 steps = count of 1, not 10
   const getActiveCount = (): number => {
     if (!onboardingInstances || onboardingInstances.length === 0) {
-      // Fallback to step-based counting if instances not provided (legacy support)
-      return countStepsByProfileAndStatus(steps, selectedProfile, 'pending');
+      return 0;
     }
 
     // Count instances with status='active' (respects profile filter if provided)
