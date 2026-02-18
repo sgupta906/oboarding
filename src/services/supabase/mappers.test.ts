@@ -14,8 +14,6 @@ import {
   toSuggestion,
   toActivity,
   toRole,
-  toProfile,
-  toProfileTemplate,
   toUser,
 } from './mappers';
 
@@ -279,57 +277,6 @@ describe('toRole', () => {
     const role = toRole(row);
     expect(role.description).toBeUndefined();
     expect(role.createdBy).toBe('Unknown');
-  });
-});
-
-describe('toProfile', () => {
-  it('maps roleTags from junction rows', () => {
-    const row = {
-      id: 'prof-1',
-      name: 'Engineer',
-      description: 'Engineering profile',
-      created_at: '2026-01-01T00:00:00.000Z',
-      created_by: 'admin',
-    };
-
-    const roleTagRows = [
-      { profile_id: 'prof-1', role_tag: 'Engineering' },
-      { profile_id: 'prof-1', role_tag: 'All' },
-    ];
-
-    const profile = toProfile(row, roleTagRows);
-    expect(profile.id).toBe('prof-1');
-    expect(profile.name).toBe('Engineer');
-    expect(profile.roleTags).toEqual(['Engineering', 'All']);
-    expect(profile.createdBy).toBe('admin');
-  });
-});
-
-describe('toProfileTemplate', () => {
-  it('maps steps and isPublished', () => {
-    const row = {
-      id: 'pt-1',
-      profile_id: 'prof-1',
-      name: 'Eng Standard',
-      description: 'Standard template',
-      version: 2,
-      is_published: true,
-      created_at: '2026-01-01T00:00:00.000Z',
-      updated_at: '2026-01-05T00:00:00.000Z',
-      created_by: 'admin',
-    };
-
-    const stepRows = [
-      { id: 'ps-1', profile_template_id: 'pt-1', position: 1, title: 'Step 1', description: 'D1', role: 'All', owner: 'HR', expert: 'E', status: 'pending', link: null },
-    ];
-
-    const pt = toProfileTemplate(row, stepRows);
-    expect(pt.id).toBe('pt-1');
-    expect(pt.profileId).toBe('prof-1');
-    expect(pt.isPublished).toBe(true);
-    expect(pt.version).toBe(2);
-    expect(pt.steps).toHaveLength(1);
-    expect(pt.steps[0].id).toBe(1);
   });
 });
 

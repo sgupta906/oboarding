@@ -46,26 +46,6 @@ export {
   subscribeToTemplates,
 } from './templateService';
 
-// -- Profile Service --
-export {
-  listProfiles,
-  getProfile,
-  createProfile,
-  updateProfile,
-  deleteProfile,
-  subscribeToProfiles,
-} from './profileService';
-
-// -- Profile Template Service --
-export {
-  listProfileTemplates,
-  getProfileTemplate,
-  createProfileTemplate,
-  updateProfileTemplate,
-  deleteProfileTemplate,
-  subscribeToProfileTemplates,
-} from './profileTemplateService';
-
 // -- Instance Service --
 export {
   listOnboardingInstances,

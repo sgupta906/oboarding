@@ -12,8 +12,6 @@ import type {
   Activity,
   CustomRole,
   OnboardingInstance,
-  Profile,
-  ProfileTemplate,
   Step,
   Suggestion,
   Template,
@@ -32,10 +30,6 @@ type InstanceStepRow = Database['public']['Tables']['instance_steps']['Row'];
 type SuggestionRow = Database['public']['Tables']['suggestions']['Row'];
 type ActivityRow = Database['public']['Tables']['activities']['Row'];
 type RoleRow = Database['public']['Tables']['roles']['Row'];
-type ProfileRow = Database['public']['Tables']['profiles']['Row'];
-type ProfileRoleTagRow = Database['public']['Tables']['profile_role_tags']['Row'];
-type ProfileTemplateRow = Database['public']['Tables']['profile_templates']['Row'];
-type ProfileTemplateStepRow = Database['public']['Tables']['profile_template_steps']['Row'];
 type UserRow = Database['public']['Tables']['users']['Row'];
 type UserRoleRow = Database['public']['Tables']['user_roles']['Row'];
 type UserProfileRow = Database['public']['Tables']['user_profiles']['Row'];
@@ -49,10 +43,6 @@ export type {
   SuggestionRow,
   ActivityRow,
   RoleRow,
-  ProfileRow,
-  ProfileRoleTagRow,
-  ProfileTemplateRow,
-  ProfileTemplateStepRow,
   UserRow,
   UserRoleRow,
   UserProfileRow,
@@ -67,12 +57,6 @@ export type TemplateWithSteps = TemplateRow & { template_steps: TemplateStepRow[
 
 /** Instance row with joined instance_steps rows. */
 export type InstanceWithSteps = InstanceRow & { instance_steps: InstanceStepRow[] };
-
-/** Profile row with joined profile_role_tags rows. */
-export type ProfileWithTags = ProfileRow & { profile_role_tags: ProfileRoleTagRow[] };
-
-/** Profile template row with joined profile_template_steps rows. */
-export type ProfileTemplateWithSteps = ProfileTemplateRow & { profile_template_steps: ProfileTemplateStepRow[] };
 
 /** User row with joined user_roles and user_profiles rows. */
 export type UserWithJunctions = UserRow & { user_roles: UserRoleRow[]; user_profiles: UserProfileRow[] };
@@ -110,10 +94,10 @@ export function toOptionalUnixMs(isoString: string | null | undefined): number |
 // ============================================================================
 
 /**
- * Maps a step row (template_steps, instance_steps, or profile_template_steps)
+ * Maps a step row (template_steps or instance_steps)
  * to an application Step type. The database `position` field becomes Step.id.
  */
-export function toStep(row: TemplateStepRow | InstanceStepRow | ProfileTemplateStepRow): Step {
+export function toStep(row: TemplateStepRow | InstanceStepRow): Step {
   return {
     id: row.position,
     title: row.title,
@@ -214,44 +198,6 @@ export function toRole(row: RoleRow): CustomRole {
     createdAt: toUnixMs(row.created_at),
     updatedAt: toUnixMs(row.updated_at),
     createdBy: row.created_by ?? 'Unknown',
-  };
-}
-
-/**
- * Maps a profiles row + its profile_role_tags rows to an application Profile type.
- */
-export function toProfile(row: ProfileRow, roleTagRows: ProfileRoleTagRow[]): Profile {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description ?? undefined,
-    roleTags: roleTagRows.map((rt) => rt.role_tag),
-    createdAt: toUnixMs(row.created_at),
-    createdBy: row.created_by ?? 'Unknown',
-  };
-}
-
-/**
- * Maps a profile_templates row + its profile_template_steps rows
- * to an application ProfileTemplate type.
- */
-export function toProfileTemplate(
-  row: ProfileTemplateRow,
-  stepRows: ProfileTemplateStepRow[]
-): ProfileTemplate {
-  return {
-    id: row.id,
-    profileId: row.profile_id,
-    name: row.name,
-    description: row.description ?? undefined,
-    steps: stepRows
-      .sort((a, b) => a.position - b.position)
-      .map(toStep),
-    createdAt: toUnixMs(row.created_at),
-    updatedAt: toOptionalUnixMs(row.updated_at),
-    createdBy: row.created_by ?? 'Unknown',
-    version: row.version,
-    isPublished: row.is_published,
   };
 }
 
