@@ -66,7 +66,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
   }
 
   return (
-    <Card className="overflow-hidden flex flex-col">
+    <Card className="overflow-hidden flex flex-col flex-1">
       {/* Collapsable Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

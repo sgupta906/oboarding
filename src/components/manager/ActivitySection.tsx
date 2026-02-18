@@ -17,7 +17,7 @@ import type { ActivitySectionProps } from '../../types';
  */
 export function ActivitySection({ activities }: ActivitySectionProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 flex flex-col">
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-2">
           <Clock size={18} className="text-brand-600" />

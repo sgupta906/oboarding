@@ -46,7 +46,7 @@ export function SuggestionsSection({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 flex flex-col">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <Edit3 size={18} className="text-brand-600" />
@@ -58,7 +58,7 @@ export function SuggestionsSection({
       </div>
 
       {pendingSuggestions.length === 0 ? (
-        <Card className="p-8 text-center">
+        <Card className="p-8 text-center flex-1 flex flex-col justify-center">
           <div className="flex justify-center mb-3">
             <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
               <CheckCircle size={24} className="text-emerald-600" />
@@ -72,7 +72,7 @@ export function SuggestionsSection({
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 flex-1">
           {pendingSuggestions.map((sugg) => (
             <SuggestionCard
               key={sugg.id}
