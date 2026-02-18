@@ -36,7 +36,7 @@ describe('hasManagerAccess', () => {
     expect(hasManagerAccess('talker')).toBe(true);
   });
 
-  it('returns true for empty string (edge case: non-null, non-employee)', () => {
-    expect(hasManagerAccess('')).toBe(true);
+  it('returns false for empty string (edge case: should not grant access)', () => {
+    expect(hasManagerAccess('')).toBe(false);
   });
 });

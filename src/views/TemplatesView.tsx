@@ -9,6 +9,7 @@ import { Plus, Loader2, AlertCircle, Edit2, Trash2, Copy, FileUp } from 'lucide-
 import { useTemplates, useRoles } from '../hooks';
 import { TemplateModal } from '../components/templates/TemplateModal';
 import { Badge } from '../components/ui';
+import { ErrorAlert } from '../components/ui/ErrorAlert';
 import type { Template } from '../types';
 
 /**
@@ -204,11 +205,7 @@ export function TemplatesView() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Import Error Message */}
-        {importError && (
-          <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-800 dark:text-red-300" role="alert">
-            {importError}
-          </div>
-        )}
+        {importError && <ErrorAlert message={importError} className="mb-4" />}
 
         {/* Success Message */}
         {successMessage && (

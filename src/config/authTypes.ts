@@ -15,7 +15,7 @@ export type UserRole = string;
  * Used for view routing, NavBar visibility, and template access.
  */
 export function hasManagerAccess(role: UserRole | null): boolean {
-  return role != null && role !== 'employee';
+  return role != null && role !== '' && role !== 'employee';
 }
 
 /**

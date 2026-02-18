@@ -381,11 +381,3 @@ export async function extractPdfContent(file: File): Promise<PdfContent> {
   }
 }
 
-/**
- * Legacy function — extracts only text (no links).
- * Kept for backward compatibility with existing callers and tests.
- */
-export async function extractTextFromPdf(file: File): Promise<string> {
-  const content = await extractPdfContent(file);
-  return content.text;
-}

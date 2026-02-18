@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
+import { ErrorAlert } from '../ui/ErrorAlert';
 import { AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { MIN_ROLE_NAME_LENGTH, MAX_ROLE_NAME_LENGTH, ROLE_NAME_PATTERN } from '../../types';
 import type { CustomRole } from '../../types';
@@ -252,12 +253,7 @@ export function RoleModal({
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Server Error Message */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-3">
-            <AlertCircle className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" size={18} />
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
-          </div>
-        )}
+        {error && <ErrorAlert message={error} showIcon />}
 
         {/* Role Name Input */}
         {isEdit ? (

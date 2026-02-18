@@ -4,4 +4,3 @@
  */
 
 export { TemplateModal } from './TemplateModal';
-export { DeleteConfirmDialog } from './DeleteConfirmDialog';

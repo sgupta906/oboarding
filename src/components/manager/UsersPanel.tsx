@@ -15,6 +15,7 @@ import { logActivity } from '../../services/supabase';
 import { UserModal } from '../modals/UserModal';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
 import type { User, UserFormData } from '../../types';
+import { getInitials } from '../../utils/formatters';
 
 /**
  * Renders a CRUD management panel for system users (managers, admins, contractors).
@@ -36,15 +37,6 @@ export function UsersPanel() {
   const [modalError, setModalError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  /** Helper to get initials for activity logging */
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   /** Show a success toast that auto-dismisses after 3 seconds */
   const showSuccess = (message: string) => {

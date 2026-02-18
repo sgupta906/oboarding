@@ -6,7 +6,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
+import { ErrorAlert } from '../ui/ErrorAlert';
+import { TemplatePreview } from '../ui/TemplatePreview';
 import type { User, CustomRole, Template } from '../../types';
+import type { FieldErrors } from '../../utils/validation';
 
 export interface AssignRoleModalProps {
   isOpen: boolean;
@@ -24,10 +27,6 @@ export interface AssignRoleModalProps {
   rolesLoading: boolean;
   templates: Template[];
   templatesLoading: boolean;
-}
-
-interface FieldErrors {
-  [key: string]: string;
 }
 
 export function AssignRoleModal({
@@ -158,13 +157,7 @@ export function AssignRoleModal({
     >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Server Error Messages */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
-            <p className="text-sm font-medium text-red-800 dark:text-red-300" role="alert">
-              {error}
-            </p>
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         {/* Name (read-only) */}
         <div>
@@ -334,37 +327,7 @@ export function AssignRoleModal({
 
         {/* Template Preview */}
         {selectedTemplate && !isSubmitting && (
-          <div className="p-4 bg-brand-50 dark:bg-brand-900/30 border border-brand-200 dark:border-brand-700 rounded-lg">
-            <h4 className="font-semibold text-sm text-brand-900 dark:text-brand-300 mb-2">
-              Template Preview
-            </h4>
-            <p className="text-sm text-brand-800 dark:text-brand-300 mb-3">
-              <strong>{selectedTemplate.name}</strong>
-            </p>
-            {selectedTemplate.description && (
-              <p className="text-sm text-brand-700 dark:text-brand-400 mb-3">
-                {selectedTemplate.description}
-              </p>
-            )}
-            <div className="flex items-center gap-2 text-sm text-brand-700 dark:text-brand-400">
-              <span className="font-medium">
-                {selectedTemplate.steps.length}
-                {selectedTemplate.steps.length === 1 ? ' step' : ' steps'}:
-              </span>
-              <ul className="list-inside text-sm text-brand-700 dark:text-brand-400 space-y-1">
-                {selectedTemplate.steps.slice(0, 5).map((step, idx) => (
-                  <li key={idx} className="truncate">
-                    {idx + 1}. {step.title}
-                  </li>
-                ))}
-                {selectedTemplate.steps.length > 5 && (
-                  <li className="text-brand-600 dark:text-brand-500 italic">
-                    ...and {selectedTemplate.steps.length - 5} more
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
+          <TemplatePreview template={selectedTemplate} />
         )}
       </form>
     </ModalWrapper>

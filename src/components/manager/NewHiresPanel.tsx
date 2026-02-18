@@ -13,6 +13,7 @@ import { logActivity, createOnboardingRunFromTemplate } from '../../services/sup
 import { setUserRole } from '../../services/authService';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
+import { getInitials } from '../../utils/formatters';
 import { EditHireModal } from '../modals/EditHireModal';
 import { AssignRoleModal } from '../modals/AssignRoleModal';
 import { UnassignedUsersSection } from './UnassignedUsersSection';
@@ -91,15 +92,6 @@ export function NewHiresPanel() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
 
-  /** Helper to get initials for activity logging */
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
 
   /** Show a success toast that auto-dismisses after 3 seconds */
   const showSuccess = (message: string) => {

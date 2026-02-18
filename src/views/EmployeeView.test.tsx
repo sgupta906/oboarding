@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '../test/test-utils';
+import { render, screen } from '@testing-library/react';
 import { EmployeeView } from './EmployeeView';
 import type { Step } from '../types';
 

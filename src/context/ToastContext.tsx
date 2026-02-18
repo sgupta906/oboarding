@@ -7,7 +7,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { X } from 'lucide-react';
 
-export interface Toast {
+interface Toast {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info';

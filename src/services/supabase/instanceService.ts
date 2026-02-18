@@ -11,6 +11,7 @@ import { toInstance, toStep, toISO } from './mappers';
 import type { Database } from '../../types/database.types';
 import { debounce } from '../../utils/debounce';
 import { createCrudService } from './crudFactory';
+import { EMAIL_REGEX } from '../../utils/validation';
 
 type InstanceInsert = Database['public']['Tables']['onboarding_instances']['Insert'];
 type InstanceStepInsert = Database['public']['Tables']['instance_steps']['Insert'];
@@ -317,8 +318,7 @@ function validateEmployeeData(data: CreateOnboardingRunInput): void {
     );
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.employeeEmail)) {
+  if (!EMAIL_REGEX.test(data.employeeEmail)) {
     throw new OnboardingValidationError(
       `employeeEmail must be a valid email address, got: ${data.employeeEmail}`
     );

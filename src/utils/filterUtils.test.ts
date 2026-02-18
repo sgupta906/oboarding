@@ -8,7 +8,6 @@ import {
   filterStepsByProfile,
   filterStepsByProfileAndStatus,
   countStepsByProfileAndStatus,
-  getUniqueRoleTags,
 } from './filterUtils';
 import type { Step, Profile } from '../types';
 
@@ -247,53 +246,6 @@ describe('filterUtils - Profile-based Filtering', () => {
     });
   });
 
-  describe('getUniqueRoleTags()', () => {
-    it('should return all unique role tags from profiles', () => {
-      const profiles = [engineerProfile, salesProfile, productProfile, internProfile];
-      const tags = getUniqueRoleTags(profiles);
-
-      expect(tags).toContain('Engineering');
-      expect(tags).toContain('Sales');
-      expect(tags).toContain('Product');
-      expect(tags).toContain('All');
-    });
-
-    it('should not have duplicate tags', () => {
-      const profiles = [engineerProfile, salesProfile, productProfile, internProfile];
-      const tags = getUniqueRoleTags(profiles);
-
-      expect(new Set(tags).size).toBe(tags.length);
-    });
-
-    it('should return sorted tags', () => {
-      const profiles = [engineerProfile, salesProfile, productProfile, internProfile];
-      const tags = getUniqueRoleTags(profiles);
-
-      const sortedTags = [...tags].sort();
-      expect(tags).toEqual(sortedTags);
-    });
-
-    it('should handle empty profiles array', () => {
-      const tags = getUniqueRoleTags([]);
-
-      expect(tags.length).toBe(0);
-    });
-
-    it('should handle profiles with empty roleTags', () => {
-      const profileNoTags: Profile = {
-        id: 'prof-empty',
-        name: 'Empty',
-        roleTags: [],
-        createdAt: Date.now(),
-        createdBy: 'system',
-      };
-
-      const tags = getUniqueRoleTags([profileNoTags]);
-
-      expect(tags.length).toBe(0);
-    });
-  });
-
   describe('Filtering Edge Cases', () => {
     it('should handle profile with non-existent role tag', () => {
       const nonExistentProfile: Profile = {
@@ -326,18 +278,5 @@ describe('filterUtils - Profile-based Filtering', () => {
       expect(filtered.length).toBe(0);
     });
 
-    it('should handle very long profiles list efficiently', () => {
-      const manyProfiles: Profile[] = Array.from({ length: 100 }, (_, i) => ({
-        id: `prof-${i}`,
-        name: `Profile ${i}`,
-        roleTags: ['All'],
-        createdAt: Date.now(),
-        createdBy: 'system',
-      }));
-
-      const tags = getUniqueRoleTags(manyProfiles);
-
-      expect(tags).toEqual(['All']);
-    });
   });
 });

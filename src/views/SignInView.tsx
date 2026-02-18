@@ -13,11 +13,12 @@
  * 3. User is automatically redirected to the authenticated view
  */
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Mail, AlertCircle, Loader, LogIn } from 'lucide-react';
 import { signInWithEmailLink, signInWithGoogle } from '../services/authService';
-import { useAuth, impersonateUserForQA } from '../config/authContext';
+import { impersonateUserForQA } from '../config/authContext';
 import type { UserRole } from '../config/authTypes';
+import { EMAIL_REGEX } from '../utils/validation';
 
 interface TestAccountButton {
   email: string;
@@ -62,20 +63,6 @@ export function SignInView() {
   const [isEmulatorMode] = useState(
     import.meta.env.VITE_USE_DEV_AUTH === 'true'
   );
-  const { isAuthenticated } = useAuth();
-
-  /**
-   * Effect to trigger redirect after successful sign-in
-   * Waits for AuthProvider to detect the authentication state
-   * and automatically redirects via App.tsx's AppContent component
-   */
-  useEffect(() => {
-    if (submitted && isAuthenticated) {
-      // User is now authenticated, the redirect will happen in App.tsx
-      // when AppContent detects isAuthenticated = true
-      // No manual redirect needed here - let the React state flow handle it
-    }
-  }, [submitted, isAuthenticated]);
 
   /**
    * Handle form submission
@@ -89,8 +76,7 @@ export function SignInView() {
 
     try {
       // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!EMAIL_REGEX.test(email)) {
         setError('Please enter a valid email address');
         setLoading(false);
         return;

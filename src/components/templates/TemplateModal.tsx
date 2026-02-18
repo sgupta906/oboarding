@@ -5,9 +5,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ModalWrapper } from '../ui';
-import { DeleteConfirmDialog } from './DeleteConfirmDialog';
+import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
+import { TemplateStepEditor } from './TemplateStepEditor';
 import type { Template, Step, CustomRole } from '../../types';
 
 interface TemplateModalProps {
@@ -486,161 +487,17 @@ export function TemplateModal({
 
           <div className="space-y-4">
             {steps.map((step, index) => (
-              <div
+              <TemplateStepEditor
                 key={step._uid}
-                data-step-uid={step._uid}
-                className="p-4 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg space-y-3"
-              >
-                {/* Step Header Row */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-600 px-2 py-1 rounded">
-                    Step {index + 1} of {steps.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => handleMoveStepUp(index)}
-                      disabled={index === 0}
-                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      aria-label={`Move step ${index + 1} up`}
-                    >
-                      <ChevronUp size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveStepDown(index)}
-                      disabled={index === steps.length - 1}
-                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      aria-label={`Move step ${index + 1} down`}
-                    >
-                      <ChevronDown size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleInsertStepAfter(index)}
-                      className="p-1 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
-                      aria-label={`Insert new step after step ${index + 1}`}
-                      title="Insert step below"
-                    >
-                      <Plus size={14} />
-                    </button>
-                    {steps.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveStep(index)}
-                        className="p-1 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        aria-label={`Remove step ${index + 1}`}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Title */}
-                <div>
-                  <label
-                    htmlFor={`step-title-${index}`}
-                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
-                  >
-                    Title
-                  </label>
-                  <input
-                    id={`step-title-${index}`}
-                    type="text"
-                    value={step.title}
-                    onChange={(e) => handleStepChange(index, 'title', e.target.value)}
-                    placeholder="Step title"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
-                    aria-label={`Step ${index + 1} title`}
-                  />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label
-                    htmlFor={`step-desc-${index}`}
-                    className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
-                  >
-                    Description
-                  </label>
-                  <textarea
-                    id={`step-desc-${index}`}
-                    value={step.description}
-                    onChange={(e) =>
-                      handleStepChange(index, 'description', e.target.value)
-                    }
-                    placeholder="Step description"
-                    rows={4}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors resize-y"
-                    aria-label={`Step ${index + 1} description`}
-                  />
-                </div>
-
-                {/* Owner and Expert */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label
-                      htmlFor={`step-owner-${index}`}
-                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
-                    >
-                      Owner
-                    </label>
-                    <input
-                      id={`step-owner-${index}`}
-                      type="text"
-                      value={step.owner}
-                      onChange={(e) =>
-                        handleStepChange(index, 'owner', e.target.value)
-                      }
-                      placeholder="e.g., IT Support"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
-                      aria-label={`Step ${index + 1} owner`}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor={`step-expert-${index}`}
-                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
-                    >
-                      Expert
-                    </label>
-                    <input
-                      id={`step-expert-${index}`}
-                      type="text"
-                      value={step.expert}
-                      onChange={(e) =>
-                        handleStepChange(index, 'expert', e.target.value)
-                      }
-                      placeholder="e.g., John Doe"
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
-                      aria-label={`Step ${index + 1} expert`}
-                    />
-                  </div>
-                </div>
-
-                {/* Link */}
-                <div>
-                    <label
-                      htmlFor={`step-link-${index}`}
-                      className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1"
-                    >
-                      Link
-                    </label>
-                    <input
-                      id={`step-link-${index}`}
-                      type="url"
-                      value={step.link}
-                      onChange={(e) =>
-                        handleStepChange(index, 'link', e.target.value)
-                      }
-                      placeholder="https://..."
-                      className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-white rounded focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-colors"
-                      aria-label={`Step ${index + 1} link`}
-                    />
-                </div>
-
-              </div>
+                step={step}
+                index={index}
+                totalSteps={steps.length}
+                onMoveUp={handleMoveStepUp}
+                onMoveDown={handleMoveStepDown}
+                onInsertAfter={handleInsertStepAfter}
+                onRemove={handleRemoveStep}
+                onChange={handleStepChange}
+              />
             ))}
           </div>
         </div>
@@ -653,12 +510,13 @@ export function TemplateModal({
     return (
       <>
         {modalContent}
-        <DeleteConfirmDialog
+        <DeleteConfirmationDialog
           isOpen={deleteDialogOpen}
-          templateName={template.name}
+          title="Delete Template"
+          message={`Are you sure you want to delete "${template.name}"? This action cannot be undone.`}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteDialogOpen(false)}
-          isDeleting={isDeleting}
+          isLoading={isDeleting}
         />
       </>
     );

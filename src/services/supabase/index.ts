@@ -10,14 +10,12 @@
 
 // -- Activity Service --
 export {
-  listActivities,
   logActivity,
   subscribeToActivities,
 } from './activityService';
 
 // -- Suggestion Service --
 export {
-  listSuggestions,
   createSuggestion,
   updateSuggestionStatus,
   deleteSuggestion,
@@ -38,7 +36,6 @@ export {
 
 // -- Template Service --
 export {
-  listTemplates,
   getTemplate,
   createTemplate,
   updateTemplate,
@@ -48,16 +45,12 @@ export {
 
 // -- Instance Service --
 export {
-  listOnboardingInstances,
-  getOnboardingInstance,
   getInstanceByEmployeeEmail,
-  createOnboardingInstance,
   updateOnboardingInstance,
   updateStepStatus,
   deleteOnboardingInstance,
   createOnboardingRunFromTemplate,
   OnboardingValidationError,
-  subscribeToOnboardingInstance,
   subscribeToSteps,
   subscribeToOnboardingInstances,
   subscribeToEmployeeInstance,
@@ -66,7 +59,6 @@ export type { CreateOnboardingRunInput } from './instanceService';
 
 // -- User Service --
 export {
-  listUsers,
   getUser,
   createUser,
   updateUser,
@@ -74,10 +66,5 @@ export {
   userEmailExists,
   creatorExists,
   subscribeToUsers,
-  addUserToAuthCredentials,
   getAuthCredential,
-  removeUserFromAuthCredentials,
-  saveLocalUsers,
-  setDisableDefaultUserSeeding,
-  clearAllUsersForTesting,
 } from './userService';

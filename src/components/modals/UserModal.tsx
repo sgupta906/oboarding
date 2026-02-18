@@ -6,7 +6,10 @@
 
 import { useState, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
+import { ErrorAlert } from '../ui/ErrorAlert';
 import type { User, UserFormData, CustomRole } from '../../types';
+import { EMAIL_REGEX } from '../../utils/validation';
+import type { FieldErrors } from '../../utils/validation';
 
 interface UserModalProps {
   mode: 'create' | 'edit';
@@ -18,10 +21,6 @@ interface UserModalProps {
   roles?: CustomRole[];
   rolesLoading?: boolean;
   user?: User | null;
-}
-
-interface FieldErrors {
-  [key: string]: string;
 }
 
 /**
@@ -78,8 +77,7 @@ export function UserModal({
     if (!email.trim()) {
       errors.email = 'Email is required';
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!EMAIL_REGEX.test(email)) {
         errors.email = 'Please enter a valid email address';
       }
     }
@@ -216,11 +214,7 @@ export function UserModal({
         )}
 
         {/* Server Error Messages */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">{error}</p>
-          </div>
-        )}
+        {error && <ErrorAlert message={error} />}
 
         {/* Email */}
         <div>

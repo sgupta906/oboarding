@@ -1,10 +1,10 @@
 /**
  * pdfParser Unit Tests
- * Tests for parseBulletsToSteps (pure function) and extractTextFromPdf (mocked pdfjs-dist)
+ * Tests for parseBulletsToSteps (pure function)
  * Written BEFORE implementation (TDD red phase)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Use vi.hoisted() to declare mock references that are accessible inside vi.mock factory
 const { mockGetDocument, mockWorkerOptions } = vi.hoisted(() => ({
@@ -26,7 +26,7 @@ vi.mock('pdfjs-dist', () => {
   };
 });
 
-import { parseBulletsToSteps, extractTextFromPdf } from './pdfParser';
+import { parseBulletsToSteps } from './pdfParser';
 
 describe('parseBulletsToSteps', () => {
   // =========================================================================
@@ -379,152 +379,5 @@ describe('parseBulletsToSteps', () => {
     expect(result[0].link).toBe('https://inline.com/link');
     // Annotation link goes to step 2 (no keyword match → sequential fallback)
     expect(result[1].link).toBe('https://annotation.com/link');
-  });
-});
-
-// ===========================================================================
-// extractTextFromPdf tests (mocked pdfjs-dist)
-// ===========================================================================
-
-describe('extractTextFromPdf', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  function createMockFile(name = 'test.pdf'): File {
-    const blob = new Blob(['fake pdf content'], { type: 'application/pdf' });
-    return new File([blob], name, { type: 'application/pdf' });
-  }
-
-  interface MockTextItem {
-    str: string;
-    transform?: number[];
-    hasEOL?: boolean;
-  }
-
-  function createMockPdfDocument(pages: (string[] | MockTextItem[])[]) {
-    return {
-      numPages: pages.length,
-      getPage: vi.fn().mockImplementation((pageNum: number) =>
-        Promise.resolve({
-          getTextContent: vi.fn().mockResolvedValue({
-            items: pages[pageNum - 1].map((item) =>
-              typeof item === 'string' ? { str: item } : item
-            ),
-          }),
-        })
-      ),
-    };
-  }
-
-  it('returns extracted text from single-page PDF', async () => {
-    const mockDoc = createMockPdfDocument([['Hello', ' ', 'World']]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    expect(result).toBe('Hello World');
-  });
-
-  it('returns text from multi-page PDF joined by newlines', async () => {
-    const mockDoc = createMockPdfDocument([
-      ['Page 1 text'],
-      ['Page 2 text'],
-    ]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    expect(result).toBe('Page 1 text\nPage 2 text');
-  });
-
-  it('returns empty string for PDF with no text', async () => {
-    const mockDoc = createMockPdfDocument([[]]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    expect(result).toBe('');
-  });
-
-  it('throws error for corrupt/invalid file', async () => {
-    mockGetDocument.mockImplementation(() => ({
-      promise: new Promise((_, reject) =>
-        reject(new Error('Invalid PDF structure'))
-      ),
-    }));
-
-    const file = createMockFile();
-    await expect(extractTextFromPdf(file)).rejects.toThrow(
-      'Failed to extract text from PDF'
-    );
-  });
-
-  it('preserves line breaks using hasEOL markers', async () => {
-    const mockDoc = createMockPdfDocument([
-      [
-        { str: '☐ Work with Haley', hasEOL: true },
-        { str: '☐ Set up Signature Block', hasEOL: true },
-        { str: '☐ Join Slack channels', hasEOL: true },
-      ] as MockTextItem[],
-    ]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    expect(result).toContain('☐ Work with Haley\n');
-    expect(result).toContain('☐ Set up Signature Block\n');
-    expect(result).toContain('☐ Join Slack channels');
-  });
-
-  it('preserves line breaks using Y-position changes', async () => {
-    const mockDoc = createMockPdfDocument([
-      [
-        { str: '☐ First item', transform: [0, 0, 0, 0, 50, 700] },
-        { str: '☐ Second item', transform: [0, 0, 0, 0, 50, 680] },
-        { str: '☐ Third item', transform: [0, 0, 0, 0, 50, 660] },
-      ] as MockTextItem[],
-    ]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    const lines = result.split('\n').filter(Boolean);
-    expect(lines).toHaveLength(3);
-    expect(lines[0]).toBe('☐ First item');
-    expect(lines[1]).toBe('☐ Second item');
-    expect(lines[2]).toBe('☐ Third item');
-  });
-
-  it('concatenates items on the same Y-position', async () => {
-    const mockDoc = createMockPdfDocument([
-      [
-        { str: 'Hello ', transform: [0, 0, 0, 0, 50, 700] },
-        { str: 'World', transform: [0, 0, 0, 0, 100, 700] },
-      ] as MockTextItem[],
-    ]);
-    mockGetDocument.mockReturnValue({
-      promise: Promise.resolve(mockDoc),
-    } as any);
-
-    const file = createMockFile();
-    const result = await extractTextFromPdf(file);
-    expect(result).toBe('Hello World');
-  });
-
-  it('configures worker source', () => {
-    // Worker source is configured at module load time when pdfParser is imported.
-    // Verify it was set using the CDN URL pattern with the pdfjs-dist version.
-    expect(mockWorkerOptions.workerSrc).toContain('pdf.worker.min.mjs');
   });
 });

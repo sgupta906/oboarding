@@ -49,19 +49,6 @@ export type {
 };
 
 // ============================================================================
-// Joined Row Types (for select('*, child_table(*)') results)
-// ============================================================================
-
-/** Template row with joined template_steps rows. */
-export type TemplateWithSteps = TemplateRow & { template_steps: TemplateStepRow[] };
-
-/** Instance row with joined instance_steps rows. */
-export type InstanceWithSteps = InstanceRow & { instance_steps: InstanceStepRow[] };
-
-/** User row with joined user_roles and user_profiles rows. */
-export type UserWithJunctions = UserRow & { user_roles: UserRoleRow[]; user_profiles: UserProfileRow[] };
-
-// ============================================================================
 // Timestamp Conversion Helpers
 // ============================================================================
 

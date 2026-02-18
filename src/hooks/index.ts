@@ -2,7 +2,6 @@
  * Central export point for all custom hooks
  */
 
-export { useDarkMode } from './useDarkMode';
 export { useSteps } from './useSteps';
 export { useSuggestions } from './useSuggestions';
 export { useActivities } from './useActivities';

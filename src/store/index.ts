@@ -12,4 +12,4 @@ export type {
   UsersSlice,
   ActivitiesSlice,
   SuggestionsSlice,
-} from './useOnboardingStore';
+} from './types';

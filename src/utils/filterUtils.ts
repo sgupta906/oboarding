@@ -67,20 +67,3 @@ export function countStepsByProfileAndStatus(
 ): number {
   return filterStepsByProfileAndStatus(steps, selectedProfile, status).length;
 }
-
-/**
- * Gets all unique role tags used across profiles
- * Useful for profile management UI
- *
- * @param profiles - Array of profiles
- * @returns Array of unique role tags
- */
-export function getUniqueRoleTags(profiles: Profile[]): string[] {
-  const tags = new Set<string>();
-  profiles.forEach((profile) => {
-    profile.roleTags?.forEach((tag) => {
-      tags.add(tag);
-    });
-  });
-  return Array.from(tags).sort();
-}

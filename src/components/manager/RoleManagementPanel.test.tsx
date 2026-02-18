@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, within } from '../../test/test-utils';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RoleManagementPanel } from './RoleManagementPanel';
 import * as rolesHook from '../../hooks/useRoles';

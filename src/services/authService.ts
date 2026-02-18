@@ -7,6 +7,7 @@ import { supabase } from '../config/supabase';
 import type { UserRole } from '../config/authTypes';
 import { getAuthCredential, getInstanceByEmployeeEmail } from './supabase';
 import { getDevAuthUUID } from '../utils/uuid';
+import { EMAIL_REGEX } from '../utils/validation';
 
 /**
  * Maps test emails to their predefined roles for mock sign-in
@@ -167,8 +168,7 @@ export async function ensureUserExists(
 export async function signInWithEmailLink(email: string): Promise<void> {
   try {
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    if (!EMAIL_REGEX.test(email.trim())) {
       throw new Error('Please enter a valid email address');
     }
 
