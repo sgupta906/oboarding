@@ -72,6 +72,7 @@ export function TemplateModal({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [lastInsertedUid, setLastInsertedUid] = useState<string | null>(null);
 
   // Reset form when modal opens in create mode (defense-in-depth for Bug #28)
   // If initialSteps are provided (from PDF import), pre-fill the steps
@@ -113,6 +114,17 @@ export function TemplateModal({
       setValidationErrors([]);
     }
   }, [template, isOpen, isEdit]);
+
+  // Scroll newly inserted/appended step into view
+  useEffect(() => {
+    if (lastInsertedUid) {
+      const el = document.querySelector(`[data-step-uid="${lastInsertedUid}"]`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      setLastInsertedUid(null);
+    }
+  }, [lastInsertedUid]);
 
   const resetForm = () => {
     setTemplateName('');
@@ -168,7 +180,9 @@ export function TemplateModal({
   };
 
   const handleAddStep = () => {
-    setSteps([...steps, { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '', link: '' }]);
+    const newStep: TemplateStep = { _uid: nextStepUid(), title: '', description: '', owner: '', expert: '', link: '' };
+    setSteps([...steps, newStep]);
+    setLastInsertedUid(newStep._uid);
   };
 
   const handleRemoveStep = (index: number) => {
@@ -187,6 +201,21 @@ export function TemplateModal({
     const newSteps = [...steps];
     [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
     setSteps(newSteps);
+  };
+
+  const handleInsertStepAfter = (index: number) => {
+    const newStep: TemplateStep = {
+      _uid: nextStepUid(),
+      title: '',
+      description: '',
+      owner: '',
+      expert: '',
+      link: '',
+    };
+    const newSteps = [...steps];
+    newSteps.splice(index + 1, 0, newStep);
+    setSteps(newSteps);
+    setLastInsertedUid(newStep._uid);
   };
 
   const handleStepChange = (
@@ -459,6 +488,7 @@ export function TemplateModal({
             {steps.map((step, index) => (
               <div
                 key={step._uid}
+                data-step-uid={step._uid}
                 className="p-4 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 rounded-lg space-y-3"
               >
                 {/* Step Header Row */}
@@ -484,6 +514,15 @@ export function TemplateModal({
                       aria-label={`Move step ${index + 1} down`}
                     >
                       <ChevronDown size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleInsertStepAfter(index)}
+                      className="p-1 text-slate-400 hover:text-brand-600 dark:hover:text-brand-400 transition-colors"
+                      aria-label={`Insert new step after step ${index + 1}`}
+                      title="Insert step below"
+                    >
+                      <Plus size={14} />
                     </button>
                     {steps.length > 1 && (
                       <button

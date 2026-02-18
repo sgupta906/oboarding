@@ -695,6 +695,249 @@ describe('TemplateModal', () => {
   });
 
   // ==========================================================================
+  // STEP INSERTION
+  // ==========================================================================
+
+  describe('TemplateModal - step insertion', () => {
+    it('should show insert-step button on each step card', async () => {
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const insertButtons = screen.getAllByRole('button', {
+        name: /insert new step after step \d+/i,
+      });
+      expect(insertButtons).toHaveLength(3);
+    });
+
+    it('should insert a blank step after step 1 when clicking insert', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 1',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (4)')).toBeInTheDocument();
+      });
+
+      // The new step at position 2 should have an empty title
+      const step2Title = screen.getByLabelText('Step 2 title') as HTMLInputElement;
+      expect(step2Title.value).toBe('');
+    });
+
+    it('should insert a blank step after the last step', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step C')).toBeInTheDocument();
+      });
+
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 3',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (4)')).toBeInTheDocument();
+      });
+
+      // The new step at position 4 should have an empty title
+      const step4Title = screen.getByLabelText('Step 4 title') as HTMLInputElement;
+      expect(step4Title.value).toBe('');
+    });
+
+    it('should insert step with all fields empty', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 1',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (4)')).toBeInTheDocument();
+      });
+
+      // Verify the new step at position 2 has all empty fields
+      const step2Title = screen.getByLabelText('Step 2 title') as HTMLInputElement;
+      const step2Desc = screen.getByLabelText('Step 2 description') as HTMLTextAreaElement;
+      const step2Owner = screen.getByLabelText('Step 2 owner') as HTMLInputElement;
+      const step2Expert = screen.getByLabelText('Step 2 expert') as HTMLInputElement;
+      expect(step2Title.value).toBe('');
+      expect(step2Desc.value).toBe('');
+      expect(step2Owner.value).toBe('');
+      expect(step2Expert.value).toBe('');
+    });
+
+    it('should update step count label after insertion', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="create"
+          isOpen={true}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          roles={mockRoles}
+        />
+      );
+
+      expect(screen.getByText('Onboarding Steps (1)')).toBeInTheDocument();
+
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 1',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (2)')).toBeInTheDocument();
+      });
+    });
+
+    it('should show correct step numbers after insertion', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step B')).toBeInTheDocument();
+      });
+
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 2',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
+        expect(screen.getByText('Step 2 of 4')).toBeInTheDocument();
+        expect(screen.getByText('Step 3 of 4')).toBeInTheDocument();
+        expect(screen.getByText('Step 4 of 4')).toBeInTheDocument();
+      });
+    });
+
+    it('should submit correct 1-based step IDs after insertion', async () => {
+      const user = userEvent.setup();
+      render(
+        <TemplateModal
+          mode="edit"
+          isOpen={true}
+          template={mockTemplateWithMultipleSteps}
+          onClose={mockOnClose}
+          onSubmit={mockOnSubmit}
+          onDelete={mockOnDelete}
+          roles={mockRoles}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Step A')).toBeInTheDocument();
+      });
+
+      // Insert after step 1, so [A, B, C] becomes [A, (new), B, C]
+      const insertButton = screen.getByRole('button', {
+        name: 'Insert new step after step 1',
+      });
+      await user.click(insertButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Onboarding Steps (4)')).toBeInTheDocument();
+      });
+
+      // Fill the new step title so it passes validation
+      const step2Title = screen.getByLabelText('Step 2 title');
+      await user.type(step2Title, 'Inserted Step');
+
+      // Submit the form
+      const saveButton = screen.getByRole('button', { name: /save template changes/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+      });
+
+      const submittedData = mockOnSubmit.mock.calls[0][0];
+      const submittedSteps = submittedData.steps;
+
+      // After insertion [A, (new), B, C], step IDs should be [1, 2, 3, 4]
+      expect(submittedSteps).toHaveLength(4);
+      expect(submittedSteps[0].id).toBe(1);
+      expect(submittedSteps[1].id).toBe(2);
+      expect(submittedSteps[2].id).toBe(3);
+      expect(submittedSteps[3].id).toBe(4);
+
+      // Verify titles match the expected sequence
+      expect(submittedSteps[0].title).toBe('Step A');
+      expect(submittedSteps[1].title).toBe('Inserted Step');
+      expect(submittedSteps[2].title).toBe('Step B');
+      expect(submittedSteps[3].title).toBe('Step C');
+    });
+  });
+
+  // ==========================================================================
   // MODAL SIZE
   // ==========================================================================
 
