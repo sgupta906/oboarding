@@ -6,7 +6,7 @@
 
 ## Current State
 
-**Current Feature:** None (profiles-cleanup just completed)
+**Current Feature:** None (template-step-insert just completed)
 **Current Phase:** Ready for next feature
 **Next Command:** User can select from Candidate Features below
 
@@ -18,15 +18,11 @@
   - Edit modal to assign role + department + template
   - Dev-auth mode preserved alongside Google OAuth
   - **Start with:** `/plan google-auth` (research already done)
-- **template-step-insert**: Partially complete (`.claude/features/template-step-insert/`)
-  - Insert new steps between existing steps in TemplateModal
-  - Appears to have uncommitted changes in working directory
-  - **Check status before starting**
 
 ### Last Completed Feature
-- Feature: profiles-cleanup
-- Finalized: 2026-02-18
-- Commit: a18293b
+- Feature: template-step-insert
+- Finalized: 2026-02-17
+- Commit: ede3108
 
 ---
 
@@ -114,7 +110,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 16 | `template-description-tiny` | **FIXED** | ~~Step description textarea too small and not resizable~~ | Fixed in commit 92b1155 - increased rows from 2 to 4, changed resize-none to resize-y |
 | 17 | `template-delete-overlap` | **RESOLVED** | ~~Trash icon overlaps step number badge~~ | Fixed as side effect of template-steps-ux changes |
 | 18 | `template-no-step-count` | **FIXED** | ~~No "Step X of Y" indicator~~ | Fixed in commit 6879d18 - added step count to section label "Onboarding Steps (N)" and badge per step |
-| 19 | `template-no-autoscroll` | **P3 LOW** | New steps added offscreen with no scroll-into-view | Missing `scrollIntoView()` after push |
+| 19 | `template-no-autoscroll` | **FIXED** | ~~New steps added offscreen with no scroll-into-view~~ | Fixed in commit ede3108 - implemented useEffect with data-step-uid attributes and scrollIntoView({ behavior: 'smooth', block: 'nearest' }) for both inserted and appended steps |
 | 20 | `template-index-as-key` | **FIXED** | ~~Array index used as React key for steps~~ | Fixed in commit 6879d18 - replaced with stable _uid keys from incrementing counter |
 
 ### Dark Mode Bugs (discovered via Playwright scouting 2026-02-16)
@@ -233,6 +229,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 41 | `pdf-template-import` | 2026-02-17 | 92b1155 | Added PDF import to Templates view - "Import from PDF" button extracts bullets/numbered lists client-side via pdfjs-dist, pre-fills TemplateModal with parsed steps, 10MB file limit, full dark mode + accessibility, code-split 404KB chunk (dynamic import). Also fixed bug #16 (template description textarea resize). +31 tests (594 total) |
 | 42 | `edit-new-hires` | 2026-02-17 | 16b85e7 | Added EditHireModal component allowing managers to edit existing hires from New Hires panel - supports editing name, email, role, department, and template reassignment with title-based step merging to preserve completion status, Pencil edit button in Actions column, optimistic updates in Zustand store, +24 tests (633 total) |
 | 43 | `profiles-cleanup` | 2026-02-18 | a18293b | Fixed bug #39 (P3 LOW) - removed dead code: deleted 2 unused Supabase service files (profileService.ts 162 lines, profileTemplateService.ts 277 lines), cleaned up barrel exports, mappers (toProfile, toProfileTemplate), and test blocks. Preserved UserProfileRow for user_profiles junction table. ~535 lines removed, 638 tests passing, zero runtime behavior changes |
+| 44 | `template-step-insert` | 2026-02-17 | ede3108 | Fixed bug #19 (P3 LOW) - added "Insert step below" button (Plus icon) to each step card in TemplateModal allowing insertion of blank steps at any position, implemented scroll-into-view for newly inserted/added steps via useEffect + data-step-uid attributes, dark mode styling + accessibility (aria-label, title, type="button"), +7 tests (638 total) |
 
 ---
 
