@@ -6,23 +6,23 @@
 
 ## Current State
 
-**Current Feature:** None (template-step-insert just completed)
-**Current Phase:** Ready for next feature
-**Next Command:** User can select from Candidate Features below
+**Current Feature:** None (ready for next feature)
+**Current Phase:** idle
+**Next Command:** Pick a feature and run `/research <feature>`
 
 ### Candidate Features
-- **google-auth**: Research complete (`.claude/features/google-auth/2026-02-17T18:00_research.md`)
+- **google-auth**: Plan complete (`.claude/features/google-auth/2026-02-17T19:00_plan.md`, `.claude/features/google-auth/tasks.md`)
   - "Sign in with Google" button via Supabase OAuth provider
   - New Google users get no role until manager assigns one
   - Separate "Unassigned Users" section in manager dashboard
-  - Edit modal to assign role + department + template
+  - AssignRoleModal to assign role + department + template
   - Dev-auth mode preserved alongside Google OAuth
-  - **Start with:** `/plan google-auth` (research already done)
+  - **Next:** `/implement google-auth`
 
 ### Last Completed Feature
-- Feature: template-step-insert
+- Feature: kpi-count-stale
 - Finalized: 2026-02-17
-- Commit: ede3108
+- Commit: b3c29bc
 
 ---
 
@@ -230,6 +230,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 42 | `edit-new-hires` | 2026-02-17 | 16b85e7 | Added EditHireModal component allowing managers to edit existing hires from New Hires panel - supports editing name, email, role, department, and template reassignment with title-based step merging to preserve completion status, Pencil edit button in Actions column, optimistic updates in Zustand store, +24 tests (633 total) |
 | 43 | `profiles-cleanup` | 2026-02-18 | a18293b | Fixed bug #39 (P3 LOW) - removed dead code: deleted 2 unused Supabase service files (profileService.ts 162 lines, profileTemplateService.ts 277 lines), cleaned up barrel exports, mappers (toProfile, toProfileTemplate), and test blocks. Preserved UserProfileRow for user_profiles junction table. ~535 lines removed, 638 tests passing, zero runtime behavior changes |
 | 44 | `template-step-insert` | 2026-02-17 | ede3108 | Fixed bug #19 (P3 LOW) - added "Insert step below" button (Plus icon) to each step card in TemplateModal allowing insertion of blank steps at any position, implemented scroll-into-view for newly inserted/added steps via useEffect + data-step-uid attributes, dark mode styling + accessibility (aria-label, title, type="button"), +7 tests (638 total) |
+| 45 | `kpi-count-stale` | 2026-02-17 | b3c29bc | Fixed bug #31 (P2 MEDIUM) - cross-slice synchronization fix in Zustand store where _updateStepStatus() now updates both stepsByInstance and instances slices atomically. Prevents stale KPI "Active Onboardings" counts when employees complete steps. Removed misleading fallback step-counting path in KPISection. Dual rollback on error, progress recomputation matches server-side formula, +6 tests (667 total) |
 
 ---
 
