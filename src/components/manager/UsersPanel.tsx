@@ -6,7 +6,7 @@
  * and useAuth() for activity logging attribution.
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { UserCog, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers';
 import { useRoles } from '../../hooks/useRoles';
@@ -22,7 +22,12 @@ import { getInitials } from '../../utils/formatters';
  * Distinct from NewHiresPanel which shows onboarding instances (read-only).
  */
 export function UsersPanel() {
-  const { users, isLoading, error, createNewUser, editUser, removeUser, reset } = useUsers();
+  const { users: allUsers, isLoading, error, createNewUser, editUser, removeUser, reset } =
+    useUsers();
+
+  // Filter out unassigned users (Google OAuth sign-ins with no roles).
+  // These users appear in the Unassigned Users section on the New Hires tab.
+  const users = useMemo(() => allUsers.filter((u) => u.roles.length > 0), [allUsers]);
   const { roles, isLoading: rolesLoading } = useRoles();
   const { user: authUser } = useAuth();
 

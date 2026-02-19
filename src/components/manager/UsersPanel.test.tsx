@@ -46,6 +46,18 @@ const mockUsers: User[] = [
   },
 ];
 
+/** Roleless user simulating a Google OAuth sign-in that has not yet been assigned a role */
+const mockRolelessUser: User = {
+  id: 'user-google-1',
+  email: 'newgoogle@gmail.com',
+  name: 'Google OAuth User',
+  roles: [],
+  profiles: [],
+  createdAt: 1701792000000,
+  updatedAt: 1701792000000,
+  createdBy: 'system',
+};
+
 const mockRoles: CustomRole[] = [
   {
     id: 'role-1',
@@ -238,6 +250,23 @@ describe('UsersPanel', () => {
       render(<UsersPanel />);
 
       expect(screen.getByRole('button', { name: /new user/i })).toBeInTheDocument();
+    });
+
+    it('does not render users with no roles (Google OAuth unassigned users)', () => {
+      mockUseUsersReturn = {
+        ...mockUseUsersReturn,
+        users: [...mockUsers, mockRolelessUser],
+      };
+      render(<UsersPanel />);
+
+      // Roled users should still be rendered
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+      expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
+      expect(screen.getByText('Charlie Brown')).toBeInTheDocument();
+
+      // Roleless Google OAuth user should NOT appear in the Users table
+      expect(screen.queryByText('Google OAuth User')).not.toBeInTheDocument();
+      expect(screen.queryByText('newgoogle@gmail.com')).not.toBeInTheDocument();
     });
   });
 
