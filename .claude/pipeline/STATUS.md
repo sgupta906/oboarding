@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** None (ready for next feature)
+**Current Feature:** (idle - awaiting next feature)
 **Current Phase:** idle
-**Next Command:** User to pick from options below
+**Next Command:** (awaiting user instructions)
 
 ### Pending Server-Side Setup (Google Auth)
 - Google OAuth code is deployed (commit f92d440) but **provider not enabled** in Supabase
@@ -22,9 +22,9 @@
 3. **New features** — user's choice
 
 ### Last Completed Features
+- Feature: google-auth-role-bug — Finalized 2026-02-18
+- Feature: codebase-cleanup — Finalized 2026-02-18, commit bcd11a0
 - Feature: google-auth — Finalized 2026-02-18, commit f92d440
-- Feature: kpi-count-stale (bug #31) — Finalized 2026-02-18, commit b3c29bc
-- Feature: dashboard-layout-imbalance (bug #32) — Finalized 2026-02-18, commit d66b22c
 
 ---
 
@@ -234,6 +234,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 44 | `template-step-insert` | 2026-02-17 | ede3108 | Fixed bug #19 (P3 LOW) - added "Insert step below" button (Plus icon) to each step card in TemplateModal allowing insertion of blank steps at any position, implemented scroll-into-view for newly inserted/added steps via useEffect + data-step-uid attributes, dark mode styling + accessibility (aria-label, title, type="button"), +7 tests (638 total) |
 | 45 | `kpi-count-stale` | 2026-02-17 | b3c29bc | Fixed bug #31 (P2 MEDIUM) - cross-slice synchronization fix in Zustand store where _updateStepStatus() now updates both stepsByInstance and instances slices atomically. Prevents stale KPI "Active Onboardings" counts when employees complete steps. Removed misleading fallback step-counting path in KPISection. Dual rollback on error, progress recomputation matches server-side formula, +6 tests (667 total) |
 | 46 | `google-auth` | 2026-02-18 | f92d440 | Added Google OAuth sign-in via Supabase with manager-assignable roles for new users. Implemented signInWithGoogle() and ensureUserExists() in authService, made AuthUser.role nullable for unassigned Google OAuth users, added "Sign in with Google" button to SignInView with Google icon, created UnassignedUsersSection component for manager dashboard and AssignRoleModal for role/department/template assignment, integrated unassigned users into NewHiresPanel above existing table, +37 tests (675 total), maintained backwards compatibility with email and dev-auth sign-in |
+| 47 | `codebase-cleanup` | 2026-02-18 | bcd11a0 | Comprehensive codebase hygiene: removed ~500 lines dead code (5 files, 13 barrel exports, dead types, 3 utility functions, ~330 lines CSS/Tailwind), extracted shared components (ErrorAlert, TemplatePreview) and utilities (validation.ts, formatters.ts), split oversized files (types/index.ts 373→3 focused files, useOnboardingStore.ts 697→6 slice files), extracted TemplateStepEditor and authCredentialHelpers, standardized test imports, fixed hasManagerAccess('') edge case. Zero functional changes except edge case fix. 668 tests passing, 1739 insertions, 3132 deletions (-1393 net) |
 
 ---
 

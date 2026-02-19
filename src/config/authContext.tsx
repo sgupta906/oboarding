@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
 import { getUserRole, signOut, ensureUserExists } from '../services/authService';
+import { getInstanceByEmployeeEmail } from '../services/supabase';
 import { getDevAuthUUID } from '../utils/uuid';
 import type { AuthUser, UserRole, AuthContextValue } from './authTypes';
 
@@ -163,15 +164,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const userRole = await getUserRole(session.user.id);
 
             if (userRole) {
-              // Successfully fetched role
+              // Defense-in-depth: if the user has an onboarding instance,
+              // they are an employee regardless of what user_roles says.
+              // This prevents custom role names (e.g., "Software Engineer")
+              // from granting manager access to Google OAuth hires.
+              let effectiveRole = userRole;
+              try {
+                const instance = await getInstanceByEmployeeEmail(session.user.email);
+                if (instance) {
+                  effectiveRole = 'employee';
+                }
+              } catch {
+                // Instance check failed — fall through with original role
+              }
+
               const authUser: AuthUser = {
                 uid: session.user.id,
                 email: session.user.email,
-                role: userRole,
+                role: effectiveRole,
               };
 
               setUser(authUser);
-              setRole(userRole);
+              setRole(effectiveRole);
             } else {
               // Google OAuth user with no role yet -- create user row
               // and set authenticated state with role=null

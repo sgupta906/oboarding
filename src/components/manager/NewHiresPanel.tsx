@@ -109,8 +109,9 @@ export function NewHiresPanel() {
     setIsAssigning(true);
     setAssignError(null);
     try {
-      // Step 1: Set user role in database
-      await setUserRole(userToAssign.id, userToAssign.email, assignRole);
+      // Step 1: Set user's access-control role to 'employee' in database
+      // The business role (e.g., "Software Engineer") is stored in the onboarding instance, not user_roles
+      await setUserRole(userToAssign.id, userToAssign.email, 'employee');
 
       // Step 2: Create onboarding instance from template
       await createOnboardingRunFromTemplate({
