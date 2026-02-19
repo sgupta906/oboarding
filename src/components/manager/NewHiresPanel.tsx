@@ -10,7 +10,7 @@ import { Users, Trash2, Pencil } from 'lucide-react';
 import { useOnboardingInstances, useRoles, useTemplates, useUsers } from '../../hooks';
 import { useAuth } from '../../config/authContext';
 import { logActivity, createOnboardingRunFromTemplate } from '../../services/supabase';
-import { setUserRole } from '../../services/authService';
+import { useOnboardingStore } from '../../store/useOnboardingStore';
 import { ProgressBar } from '../ui/ProgressBar';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
 import { getInitials } from '../../utils/formatters';
@@ -109,18 +109,21 @@ export function NewHiresPanel() {
     setIsAssigning(true);
     setAssignError(null);
     try {
-      // Step 1: Set user's access-control role to 'employee' in database
-      // The business role (e.g., "Software Engineer") is stored in the onboarding instance, not user_roles
-      await setUserRole(userToAssign.id, userToAssign.email, 'employee');
+      // Step 1: Set access-control role to 'employee' via Zustand store
+      // Uses _editUser which updates user_roles in DB + optimistically updates the store
+      // (removes user from "Unassigned" list immediately)
+      await useOnboardingStore.getState()._editUser(userToAssign.id, { roles: ['employee'] });
 
-      // Step 2: Create onboarding instance from template
-      await createOnboardingRunFromTemplate({
+      // Step 2: Create onboarding instance from template and add to store
+      const newInstance = await createOnboardingRunFromTemplate({
         employeeName: userToAssign.name,
         employeeEmail: userToAssign.email,
         role: assignRole,
         department: assignDepartment,
         templateId: assignTemplateId,
       });
+      // Add new instance to store for immediate UI update in New Hires table
+      useOnboardingStore.getState()._addInstance(newInstance);
 
       // Fire-and-forget activity log
       logActivity({
