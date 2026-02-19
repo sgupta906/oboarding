@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** (idle - awaiting next feature)
-**Current Phase:** idle
-**Next Command:** (awaiting user instructions)
+**Current Feature:** idle
+**Current Phase:** awaiting-instructions
+**Next Command:** User's choice (see Candidate Next Steps below)
 
 ### Pending Server-Side Setup (Google Auth)
 - Google OAuth code is deployed (commit f92d440) but **provider not enabled** in Supabase
@@ -21,10 +21,8 @@
 2. **P3 bugs** — #33 (activity-initials-only), #34 (template-delete-no-label), #35 (completed-step-strikethrough), #36 (no-loading-skeleton)
 3. **New features** — user's choice
 
-### Last Completed Features
-- Feature: google-auth-role-bug — Finalized 2026-02-18
-- Feature: codebase-cleanup — Finalized 2026-02-18, commit bcd11a0
-- Feature: google-auth — Finalized 2026-02-18, commit f92d440
+### Last Completed Feature
+- Feature: assign-role-fixes — Finalized 2026-02-18, commits f17222a + 70f26e2 (Google OAuth role assignment bugs fixed - stores 'employee' role instead of custom role name, defense-in-depth instance check on re-sign-in, optimistic UI updates via Zustand store, no user table leaking)
 
 ---
 
@@ -235,6 +233,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 45 | `kpi-count-stale` | 2026-02-17 | b3c29bc | Fixed bug #31 (P2 MEDIUM) - cross-slice synchronization fix in Zustand store where _updateStepStatus() now updates both stepsByInstance and instances slices atomically. Prevents stale KPI "Active Onboardings" counts when employees complete steps. Removed misleading fallback step-counting path in KPISection. Dual rollback on error, progress recomputation matches server-side formula, +6 tests (667 total) |
 | 46 | `google-auth` | 2026-02-18 | f92d440 | Added Google OAuth sign-in via Supabase with manager-assignable roles for new users. Implemented signInWithGoogle() and ensureUserExists() in authService, made AuthUser.role nullable for unassigned Google OAuth users, added "Sign in with Google" button to SignInView with Google icon, created UnassignedUsersSection component for manager dashboard and AssignRoleModal for role/department/template assignment, integrated unassigned users into NewHiresPanel above existing table, +37 tests (675 total), maintained backwards compatibility with email and dev-auth sign-in |
 | 47 | `codebase-cleanup` | 2026-02-18 | bcd11a0 | Comprehensive codebase hygiene: removed ~500 lines dead code (5 files, 13 barrel exports, dead types, 3 utility functions, ~330 lines CSS/Tailwind), extracted shared components (ErrorAlert, TemplatePreview) and utilities (validation.ts, formatters.ts), split oversized files (types/index.ts 373→3 focused files, useOnboardingStore.ts 697→6 slice files), extracted TemplateStepEditor and authCredentialHelpers, standardized test imports, fixed hasManagerAccess('') edge case. Zero functional changes except edge case fix. 668 tests passing, 1739 insertions, 3132 deletions (-1393 net) |
+| 48 | `assign-role-fixes` | 2026-02-18 | f17222a, 70f26e2 | Fixed Google OAuth role assignment bugs — stores 'employee' role instead of custom role name (prevents manager access leak), defense-in-depth instance check on re-sign-in, optimistic UI updates via Zustand store _addInstance + _editUser (no user table leaking). Two commits: f17222a (access control fix + instance check), 70f26e2 (UI update fix + store integration). +1 regression test (669 total) |
 
 ---
 
