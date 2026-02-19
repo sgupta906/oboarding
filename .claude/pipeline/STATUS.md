@@ -8,7 +8,7 @@
 
 **Current Feature:** idle
 **Current Phase:** awaiting-instructions
-**Next Command:** User's choice (see Candidate Next Steps below)
+**Next Command:** (user's choice)
 
 ### Pending Server-Side Setup (Google Auth)
 - Google OAuth code is deployed (commit f92d440) but **provider not enabled** in Supabase
@@ -234,6 +234,7 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 46 | `google-auth` | 2026-02-18 | f92d440 | Added Google OAuth sign-in via Supabase with manager-assignable roles for new users. Implemented signInWithGoogle() and ensureUserExists() in authService, made AuthUser.role nullable for unassigned Google OAuth users, added "Sign in with Google" button to SignInView with Google icon, created UnassignedUsersSection component for manager dashboard and AssignRoleModal for role/department/template assignment, integrated unassigned users into NewHiresPanel above existing table, +37 tests (675 total), maintained backwards compatibility with email and dev-auth sign-in |
 | 47 | `codebase-cleanup` | 2026-02-18 | bcd11a0 | Comprehensive codebase hygiene: removed ~500 lines dead code (5 files, 13 barrel exports, dead types, 3 utility functions, ~330 lines CSS/Tailwind), extracted shared components (ErrorAlert, TemplatePreview) and utilities (validation.ts, formatters.ts), split oversized files (types/index.ts 373→3 focused files, useOnboardingStore.ts 697→6 slice files), extracted TemplateStepEditor and authCredentialHelpers, standardized test imports, fixed hasManagerAccess('') edge case. Zero functional changes except edge case fix. 668 tests passing, 1739 insertions, 3132 deletions (-1393 net) |
 | 48 | `assign-role-fixes` | 2026-02-18 | f17222a, 70f26e2 | Fixed Google OAuth role assignment bugs — stores 'employee' role instead of custom role name (prevents manager access leak), defense-in-depth instance check on re-sign-in, optimistic UI updates via Zustand store _addInstance + _editUser (no user table leaking). Two commits: f17222a (access control fix + instance check), 70f26e2 (UI update fix + store integration). +1 regression test (669 total) |
+| 49 | `google-oauth-user-leak` | 2026-02-18 | f10d81d | Fixed Google OAuth users appearing in both Users tab and Unassigned Users section — added useMemo filter in UsersPanel.tsx to exclude users with roles.length === 0 so they only appear in Unassigned Users section. Mirrors inverse filter in UnassignedUsersSection.tsx for consistency. Minimal 2-file change (UsersPanel.tsx + test), +1 regression test (670 total) |
 
 ---
 
