@@ -116,4 +116,46 @@ describe('StepCard', () => {
       expect(card!.className).toContain('dark:ring-amber-800');
     });
   });
+
+  describe('description styling', () => {
+    it('completed step description does NOT have line-through class', () => {
+      render(
+        <StepCard
+          step={createStep({ status: 'completed' })}
+          index={0}
+          {...defaultHandlers}
+        />
+      );
+
+      const description = screen.getByText('Your temporary password is in your personal email.');
+      expect(description.className).not.toContain('line-through');
+    });
+
+    it('completed step description has text-slate-500 muted color', () => {
+      render(
+        <StepCard
+          step={createStep({ status: 'completed' })}
+          index={0}
+          {...defaultHandlers}
+        />
+      );
+
+      const description = screen.getByText('Your temporary password is in your personal email.');
+      expect(description.className).toContain('text-slate-500');
+    });
+
+    it('pending step description has text-slate-600 and no line-through', () => {
+      render(
+        <StepCard
+          step={createStep({ status: 'pending' })}
+          index={0}
+          {...defaultHandlers}
+        />
+      );
+
+      const description = screen.getByText('Your temporary password is in your personal email.');
+      expect(description.className).toContain('text-slate-600');
+      expect(description.className).not.toContain('line-through');
+    });
+  });
 });

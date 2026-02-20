@@ -123,7 +123,7 @@ export function StepCard({
             <p
               className={`leading-relaxed mb-4 transition-colors duration-300 ${
                 isCompleted
-                  ? 'text-slate-500 dark:text-slate-500 line-through'
+                  ? 'text-slate-500 dark:text-slate-500'
                   : 'text-slate-600 dark:text-slate-400'
               }`}
               aria-live="polite"
