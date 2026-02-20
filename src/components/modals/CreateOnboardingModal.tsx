@@ -7,6 +7,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import { ErrorAlert } from '../ui/ErrorAlert';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TemplatePreview } from '../ui/TemplatePreview';
 import type { CustomRole, Template } from '../../types';
 import { EMAIL_REGEX } from '../../utils/validation';
@@ -224,7 +225,7 @@ export function CreateOnboardingModal({
         {/* Loading Templates Message */}
         {templatesLoading && (
           <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-300">Loading templates...</p>
+            <LoadingSpinner size="sm" label="Loading templates..." />
           </div>
         )}
 
@@ -314,8 +315,8 @@ export function CreateOnboardingModal({
             Role <span className="text-red-500">*</span>
           </label>
           {rolesLoading ? (
-            <div className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-              Loading roles...
+            <div className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700">
+              <LoadingSpinner size="sm" label="Loading roles..." />
             </div>
           ) : (
             <select

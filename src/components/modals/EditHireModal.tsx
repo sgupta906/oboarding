@@ -7,6 +7,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import { ErrorAlert } from '../ui/ErrorAlert';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TemplatePreview } from '../ui/TemplatePreview';
 import { getTemplate } from '../../services/supabase';
 import type { OnboardingInstance, CustomRole, Template, Step } from '../../types';
@@ -340,8 +341,8 @@ export function EditHireModal({
             Role <span className="text-red-500">*</span>
           </label>
           {rolesLoading ? (
-            <div className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400">
-              Loading roles...
+            <div className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700">
+              <LoadingSpinner size="sm" label="Loading roles..." />
             </div>
           ) : (
             <select

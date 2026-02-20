@@ -9,3 +9,4 @@ export { ProgressBar } from './ProgressBar';
 export { ModalWrapper } from './ModalWrapper';
 export { NavBar } from './NavBar';
 export { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
+export { LoadingSpinner } from './LoadingSpinner';

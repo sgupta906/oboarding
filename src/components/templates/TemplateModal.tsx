@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { ModalWrapper } from '../ui';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { DeleteConfirmationDialog } from '../ui/DeleteConfirmationDialog';
 import { TemplateStepEditor } from './TemplateStepEditor';
 import type { Template, Step, CustomRole } from '../../types';
@@ -419,7 +420,7 @@ export function TemplateModal({
             Applicable Roles
           </label>
           {rolesLoading ? (
-            <div className="text-slate-500 dark:text-slate-400 text-sm">Loading roles...</div>
+            <LoadingSpinner size="sm" label="Loading roles..." />
           ) : roles.length === 0 ? (
             <div className="p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-800 dark:text-amber-300">
               No roles available. Please create a role first.

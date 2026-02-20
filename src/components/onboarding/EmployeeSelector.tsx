@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import type { OnboardingInstance } from '../../types';
 
 interface EmployeeSelectorProps {
@@ -21,7 +22,7 @@ function EmployeeSelectorComponent({
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-        <p className="text-sm text-slate-500">Loading employee list...</p>
+        <LoadingSpinner size="sm" label="Loading employee list..." />
       </div>
     );
   }
