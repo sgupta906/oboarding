@@ -356,11 +356,12 @@ export function TemplatesView() {
                   </button>
                   <button
                     onClick={() => handleDeleteTemplate(template.id, template.name)}
-                    className="flex items-center justify-center p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 rounded transition-colors"
                     aria-label={`Delete template: ${template.name}`}
                     title="Delete template"
                   >
                     <Trash2 size={16} />
+                    <span className="hidden sm:inline">Delete</span>
                   </button>
                 </div>
               </div>
