@@ -119,7 +119,6 @@ export async function createUser(
   const now = toISO(Date.now());
   const trimmedEmail = userData.email.toLowerCase().trim();
   const trimmedName = userData.name.trim();
-  const primaryRole = userData.roles[0] || 'employee';
 
   // Only pass createdBy if it's a valid UUID AND the creator row exists;
   // otherwise use null. Dev auth generates UUIDs that may not have a
@@ -185,7 +184,8 @@ export async function createUser(
   }
 
   // Add to auth credentials for sign-in (dev mode)
-  addUserToAuthCredentials(trimmedEmail, primaryRole, newId);
+  // All Users-panel users get manager access; store 'manager' not custom role name
+  addUserToAuthCredentials(trimmedEmail, 'manager', newId);
 
   return {
     id: newId,
@@ -261,7 +261,7 @@ export async function updateUser(
       }
 
       // Sync auth credentials with new role (prevents stale localStorage credentials)
-      const primaryRole = updates.roles[0];
+      // All Users-panel users get manager access; store 'manager' not custom role name
       let email = updates.email?.toLowerCase().trim();
       if (!email) {
         try {
@@ -272,7 +272,7 @@ export async function updateUser(
         }
       }
       if (email) {
-        addUserToAuthCredentials(email, primaryRole, userId);
+        addUserToAuthCredentials(email, 'manager', userId);
       }
     }
   }

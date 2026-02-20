@@ -237,6 +237,61 @@ describe('createUser - creator existence check', () => {
 });
 
 // ============================================================================
+// createUser() auth credential role normalization (test-user-signin-error fix)
+// ============================================================================
+
+describe('createUser - auth credential role normalization', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: email does not exist (so create proceeds)
+    userEmailCheckResult = { data: [], error: null };
+    // Default: creator does not exist (use null)
+    creatorExistsResult = { data: [], error: null };
+    // Default: insert succeeds
+    usersInsertResult = {
+      data: {
+        id: 'new-user-1',
+        email: 'newuser@example.com',
+        name: 'New User',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        created_by: null,
+      },
+      error: null,
+    };
+  });
+
+  it("stores 'manager' as auth credential role for custom roles like 'software engineer'", async () => {
+    await createUser(
+      { email: 'newuser@example.com', name: 'New User', roles: ['software engineer'], profiles: [], createdBy: '' },
+      'not-a-uuid'
+    );
+
+    // Auth credential should store 'manager', NOT the custom role name
+    expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+      'newuser@example.com',
+      'manager',
+      'new-user-1'
+    );
+  });
+
+  it("stores 'manager' even when role name is 'employee' (Users-panel 'employee' is a business role, not system access)", async () => {
+    await createUser(
+      { email: 'newuser@example.com', name: 'New User', roles: ['employee'], profiles: [], createdBy: '' },
+      'not-a-uuid'
+    );
+
+    // ALL Users-panel users get manager access -- 'employee' here is a custom role name,
+    // not a system access designation
+    expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+      'newuser@example.com',
+      'manager',
+      'new-user-1'
+    );
+  });
+});
+
+// ============================================================================
 // deleteUser() simplified tests (Task 2.3 - Bug #44)
 // ============================================================================
 
@@ -320,10 +375,10 @@ describe('updateUser - credential sync on role change', () => {
   it('calls addUserToAuthCredentials when roles change', async () => {
     await updateUser('user-1', { roles: ['employee'] });
 
-    // Should have synced auth credentials with the new role
+    // Should have synced auth credentials with 'manager' (all Users-panel users get manager access)
     expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
       'alice@example.com',
-      'employee',
+      'manager',
       'user-1'
     );
   });
@@ -338,9 +393,20 @@ describe('updateUser - credential sync on role change', () => {
   it('uses provided email from updates instead of fetching from DB', async () => {
     await updateUser('user-1', { roles: ['manager'], email: 'newalice@example.com' });
 
-    // Should use the provided email, not the DB email
+    // Should use the provided email, not the DB email; role is always 'manager'
     expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
       'newalice@example.com',
+      'manager',
+      'user-1'
+    );
+  });
+
+  it("stores 'manager' as auth credential role for custom roles like 'talker'", async () => {
+    await updateUser('user-1', { roles: ['talker'] });
+
+    // Auth credential should store 'manager', NOT the custom role name
+    expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+      'alice@example.com',
       'manager',
       'user-1'
     );
