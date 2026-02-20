@@ -124,6 +124,7 @@ verify-*.png
 verification-*.png
 .claude/screenshots/
 .claude/active-work/
+.claude/features/*/
 .playwright-mcp/
 
 # ==========================================
