@@ -6,9 +6,9 @@
 
 ## Current State
 
-**Current Feature:** idle
-**Current Phase:** awaiting-instructions
-**Next Command:** (user's choice)
+**Current Feature:** None (idle)
+**Current Phase:** idle
+**Next Command:** User's choice
 
 ### Pending Server-Side Setup (Google Auth)
 - Google OAuth code is deployed (commit f92d440) but **provider not enabled** in Supabase
@@ -137,11 +137,11 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 29 | `navbar-breaks-at-mobile` | **WONTFIX** | ~~At 375px, navbar loses brand name, templates button, dark mode toggle~~ | Not a mobile app — desktop-only is acceptable |
 | 30 | `employee-header-cleanup` | **FIXED** | ~~Employee selector dropdown visible in Employee View + duplicate Sign Out buttons~~ | Fixed in commit 49b0bfb - removed redundant EmployeeHeader component and duplicate Sign Out button, NavBar already provides all auth/view UI |
 | 31 | `kpi-count-stale` | **P2 MEDIUM** | KPI "Active Onboardings" shows inconsistent counts between views | Caching or recomputation issue |
-| 32 | `dashboard-layout-imbalance` | **P3 LOW** | Documentation Feedback and Live Activity sections unbalanced | Layout proportions off |
-| 33 | `activity-initials-only` | **P3 LOW** | Activity feed shows only 2-letter initials, uniform blue — no full names | Missing name display |
-| 34 | `template-delete-no-label` | **P3 LOW** | Template delete button has no text label, only icon | Inconsistent with Edit/Duplicate which have labels |
-| 35 | `completed-step-strikethrough` | **P3 LOW** | Completed step description uses hard-to-read strikethrough | Poor readability |
-| 36 | `no-loading-skeleton` | **P3 LOW** | Plain text "Loading dashboard..." instead of skeleton/spinner | Missing loading state components |
+| 32 | `dashboard-layout-imbalance` | **FIXED** | ~~Documentation Feedback and Live Activity sections unbalanced~~ | Fixed in commit d66b22c - flex layout balancing with flex-1 and justify-center classes |
+| 33 | `activity-initials-only` | **FIXED** | ~~Activity feed shows only 2-letter initials, uniform blue — no full names~~ | Fixed in commit fe1ef79 - added userName field to Activity type/DB, display full names with initials fallback, migration 00009, +6 tests (687 total) |
+| 34 | `template-delete-no-label` | **FIXED** | ~~Template delete button has no text label, only icon~~ | Fixed in commit a313c88 - added "Delete" text label matching Edit/Duplicate pattern |
+| 35 | `completed-step-strikethrough` | **FIXED** | ~~Completed step description uses hard-to-read strikethrough~~ | Fixed in commit 64c8c74 - removed line-through class, 6 other visual indicators suffice, +3 regression tests (687 total) |
+| 36 | `no-loading-skeleton` | **FIXED** | ~~Plain text "Loading dashboard..." instead of skeleton/spinner~~ | Fixed in commit 3bb68a6 - LoadingSpinner + DashboardSkeleton components, replaced 7 plain-text loading messages, +8 tests (687 total) |
 
 ### Data Model & Persistence Bugs (discovered via Playwright scouting 2026-02-16, round 3)
 
@@ -235,6 +235,13 @@ These are **not separate pipeline features** — they are symptoms of the isolat
 | 47 | `codebase-cleanup` | 2026-02-18 | bcd11a0 | Comprehensive codebase hygiene: removed ~500 lines dead code (5 files, 13 barrel exports, dead types, 3 utility functions, ~330 lines CSS/Tailwind), extracted shared components (ErrorAlert, TemplatePreview) and utilities (validation.ts, formatters.ts), split oversized files (types/index.ts 373→3 focused files, useOnboardingStore.ts 697→6 slice files), extracted TemplateStepEditor and authCredentialHelpers, standardized test imports, fixed hasManagerAccess('') edge case. Zero functional changes except edge case fix. 668 tests passing, 1739 insertions, 3132 deletions (-1393 net) |
 | 48 | `assign-role-fixes` | 2026-02-18 | f17222a, 70f26e2 | Fixed Google OAuth role assignment bugs — stores 'employee' role instead of custom role name (prevents manager access leak), defense-in-depth instance check on re-sign-in, optimistic UI updates via Zustand store _addInstance + _editUser (no user table leaking). Two commits: f17222a (access control fix + instance check), 70f26e2 (UI update fix + store integration). +1 regression test (669 total) |
 | 49 | `google-oauth-user-leak` | 2026-02-18 | f10d81d | Fixed Google OAuth users appearing in both Users tab and Unassigned Users section — added useMemo filter in UsersPanel.tsx to exclude users with roles.length === 0 so they only appear in Unassigned Users section. Mirrors inverse filter in UnassignedUsersSection.tsx for consistency. Minimal 2-file change (UsersPanel.tsx + test), +1 regression test (670 total) |
+| 50 | `template-delete-no-label` | 2026-02-19 | a313c88 | Fixed bug #34 (P3 LOW) - added "Delete" text label to template delete button in TemplatesView card footer with flex-1 class for equal width distribution. Updated button className to match Edit/Duplicate pattern (gap-2, px-3 py-2, text-sm font-medium, hidden sm:inline label). Created TemplatesView.test.tsx with 3 unit tests verifying button label, flex-1 class, and all-buttons consistency, +3 tests (676 total) |
+| 51 | `completed-step-strikethrough` | 2026-02-19 | 64c8c74 | Fixed bug #35 (P3 LOW) - removed line-through from completed step descriptions, 6 other visual indicators already distinguish completed steps (opacity, green border, checkmark icons, muted text), +3 regression tests (687 total) |
+| 52 | `activity-initials-only` | 2026-02-19 | fe1ef79 | Fixed bug #33 (P3 LOW) - added userName field to Activity type and database types, updated mappers/activityService/12 logActivity call sites, ActivityFeed displays full name with initials fallback, migration 00009 adds user_name column, +6 tests (687 total) |
+| 53 | `no-loading-skeleton` | 2026-02-19 | 3bb68a6 | Fixed bug #36 (P3 LOW) - created LoadingSpinner (sm/md/lg, dark mode, a11y) and DashboardSkeleton components, replaced 7 plain-text loading messages across OnboardingHub, ManagerView, EmployeeSelector, 3 modals, TemplateModal, +8 tests (687 total) |
+| 54 | `user-hire-separation` | 2026-02-20 | 3f5281c | Fixed bug #32 (P3 LOW) - Google OAuth employee-only users now excluded from Users tab (system user management), still appear correctly in New Hires tab. Updated UsersPanel filter to use .every() predicate for dual-role edge case handling, +2 regression tests (689 total) |
+| 55 | `email-signin-role-leak` | 2026-02-20 | fbdf5a2 | Fixed privilege escalation bug - when user role changed via Users panel, localStorage auth credential was not updated, allowing subsequent email sign-in to use old elevated role. Two-layer defense: (1) updateUser() syncs credentials on role change, (2) signInWithEmailLink() checks for onboarding instances and overrides stale credentials to 'employee'. +6 tests (695 total) |
+| 56 | `test-user-signin-error` | 2026-02-20 | 6401ef1 | Fixed privilege escalation bug where users created via Users panel with custom role names (e.g., "software engineer") had those names stored as auth credential roles, inadvertently granting manager access. Normalized auth credential role to 'manager' for all Users-panel users in both createUser() and updateUser(). +3 new tests, +1 updated assertion (698 total) |
 
 ---
 
