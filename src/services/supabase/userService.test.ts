@@ -5,7 +5,10 @@
  * - creatorExists() helper (Bug #40 fix)
  * - createUser() existence check integration (Bug #40 fix)
  * - deleteUser() simplified flow without instance cascade (Bug #44 fix)
+ * - updateUser() credential sync on role change (email-signin-role-leak fix)
  */
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -16,6 +19,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Track calls per table for assertions
 const mockDeleteEq = vi.fn();
 const mockSelectEqLimit = vi.fn();
+const mockUsersUpdateEq = vi.fn();
 
 let usersSelectResult: any;
 let usersSelectSingleResult: any;
@@ -23,6 +27,7 @@ let usersDeleteResult: any;
 let usersInsertResult: any;
 let userEmailCheckResult: any;
 let creatorExistsResult: any;
+let usersUpdateResult: any;
 
 vi.mock('../../config/supabase', () => ({
   supabase: {
@@ -49,6 +54,12 @@ vi.mock('../../config/supabase', () => ({
               })),
             };
           }),
+          update: vi.fn(() => ({
+            eq: vi.fn((...args: any[]) => {
+              mockUsersUpdateEq(table, ...args);
+              return usersUpdateResult ?? { error: null };
+            }),
+          })),
           insert: vi.fn(() => ({
             select: vi.fn(() => ({
               single: vi.fn(() => usersInsertResult),
@@ -100,7 +111,21 @@ vi.mock('./subscriptionManager', () => ({
   })),
 }));
 
-import { creatorExists, createUser, deleteUser } from './userService';
+// Mock authCredentialHelpers to track addUserToAuthCredentials calls
+const mockAddUserToAuthCredentials = vi.fn();
+const mockGetAuthCredential = vi.fn().mockReturnValue(null);
+const mockRemoveUserFromAuthCredentials = vi.fn();
+
+vi.mock('./authCredentialHelpers', () => ({
+  addUserToAuthCredentials: (...args: any[]) => mockAddUserToAuthCredentials(...args),
+  getAuthCredential: (...args: any[]) => mockGetAuthCredential(...args),
+  removeUserFromAuthCredentials: (...args: any[]) => mockRemoveUserFromAuthCredentials(...args),
+  saveLocalUsers: vi.fn(),
+  setDisableDefaultUserSeeding: vi.fn(),
+  clearAllUsersForTesting: vi.fn(),
+}));
+
+import { creatorExists, createUser, deleteUser, updateUser } from './userService';
 
 // ============================================================================
 // creatorExists() tests (Task 2.1 - Bug #40)
@@ -262,5 +287,62 @@ describe('deleteUser - simplified (no instance cascade)', () => {
 
     // Neither instances nor user delete should be called
     expect(mockDeleteEq).not.toHaveBeenCalled();
+  });
+});
+
+// ============================================================================
+// updateUser() credential sync tests (email-signin-role-leak fix)
+// ============================================================================
+
+describe('updateUser - credential sync on role change', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Default: email does not exist (no duplicate)
+    userEmailCheckResult = { data: [], error: null };
+    // Default: user update succeeds
+    usersUpdateResult = { error: null };
+    // Default: getUser returns a user (for email lookup when roles change)
+    usersSelectSingleResult = {
+      data: {
+        id: 'user-1',
+        email: 'alice@example.com',
+        name: 'Alice',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+        created_by: null,
+        user_roles: [{ role_name: 'employee' }],
+        user_profiles: [],
+      },
+      error: null,
+    };
+  });
+
+  it('calls addUserToAuthCredentials when roles change', async () => {
+    await updateUser('user-1', { roles: ['employee'] });
+
+    // Should have synced auth credentials with the new role
+    expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+      'alice@example.com',
+      'employee',
+      'user-1'
+    );
+  });
+
+  it('does NOT call addUserToAuthCredentials when roles are not in updates', async () => {
+    await updateUser('user-1', { name: 'Alice Updated' });
+
+    // Should NOT have called addUserToAuthCredentials
+    expect(mockAddUserToAuthCredentials).not.toHaveBeenCalled();
+  });
+
+  it('uses provided email from updates instead of fetching from DB', async () => {
+    await updateUser('user-1', { roles: ['manager'], email: 'newalice@example.com' });
+
+    // Should use the provided email, not the DB email
+    expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+      'newalice@example.com',
+      'manager',
+      'user-1'
+    );
   });
 });

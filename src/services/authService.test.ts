@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   signInWithEmailLink,
   signInWithGoogle,
@@ -397,6 +397,84 @@ describe('Auth Service', () => {
       }
 
       expect(mockSupabaseAuth.signUp).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signInWithEmailLink - Defense-in-Depth (credential role override)', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      // Reset instance mock to prevent unconsumed mockOnce values from leaking
+      // into subsequent tests (defense-in-depth code may not consume them until
+      // the implementation is added)
+      mockGetInstanceByEmployeeEmail.mockReset();
+      mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
+    });
+
+    it('should override stale manager credential to employee when instance exists', async () => {
+      // Auth credential says 'manager' but user has an onboarding instance (= employee)
+      const { getAuthCredential } = await import('./supabase');
+      vi.mocked(getAuthCredential).mockReturnValueOnce({
+        email: 'stale-user@example.com',
+        role: 'manager',
+        uid: 'stale-uid',
+      });
+
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-1',
+        employeeName: 'Stale User',
+      });
+
+      await signInWithEmailLink('stale-user@example.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.uid).toBe('stale-uid');
+      expect(parsed.email).toBe('stale-user@example.com');
+      expect(parsed.role).toBe('employee'); // Overridden from 'manager' to 'employee'
+    });
+
+    it('should keep credential role when no instance exists', async () => {
+      const { getAuthCredential } = await import('./supabase');
+      vi.mocked(getAuthCredential).mockReturnValueOnce({
+        email: 'real-manager@example.com',
+        role: 'manager',
+        uid: 'manager-uid',
+      });
+
+      // No instance found
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce(null);
+
+      await signInWithEmailLink('real-manager@example.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.role).toBe('manager'); // Kept as-is
+    });
+
+    it('should keep credential role when instance check throws (graceful fallback)', async () => {
+      const { getAuthCredential } = await import('./supabase');
+      vi.mocked(getAuthCredential).mockReturnValueOnce({
+        email: 'admin-user@example.com',
+        role: 'admin',
+        uid: 'admin-uid',
+      });
+
+      // Instance check throws (Supabase unreachable)
+      mockGetInstanceByEmployeeEmail.mockRejectedValueOnce(
+        new Error('Supabase connection refused')
+      );
+
+      await signInWithEmailLink('admin-user@example.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.role).toBe('admin'); // Kept as-is, graceful fallback
     });
   });
 

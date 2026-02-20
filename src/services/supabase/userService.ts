@@ -259,6 +259,21 @@ export async function updateUser(
       if (insertRolesError) {
         throw new Error(`Failed to insert updated user roles: ${insertRolesError.message}`);
       }
+
+      // Sync auth credentials with new role (prevents stale localStorage credentials)
+      const primaryRole = updates.roles[0];
+      let email = updates.email?.toLowerCase().trim();
+      if (!email) {
+        try {
+          const user = await getUser(userId);
+          email = user?.email;
+        } catch {
+          // Fetching user failed -- skip credential sync
+        }
+      }
+      if (email) {
+        addUserToAuthCredentials(email, primaryRole, userId);
+      }
     }
   }
 

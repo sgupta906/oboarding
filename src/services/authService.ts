@@ -177,13 +177,26 @@ export async function signInWithEmailLink(email: string): Promise<void> {
     // First, check if this user was created via the Users panel
     const dynamicCredential = getAuthCredential(trimmedEmail);
     if (dynamicCredential) {
+      let effectiveRole = dynamicCredential.role;
+
+      // Defense-in-depth: if user has an onboarding instance, they are an employee.
+      // This prevents stale credentials from granting elevated access.
+      try {
+        const instance = await getInstanceByEmployeeEmail(trimmedEmail);
+        if (instance) {
+          effectiveRole = 'employee';
+        }
+      } catch {
+        // Instance check failed (Supabase may be unreachable) -- use credential role as-is
+      }
+
       // User was created via Users panel - use their stored credentials
       localStorage.setItem(
         'mockAuthUser',
         JSON.stringify({
           uid: dynamicCredential.uid,
           email: dynamicCredential.email,
-          role: dynamicCredential.role,
+          role: effectiveRole,
         })
       );
 
@@ -194,7 +207,7 @@ export async function signInWithEmailLink(email: string): Promise<void> {
         })
       );
 
-      console.log(`[Auth] Signed in as ${trimmedEmail} (${dynamicCredential.role}) - created via Users panel`);
+      console.log(`[Auth] Signed in as ${trimmedEmail} (${effectiveRole}) - created via Users panel`);
       return;
     }
 
