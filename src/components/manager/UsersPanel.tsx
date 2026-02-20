@@ -25,9 +25,13 @@ export function UsersPanel() {
   const { users: allUsers, isLoading, error, createNewUser, editUser, removeUser, reset } =
     useUsers();
 
-  // Filter out unassigned users (Google OAuth sign-ins with no roles).
-  // These users appear in the Unassigned Users section on the New Hires tab.
-  const users = useMemo(() => allUsers.filter((u) => u.roles.length > 0), [allUsers]);
+  // Filter out unassigned users (roles: []) and employee-only users (roles: ['employee']).
+  // Unassigned users appear in the Unassigned Users section on the New Hires tab.
+  // Employee-only users are Google OAuth hires managed via onboarding instances.
+  const users = useMemo(
+    () => allUsers.filter((u) => u.roles.length > 0 && !u.roles.every((r) => r === 'employee')),
+    [allUsers],
+  );
   const { roles, isLoading: rolesLoading } = useRoles();
   const { user: authUser } = useAuth();
 

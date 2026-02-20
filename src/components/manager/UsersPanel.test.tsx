@@ -58,6 +58,30 @@ const mockRolelessUser: User = {
   createdBy: 'system',
 };
 
+/** Employee-only user simulating a Google OAuth hire that was assigned the 'employee' role */
+const mockEmployeeOnlyUser: User = {
+  id: 'user-employee-1',
+  email: 'hire@gmail.com',
+  name: 'Employee Hire',
+  roles: ['employee'],
+  profiles: [],
+  createdAt: 1701878400000,
+  updatedAt: 1701878400000,
+  createdBy: 'system',
+};
+
+/** Dual-role user with both 'employee' and 'admin' roles -- should still appear in Users tab */
+const mockDualRoleUser: User = {
+  id: 'user-dual-1',
+  email: 'admin-employee@example.com',
+  name: 'Admin Employee',
+  roles: ['employee', 'admin'],
+  profiles: [],
+  createdAt: 1701964800000,
+  updatedAt: 1701964800000,
+  createdBy: 'system',
+};
+
 const mockRoles: CustomRole[] = [
   {
     id: 'role-1',
@@ -267,6 +291,35 @@ describe('UsersPanel', () => {
       // Roleless Google OAuth user should NOT appear in the Users table
       expect(screen.queryByText('Google OAuth User')).not.toBeInTheDocument();
       expect(screen.queryByText('newgoogle@gmail.com')).not.toBeInTheDocument();
+    });
+
+    it('does not render users whose only role is employee (Google OAuth assigned hires)', () => {
+      mockUseUsersReturn = {
+        ...mockUseUsersReturn,
+        users: [...mockUsers, mockEmployeeOnlyUser],
+      };
+      render(<UsersPanel />);
+
+      // System users should still be rendered
+      expect(screen.getByText('Alice Smith')).toBeInTheDocument();
+      expect(screen.getByText('Bob Johnson')).toBeInTheDocument();
+      expect(screen.getByText('Charlie Brown')).toBeInTheDocument();
+
+      // Employee-only user should NOT appear in the Users table
+      expect(screen.queryByText('Employee Hire')).not.toBeInTheDocument();
+      expect(screen.queryByText('hire@gmail.com')).not.toBeInTheDocument();
+    });
+
+    it('shows users with employee role AND other roles (dual-role users)', () => {
+      mockUseUsersReturn = {
+        ...mockUseUsersReturn,
+        users: [...mockUsers, mockDualRoleUser],
+      };
+      render(<UsersPanel />);
+
+      // Dual-role user should appear in the Users table
+      expect(screen.getByText('Admin Employee')).toBeInTheDocument();
+      expect(screen.getByText('admin-employee@example.com')).toBeInTheDocument();
     });
   });
 
