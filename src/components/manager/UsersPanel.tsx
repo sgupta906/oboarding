@@ -59,6 +59,7 @@ export function UsersPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Created user ${data.name}`,
         timeAgo: 'just now',
         userId: authUser?.uid,
@@ -83,6 +84,7 @@ export function UsersPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Updated user ${data.name}`,
         timeAgo: 'just now',
         userId: authUser?.uid,
@@ -106,6 +108,7 @@ export function UsersPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Deleted user ${userToDelete.name}`,
         timeAgo: 'just now',
         userId: authUser?.uid,

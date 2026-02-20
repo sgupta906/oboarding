@@ -12,6 +12,7 @@ import { useMemo, useState, memo } from 'react';
 import { User } from 'lucide-react';
 import { EmployeeView, ManagerView } from '../views';
 import { SuggestEditModal, ReportStuckModal } from '../components/modals';
+import { LoadingSpinner } from './ui/LoadingSpinner';
 import { EmployeeSelector } from './onboarding';
 import { useAuth } from '../config/authContext';
 import { hasManagerAccess } from '../config/authTypes';
@@ -107,6 +108,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       const stepTitle = getStepTitle(id);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
+        userName: employeeInstance.employeeName,
         action:
           newStatus === 'completed'
             ? `completed "${stepTitle}"`
@@ -160,6 +162,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       const stepTitle = getStepTitle(activeModal.stepId);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
+        userName: employeeInstance.employeeName,
         action: `submitted suggestion for "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
@@ -180,6 +183,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
       const stepTitle = getStepTitle(activeModal.stepId);
       logActivity({
         userInitials: employeeInstance.employeeName.slice(0, 2).toUpperCase(),
+        userName: employeeInstance.employeeName,
         action: `reported stuck on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
@@ -209,7 +213,7 @@ export function OnboardingHub({ currentView = 'employee' }: OnboardingHubProps) 
   if (!isManager && employeeLoadingState) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-600">Loading your onboarding...</p>
+        <LoadingSpinner size="lg" label="Loading your onboarding..." />
       </div>
     );
   }

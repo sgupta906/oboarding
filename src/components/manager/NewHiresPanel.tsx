@@ -128,6 +128,7 @@ export function NewHiresPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Assigned ${assignRole} role to ${userToAssign.name}`,
         timeAgo: 'just now',
         userId: authUser?.uid,
@@ -151,6 +152,7 @@ export function NewHiresPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Deleted onboarding for ${instanceToDelete.employeeName}`,
         timeAgo: 'just now',
         userId: authUser?.uid,
@@ -174,6 +176,7 @@ export function NewHiresPanel() {
       // Fire-and-forget activity log
       logActivity({
         userInitials: authUser ? getInitials(authUser.email ?? '') : 'SY',
+        userName: authUser?.email || 'System',
         action: `Edited onboarding for ${editingInstance?.employeeName ?? 'employee'}`,
         timeAgo: 'just now',
         userId: authUser?.uid,

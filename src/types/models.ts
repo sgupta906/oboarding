@@ -111,6 +111,7 @@ export interface ModalState {
 export interface Activity {
   id: string;
   userInitials: string;
+  userName?: string; // Full display name, optional for backward compat with old rows
   action: string;
   timeAgo: string;
   timestamp?: number; // Unix timestamp for storage

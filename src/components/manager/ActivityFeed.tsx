@@ -108,7 +108,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
               {/* Activity Content */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-slate-900 dark:text-white break-words">
-                  <span className="font-semibold">{activity.userInitials}</span>{' '}
+                  <span className="font-semibold">{activity.userName || activity.userInitials}</span>{' '}
                   {activity.action}
                 </p>
                 <p className="text-xs text-slate-500 mt-1">{activity.timeAgo}</p>

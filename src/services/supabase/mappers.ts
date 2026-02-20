@@ -165,6 +165,7 @@ export function toActivity(row: ActivityRow): Activity {
   return {
     id: row.id,
     userInitials: row.user_initials,
+    userName: row.user_name ?? undefined,
     action: row.action,
     timeAgo: formatTimeAgo(timestamp),
     timestamp,

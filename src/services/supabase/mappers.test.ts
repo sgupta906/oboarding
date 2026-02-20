@@ -199,12 +199,13 @@ describe('toSuggestion', () => {
 });
 
 describe('toActivity', () => {
-  it('maps all camelCase fields correctly', () => {
+  it('maps all camelCase fields correctly including userName', () => {
     // Use a recent timestamp so formatTimeAgo produces 'just now'
     const recentISO = new Date(Date.now() - 5000).toISOString();
     const row = {
       id: 'act-1',
       user_initials: 'JD',
+      user_name: 'John Doe',
       action: 'Created template',
       time_ago: '2 hours ago',
       timestamp: recentISO,
@@ -216,6 +217,7 @@ describe('toActivity', () => {
     const act = toActivity(row);
     expect(act.id).toBe('act-1');
     expect(act.userInitials).toBe('JD');
+    expect(act.userName).toBe('John Doe');
     expect(act.action).toBe('Created template');
     expect(act.timeAgo).toBe('just now');
     expect(act.userId).toBe('user-1');
@@ -223,10 +225,11 @@ describe('toActivity', () => {
     expect(act.resourceId).toBe('tpl-1');
   });
 
-  it('handles null optional fields', () => {
+  it('handles null optional fields including user_name', () => {
     const row = {
       id: 'act-2',
       user_initials: 'AB',
+      user_name: null,
       action: 'Logged in',
       time_ago: null,
       timestamp: null,
@@ -239,6 +242,7 @@ describe('toActivity', () => {
     expect(act.timeAgo).toBe('');
     expect(act.timestamp).toBeUndefined();
     expect(act.userId).toBeUndefined();
+    expect(act.userName).toBeUndefined();
     expect(act.resourceType).toBeUndefined();
     expect(act.resourceId).toBeUndefined();
   });

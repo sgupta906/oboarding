@@ -251,21 +251,21 @@ describe('ManagerView', () => {
       mockSuggestionsReturn.isLoading = true;
       render(<ManagerView />);
 
-      expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
     it('shows loading when activities are loading', () => {
       mockActivitiesReturn.isLoading = true;
       render(<ManagerView />);
 
-      expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
     });
 
     it('shows loading when instances are loading', () => {
       mockInstancesReturn.isLoading = true;
       render(<ManagerView />);
 
-      expect(screen.getByText('Loading dashboard...')).toBeInTheDocument();
+      expect(screen.getByRole('status')).toBeInTheDocument();
     });
   });
 

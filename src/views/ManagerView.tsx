@@ -18,6 +18,7 @@ import {
   RoleManagementPanel,
   NewHiresPanel,
   UsersPanel,
+  DashboardSkeleton,
 } from '../components/manager';
 import { CreateOnboardingModal, type OnboardingFormData } from '../components/modals';
 import {
@@ -29,6 +30,8 @@ import {
   useOnboardingInstances,
 } from '../hooks';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../config/authContext';
+import { getInitials } from '../utils/formatters';
 import {
   updateSuggestionStatus,
   deleteSuggestion,
@@ -55,6 +58,7 @@ export function ManagerView() {
   const { data: activities, isLoading: activitiesLoading } = useActivities();
   const { data: onboardingInstances, isLoading: instancesLoading } = useOnboardingInstances();
   const { showToast } = useToast();
+  const { user: authUser } = useAuth();
 
   // ---------------------------------------------------------------------------
   // Hooks: existing (create onboarding, roles, templates)
@@ -118,7 +122,8 @@ export function ManagerView() {
     try {
       await updateSuggestionStatus(String(suggestionId), 'reviewed');
       logActivity({
-        userInitials: 'MG',
+        userInitials: authUser ? getInitials(authUser.email) : 'MG',
+        userName: authUser?.email || 'Manager',
         action: `approved suggestion from ${employeeName} on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
@@ -144,7 +149,8 @@ export function ManagerView() {
     try {
       await deleteSuggestion(String(suggestionId));
       logActivity({
-        userInitials: 'MG',
+        userInitials: authUser ? getInitials(authUser.email) : 'MG',
+        userName: authUser?.email || 'Manager',
         action: `rejected suggestion from ${employeeName} on "${stepTitle}"`,
         timeAgo: 'just now',
       }).catch(console.warn);
@@ -197,11 +203,7 @@ export function ManagerView() {
   // Loading state
   // ---------------------------------------------------------------------------
   if (isDashboardLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-slate-600">Loading dashboard...</p>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   // ---------------------------------------------------------------------------

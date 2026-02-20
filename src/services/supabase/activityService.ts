@@ -42,6 +42,7 @@ export async function logActivity(
 ): Promise<string> {
   const row: ActivityInsert = {
     user_initials: activity.userInitials,
+    user_name: activity.userName ?? null,
     action: activity.action,
     time_ago: activity.timeAgo,
     timestamp: toISO(Date.now()),

@@ -33,6 +33,21 @@ const mockActivity: Activity = {
   timeAgo: '5m ago',
 };
 
+const mockActivityWithName: Activity = {
+  id: 'a2',
+  userInitials: 'AS',
+  userName: 'Alice Smith',
+  action: 'completed Step 2',
+  timeAgo: '2m ago',
+};
+
+const mockActivityWithoutName: Activity = {
+  id: 'a3',
+  userInitials: 'BJ',
+  action: 'submitted suggestion',
+  timeAgo: '1m ago',
+};
+
 describe('Dashboard Layout Balance (Bug #32)', () => {
   describe('SuggestionsSection', () => {
     it('root div has flex and flex-col classes', () => {
@@ -93,5 +108,36 @@ describe('Dashboard Layout Balance (Bug #32)', () => {
       const cardDiv = container.firstElementChild as HTMLElement;
       expect(cardDiv.className).toContain('flex-1');
     });
+  });
+});
+
+describe('ActivityFeed Display Names (Bug #33)', () => {
+  it('displays userName when present', () => {
+    const { getByText } = render(
+      <ActivityFeed activities={[mockActivityWithName]} />
+    );
+    // The full name should appear in the text content
+    expect(getByText('Alice Smith')).toBeTruthy();
+  });
+
+  it('falls back to userInitials when userName is absent', () => {
+    const { container } = render(
+      <ActivityFeed activities={[mockActivityWithoutName]} />
+    );
+    // Find the bold/semibold span that holds the display name
+    const nameSpans = container.querySelectorAll('span.font-semibold');
+    // The text content of the name span should be the initials
+    const nameTexts = Array.from(nameSpans).map((el) => el.textContent);
+    expect(nameTexts).toContain('BJ');
+  });
+
+  it('avatar circle shows initials regardless of userName', () => {
+    const { container } = render(
+      <ActivityFeed activities={[mockActivityWithName]} />
+    );
+    // The avatar circle is the div with rounded-full class inside each activity row
+    const avatarCircle = container.querySelector('.rounded-full.bg-gradient-to-br');
+    expect(avatarCircle).toBeTruthy();
+    expect(avatarCircle!.textContent).toBe('AS');
   });
 });

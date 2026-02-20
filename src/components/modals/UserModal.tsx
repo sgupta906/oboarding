@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { ModalWrapper } from '../ui';
 import { ErrorAlert } from '../ui/ErrorAlert';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 import type { User, UserFormData, CustomRole } from '../../types';
 import { EMAIL_REGEX } from '../../utils/validation';
 import type { FieldErrors } from '../../utils/validation';
@@ -290,7 +291,7 @@ export function UserModal({
             </p>
           )}
           {rolesLoading ? (
-            <div className="text-slate-500 dark:text-slate-400 text-sm">Loading roles...</div>
+            <LoadingSpinner size="sm" label="Loading roles..." />
           ) : roles.length > 0 ? (
             <div className="space-y-2">
               {roles.map((role) => (

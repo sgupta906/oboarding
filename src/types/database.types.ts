@@ -282,6 +282,7 @@ export interface Database {
           user_id: string | null;
           resource_type: string | null;
           resource_id: string | null;
+          user_name: string | null;
         };
         Insert: {
           id?: string;
@@ -292,6 +293,7 @@ export interface Database {
           user_id?: string | null;
           resource_type?: string | null;
           resource_id?: string | null;
+          user_name?: string | null;
         };
         Update: {
           id?: string;
@@ -302,6 +304,7 @@ export interface Database {
           user_id?: string | null;
           resource_type?: string | null;
           resource_id?: string | null;
+          user_name?: string | null;
         };
         Relationships: [];
       };
