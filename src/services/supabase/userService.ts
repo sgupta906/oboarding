@@ -87,6 +87,39 @@ export async function userEmailExists(email: string, excludeUserId?: string): Pr
 }
 
 /**
+ * Looks up a user by email (case-insensitive) with their roles.
+ * Used by signInWithEmailLink() to authenticate Users-panel users
+ * when localStorage credentials are not available.
+ * Returns null if no user found or on query error.
+ */
+export async function getUserByEmail(
+  email: string
+): Promise<{ id: string; email: string; roles: string[] } | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, email, user_roles(role_name)')
+    .ilike('email', normalizedEmail)
+    .limit(1);
+
+  if (error) {
+    console.error(`Failed to fetch user by email: ${error.message}`);
+    return null;
+  }
+
+  if (!data || data.length === 0) return null;
+
+  const row = data[0] as any;
+  const roles = (row.user_roles as Array<{ role_name: string }> | undefined) ?? [];
+
+  return {
+    id: row.id,
+    email: row.email,
+    roles: roles.map((r) => r.role_name),
+  };
+}
+
+/**
  * Checks if a user with the given ID exists in the users table.
  * Used to validate `created_by` FK references before INSERT operations.
  * Returns false on query error (fail-safe: treat as non-existent rather

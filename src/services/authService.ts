@@ -5,7 +5,7 @@
 
 import { supabase } from '../config/supabase';
 import type { UserRole } from '../config/authTypes';
-import { getAuthCredential, getInstanceByEmployeeEmail } from './supabase';
+import { getAuthCredential, getInstanceByEmployeeEmail, getUserByEmail, addUserToAuthCredentials } from './supabase';
 import { getDevAuthUUID } from '../utils/uuid';
 import { EMAIL_REGEX } from '../utils/validation';
 
@@ -209,6 +209,49 @@ export async function signInWithEmailLink(email: string): Promise<void> {
 
       console.log(`[Auth] Signed in as ${trimmedEmail} (${effectiveRole}) - created via Users panel`);
       return;
+    }
+
+    // Step 1.5: Check Supabase users table (for Users-panel users without localStorage)
+    try {
+      const userRecord = await getUserByEmail(trimmedEmail);
+      if (userRecord && userRecord.roles.length > 0) {
+        // All Users-panel users get 'manager' auth access (matching createUser convention)
+        let effectiveRole: string = 'manager';
+
+        // Defense-in-depth: if user also has an onboarding instance, they are an employee
+        try {
+          const instance = await getInstanceByEmployeeEmail(trimmedEmail);
+          if (instance) {
+            effectiveRole = 'employee';
+          }
+        } catch {
+          // Instance check failed (Supabase may be unreachable) -- use manager role as-is
+        }
+
+        // Cache credential in localStorage for future sign-ins
+        addUserToAuthCredentials(trimmedEmail, effectiveRole, userRecord.id);
+
+        localStorage.setItem(
+          'mockAuthUser',
+          JSON.stringify({
+            uid: userRecord.id,
+            email: trimmedEmail,
+            role: effectiveRole,
+          })
+        );
+
+        window.dispatchEvent(
+          new CustomEvent('authStorageChange', {
+            detail: { key: 'mockAuthUser' },
+          })
+        );
+
+        console.log(`[Auth] Signed in as ${trimmedEmail} (${effectiveRole}) - found in users table`);
+        return;
+      }
+    } catch (userLookupError) {
+      // Supabase may be unavailable -- fall through to instance check
+      console.warn('Users table lookup failed, falling through:', userLookupError);
     }
 
     // Check if this email belongs to an onboarding instance (hire)

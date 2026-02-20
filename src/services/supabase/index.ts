@@ -60,6 +60,7 @@ export type { CreateOnboardingRunInput } from './instanceService';
 // -- User Service --
 export {
   getUser,
+  getUserByEmail,
   createUser,
   updateUser,
   deleteUser,
@@ -67,4 +68,5 @@ export {
   creatorExists,
   subscribeToUsers,
   getAuthCredential,
+  addUserToAuthCredentials,
 } from './userService';

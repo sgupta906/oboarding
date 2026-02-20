@@ -79,12 +79,16 @@ vi.mock('../config/supabase', () => ({
   },
 }));
 
-// Mock getAuthCredential and getInstanceByEmployeeEmail from ./supabase barrel
+// Mock getAuthCredential, getInstanceByEmployeeEmail, getUserByEmail, addUserToAuthCredentials from ./supabase barrel
 const mockGetInstanceByEmployeeEmail = vi.fn().mockResolvedValue(null);
+const mockGetUserByEmail = vi.fn().mockResolvedValue(null);
+const mockAddUserToAuthCredentials = vi.fn();
 
 vi.mock('./supabase', () => ({
   getAuthCredential: vi.fn().mockReturnValue(null),
   getInstanceByEmployeeEmail: (...args: any[]) => mockGetInstanceByEmployeeEmail(...args),
+  getUserByEmail: (...args: any[]) => mockGetUserByEmail(...args),
+  addUserToAuthCredentials: (...args: any[]) => mockAddUserToAuthCredentials(...args),
 }));
 
 describe('Auth Service', () => {
@@ -95,6 +99,8 @@ describe('Auth Service', () => {
     mockInsert.mockResolvedValue({ error: null });
     mockDeleteEq.mockResolvedValue({ error: null });
     mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
+    mockGetUserByEmail.mockResolvedValue(null);
+    mockAddUserToAuthCredentials.mockReset();
   });
 
   describe('signInWithEmailLink - Error Cases', () => {
@@ -616,6 +622,154 @@ describe('Auth Service', () => {
       const parsed = JSON.parse(stored!);
       expect(parsed.email).toBe('delaney@gmail.com');
       expect(parsed.role).toBe('employee');
+    });
+  });
+
+  describe('signInWithEmailLink - Users table lookup (Step 1.5)', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      mockGetUserByEmail.mockReset();
+      mockGetUserByEmail.mockResolvedValue(null);
+      mockGetInstanceByEmployeeEmail.mockReset();
+      mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
+      mockAddUserToAuthCredentials.mockReset();
+    });
+
+    it('signs in Users-panel user when no localStorage credential exists and getUserByEmail returns user with roles', async () => {
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'users-panel-id-1',
+        email: 'paneluser@company.com',
+        roles: ['software engineer'],
+      });
+
+      await signInWithEmailLink('paneluser@company.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.uid).toBe('users-panel-id-1');
+      expect(parsed.email).toBe('paneluser@company.com');
+      // Should NOT call Supabase Auth signUp
+      expect(mockSupabaseAuth.signUp).not.toHaveBeenCalled();
+    });
+
+    it('sets mockAuthUser role to manager (not custom role name)', async () => {
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'users-panel-id-2',
+        email: 'customrole@company.com',
+        roles: ['lead designer'],
+      });
+
+      await signInWithEmailLink('customrole@company.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.role).toBe('manager');
+    });
+
+    it('calls addUserToAuthCredentials to cache credential in localStorage', async () => {
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'users-panel-id-3',
+        email: 'cached@company.com',
+        roles: ['analyst'],
+      });
+
+      await signInWithEmailLink('cached@company.com');
+
+      expect(mockAddUserToAuthCredentials).toHaveBeenCalledWith(
+        'cached@company.com',
+        'manager',
+        'users-panel-id-3'
+      );
+    });
+
+    it('dispatches authStorageChange event after successful lookup', async () => {
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'users-panel-id-4',
+        email: 'eventtest@company.com',
+        roles: ['manager'],
+      });
+
+      const eventSpy = vi.fn();
+      window.addEventListener('authStorageChange', eventSpy);
+
+      await signInWithEmailLink('eventtest@company.com');
+
+      expect(eventSpy).toHaveBeenCalled();
+      window.removeEventListener('authStorageChange', eventSpy);
+    });
+
+    it('skips roleless users (getUserByEmail returns user with empty roles array) and falls through to Step 2', async () => {
+      // getUserByEmail returns user with NO roles (Google OAuth user without assigned role)
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'oauth-user-1',
+        email: 'test-employee@example.com',
+        roles: [],
+      });
+
+      // Step 2: instance check returns null, falls through to Step 3
+      mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
+
+      // Step 3: test-employee@example.com is in MOCK_EMAIL_ROLES
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'mock-uid', identities: [{ id: '1' }] } },
+        error: null,
+      });
+
+      await signInWithEmailLink('test-employee@example.com');
+
+      // Should NOT have cached credentials for the roleless user
+      expect(mockAddUserToAuthCredentials).not.toHaveBeenCalled();
+      // Should have fallen through to MOCK_EMAIL_ROLES (Supabase signUp)
+      expect(mockSupabaseAuth.signUp).toHaveBeenCalled();
+    });
+
+    it('falls through gracefully when getUserByEmail throws (Supabase unreachable)', async () => {
+      mockGetUserByEmail.mockRejectedValueOnce(
+        new Error('Supabase connection refused')
+      );
+
+      // Step 2: instance check returns null, falls through to Step 3
+      mockGetInstanceByEmployeeEmail.mockResolvedValue(null);
+
+      // Step 3: test-manager@example.com is in MOCK_EMAIL_ROLES
+      mockSupabaseAuth.signUp.mockResolvedValueOnce({
+        data: { user: { id: 'mock-uid', identities: [{ id: '1' }] } },
+        error: null,
+      });
+
+      await expect(
+        signInWithEmailLink('test-manager@example.com')
+      ).resolves.not.toThrow();
+
+      // Should have fallen through to MOCK_EMAIL_ROLES
+      expect(mockSupabaseAuth.signUp).toHaveBeenCalled();
+    });
+
+    it('overrides role to employee when user also has an onboarding instance (defense-in-depth)', async () => {
+      mockGetUserByEmail.mockResolvedValueOnce({
+        id: 'dual-user-1',
+        email: 'dualrole@company.com',
+        roles: ['team lead'],
+      });
+
+      // Defense-in-depth: this user also has an onboarding instance
+      mockGetInstanceByEmployeeEmail.mockResolvedValueOnce({
+        instanceId: 'inst-dual-1',
+        employeeName: 'Dual Role User',
+      });
+
+      await signInWithEmailLink('dualrole@company.com');
+
+      const stored = localStorage.getItem('mockAuthUser');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed.role).toBe('employee'); // Overridden from 'manager' to 'employee'
+      expect(parsed.uid).toBe('dual-user-1');
     });
   });
 

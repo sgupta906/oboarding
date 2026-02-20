@@ -28,16 +28,28 @@ let usersInsertResult: any;
 let userEmailCheckResult: any;
 let creatorExistsResult: any;
 let usersUpdateResult: any;
+let getUserByEmailResult: any;
 
 vi.mock('../../config/supabase', () => ({
   supabase: {
     from: vi.fn((table: string) => {
       if (table === 'users') {
         return {
-          select: vi.fn((_clause?: string) => {
+          select: vi.fn((clause?: string) => {
             // creatorExists() uses select('id').eq('id', ...).limit(1)
             // userEmailExists() uses select('id').ilike(...).limit(1)
+            // getUserByEmail() uses select('id, email, user_roles(role_name)').ilike(...).limit(1)
             // getUser (crud.get) uses select('*, user_roles(*), user_profiles(*)').eq('id', ...).single()
+
+            // Branch for getUserByEmail (select clause includes 'user_roles')
+            if (clause && clause.includes('user_roles(role_name)')) {
+              return {
+                ilike: vi.fn(() => ({
+                  limit: vi.fn(() => getUserByEmailResult),
+                })),
+              };
+            }
+
             return {
               eq: vi.fn((_col: string, _val: string) => ({
                 single: vi.fn(() => usersSelectSingleResult ?? usersSelectResult),
@@ -125,7 +137,7 @@ vi.mock('./authCredentialHelpers', () => ({
   clearAllUsersForTesting: vi.fn(),
 }));
 
-import { creatorExists, createUser, deleteUser, updateUser } from './userService';
+import { creatorExists, createUser, deleteUser, updateUser, getUserByEmail } from './userService';
 
 // ============================================================================
 // creatorExists() tests (Task 2.1 - Bug #40)
@@ -410,5 +422,94 @@ describe('updateUser - credential sync on role change', () => {
       'manager',
       'user-1'
     );
+  });
+});
+
+// ============================================================================
+// getUserByEmail() tests (users-panel-signin-bug fix)
+// ============================================================================
+
+describe('getUserByEmail', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns { id, email, roles } when user found with roles', async () => {
+    getUserByEmailResult = {
+      data: [
+        {
+          id: 'user-123',
+          email: 'alice@example.com',
+          user_roles: [{ role_name: 'software engineer' }],
+        },
+      ],
+      error: null,
+    };
+
+    const result = await getUserByEmail('alice@example.com');
+
+    expect(result).toEqual({
+      id: 'user-123',
+      email: 'alice@example.com',
+      roles: ['software engineer'],
+    });
+  });
+
+  it('returns null when no user found (empty data array)', async () => {
+    getUserByEmailResult = { data: [], error: null };
+
+    const result = await getUserByEmail('nobody@example.com');
+
+    expect(result).toBeNull();
+  });
+
+  it('returns null on Supabase query error', async () => {
+    getUserByEmailResult = { data: null, error: { message: 'connection error' } };
+
+    const result = await getUserByEmail('alice@example.com');
+
+    expect(result).toBeNull();
+  });
+
+  it('normalizes email to lowercase and trims whitespace', async () => {
+    getUserByEmailResult = {
+      data: [
+        {
+          id: 'user-456',
+          email: 'bob@example.com',
+          user_roles: [{ role_name: 'manager' }],
+        },
+      ],
+      error: null,
+    };
+
+    const result = await getUserByEmail('  Bob@EXAMPLE.COM  ');
+
+    expect(result).toEqual({
+      id: 'user-456',
+      email: 'bob@example.com',
+      roles: ['manager'],
+    });
+  });
+
+  it('returns empty roles array when user has no user_roles entries', async () => {
+    getUserByEmailResult = {
+      data: [
+        {
+          id: 'user-789',
+          email: 'oauth@example.com',
+          user_roles: [],
+        },
+      ],
+      error: null,
+    };
+
+    const result = await getUserByEmail('oauth@example.com');
+
+    expect(result).toEqual({
+      id: 'user-789',
+      email: 'oauth@example.com',
+      roles: [],
+    });
   });
 });
